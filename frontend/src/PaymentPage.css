@@ -1,0 +1,80 @@
+/* PaymentPage.css */
+
+/* Container chính cho trang thanh toán */
+.payment-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 20px;
+  background-color: #f7f7f7;
+  font-family: Arial, sans-serif;
+}
+
+/* Tiêu đề trang thanh toán */
+.payment-page h2 {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Thông tin thanh toán */
+.payment-page p {
+  font-size: 18px;
+  margin: 10px 0;
+  color: #555;
+}
+
+/* Thông tin quan trọng (Họ tên, Số điện thoại, Số tiền) */
+.payment-page p strong {
+  font-weight: 700;
+  color: #333;
+}
+
+/* Tạo khoảng cách giữa các phần tử */
+.payment-page .info-container {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 30px;
+  text-align: left;
+}
+
+/* QR Code */
+.payment-page .qr-container {
+  text-align: center;
+  margin-top: 30px;
+  width: 100%;
+}
+
+.payment-page .qr-container img {
+  max-width: 400px;  /* Tăng kích thước tối đa của mã QR */
+  height: auto;      /* Đảm bảo chiều cao tự động để tỷ lệ đúng */
+  margin-top: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);  /* Thêm bóng đổ để mã QR nổi bật hơn */
+}
+
+/* Footer */
+.payment-page footer {
+  margin-top: 40px;
+  font-size: 14px;
+  color: #888;
+}
+
+/* Định dạng phần thông tin thanh toán */
+.payment-page .amount {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2ab27b;
+}
+
+.payment-page .amount::after {
+  content: ' đ';
+  font-size: 18px;
+  color: #333;
+}
