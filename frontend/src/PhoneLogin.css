@@ -1,0 +1,77 @@
+/* src/PhoneLogin.css */
+
+.phone-login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 6rem);
+  padding-top: 6rem;
+  background: #f5f7fa;
+}
+
+.phone-login-box {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.phone-login-box h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  color: #333;
+}
+
+.phone-login-label {
+  display: block;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  color: #444;
+}
+
+.phone-login-input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccd0d5;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.phone-login-input:focus {
+  outline: none;
+  border-color: #4c8bf5;
+  box-shadow: 0 0 0 3px rgba(76,139,245,0.25);
+}
+
+.phone-login-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #4c8bf5;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.phone-login-btn:disabled {
+  background-color: #7faafc;
+  cursor: not-allowed;
+}
+
+.phone-login-btn:hover:not(:disabled) {
+  background-color: #3a74d1;
+}
+
+.phone-login-error {
+  color: #d9534f;
+  margin-bottom: 1rem;
+}

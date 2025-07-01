@@ -1,39 +1,65 @@
-import React from 'react'
-import './Header.css'
-import { ShoppingCartIcon } from '@heroicons/react/24/outline'
+// src/Header.jsx
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import './Header.css';
 
 export default function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    setUser(stored ? JSON.parse(stored) : null);
+  }, [location]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/login');
+  };
+
+  const handleTopUp = () => {
+    if (!user) return;
+    const { phone, amount } = user;
+    navigate(`/top-up?phone=${encodeURIComponent(phone)}&amount=${encodeURIComponent(amount)}`);
+  };
+
   return (
     <header className="site-header">
-      {/* Phần 1: Top bar */}
-      <div className="top-bar">
+      {/* Top bar */}
+      <div className="top-bar container">
         <div className="top-bar__left">
-           <span className="site-logo-text">DAILYWITHMINH</span>
+          <Link to="/" className="site-logo-text">DAILYWITHMINH</Link>
         </div>
         <div className="top-bar__right">
-          <button className="btn-link">Đăng nhập</button>
-          <button className="btn-cart">
-            <ShoppingCartIcon className="icon" />
-          </button>
+          {user ? (
+            <>
+              <span className="user-phone">📱 {user.phone}</span>
+              <span className="user-amount clickable" onClick={handleTopUp}>
+                💰 {user.amount.toLocaleString()}₫
+              </span>
+              <button className="btn-link" onClick={handleLogout}>Đăng xuất</button>
+            </>
+          ) : (
+            <Link to="/login" className="btn-link">Đăng nhập</Link>
+          )}
         </div>
       </div>
 
-      {/* Phần 2: Nav bar */}
-      <div className="nav-bar">
+      {/* Nav bar */}
+      <div className="nav-bar container">
         <div className="nav-bar__left">
-          {/* Netflix icon + chữ */}
-          <a href="https://dailywithminh.com"><img src="/images/netflix-icon.png" alt="Netflix" className='nav-icon' /></a>
-          {/* <img src="/images/netflix-icon.png" alt="Netflix" className="nav-icon" /> */}
+          <Link to="/">
+            <img src="/images/netflix-icon.png" alt="Netflix" className="nav-icon" />
+          </Link>
           <span className="nav-label">Netflix</span>
-
-          {/* Sau này bạn có thể copy block này để thêm Youtube, Spotify */}
-          {/* <img src="/images/youtube-icon.png" alt="YouTube" className="nav-icon" />
-          <span className="nav-label">YouTube</span> */}
         </div>
         <div className="nav-bar__right">
-          {/* Nếu cần các nút nav bên phải, để trống tạm */}
+          {/* Các item nav khác nếu cần */}
         </div>
       </div>
     </header>
-  )
+  );
 }

@@ -1,28 +1,54 @@
 // src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Header from './Header'; 
-import PlansOverview from './PlansOverview';
-import PlanDetail from './PlanDetail';
-import CustomerInfoForm from './CustomerInfoForm';  // Trang nhập thông tin
-import PaymentMethod from './PaymentMethod';      // Trang chọn phương thức thanh toán
-import Dashboard from './Dashboard'; // Dashboard component
-import PaymentPage from './PaymentPage'; // Trang thanh toán
+
+import Header             from './Header';
+import PlansOverview      from './PlansOverview';
+import PlanDetail         from './PlanDetail';
+import PhoneLogin         from './PhoneLogin';
+import Dashboard          from './Dashboard';
+import PrivateRoute       from './PrivateRoute';
+import CustomerDashboard  from './CustomerDashboard';
+import TopUpPage          from './TopUpPage';
+import AdminLogin         from './AdminLogin';
+import AdminDashboard     from './AdminDashboard';
+import AdminRoute         from './AdminRoute';
+
+import './App.css';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Header />
-      <div style={{ paddingTop: '6rem' }}>
+      <main className="main-content" style={{ paddingTop: '6rem' }}>
         <Routes>
-          <Route path="/" element={<PlansOverview />} />
+          {/* User routes */}
+          <Route path="/"              element={<PlansOverview />} />
+          <Route path="/login"         element={<PhoneLogin />} />
           <Route path="/plan/:planKey" element={<PlanDetail />} />
-          <Route path="/payment" element={<CustomerInfoForm />} />  {/* Trang nhập thông tin */}
-          <Route path="/payment-method" element={<PaymentMethod />} />
-          <Route path="/dashboard" element={<Dashboard />} />  {/* Route để truy cập dashboard */}
-          <Route path="/payment-page" element={<PaymentPage />} /> {/* Trang thanh toán */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/my-orders"     element={<CustomerDashboard />} />
+          <Route path="/top-up"        element={<TopUpPage />} />
+
+          {/* Admin routes */}
+          <Route path="/admin-login"   element={<AdminLogin />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
         </Routes>
-      </div>
+      </main>
     </BrowserRouter>
   );
 }

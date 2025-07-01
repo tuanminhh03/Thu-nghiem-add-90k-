@@ -1,10 +1,33 @@
+/* Đặt giới hạn và canh giữa nội dung chính của ứng dụng */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Wrapper chính cho tất cả route con dưới Header */
+.main-content {
+  /* đẩy xuống vừa đúng header 6rem */
+  padding-top: 6rem;
+
+  /* flex center ngang + tuỳ chọn căn dọc Start hoặc Center */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* nếu muốn căn giữa dọc, đổi thành center */
+
+  /* chiếm hết phần còn lại của viewheight */
+  min-height: calc(100vh - 6rem);
+  width: 100%;
+  box-sizing: border-box;
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  text-align: center;
+  /* Bỏ text-align: center để không ảnh hưởng đến text của form */
 }
 
+/* Định dạng logo (nếu còn sử dụng) */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -18,25 +41,80 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Hiệu ứng xoay logo (nếu còn sử dụng) */
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-
 @media (prefers-reduced-motion: no-preference) {
+  /* Chỉ áp dụng hiệu ứng xoay cho logo React (phần tử .logo thứ 2) */
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
 }
 
+/* Định dạng thẻ chứa form thanh toán */
 .card {
-  padding: 2em;
+  max-width: 600px;        /* giới hạn độ rộng của form, có thể điều chỉnh theo ý muốn */
+  margin: 2rem auto;       /* canh giữa ngang và thêm khoảng trống trên-dưới */
+  padding: 2rem;           /* khoảng đệm bên trong khung form */
+  background: #fff;        /* màu nền trắng cho form (giúp nổi bật trên nền xám) */
+  border-radius: 8px;      /* bo tròn các góc cho đẹp hơn */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);  /* đổ bóng nhẹ để thẻ form nổi lên */
+  text-align: left;        /* đảm bảo nội dung bên trong căn trái tự nhiên */
 }
 
+/* Tiêu đề của form thanh toán */
+.card h1, .card h2 {
+  text-align: center;      /* nếu có tiêu đề bên trong thẻ form, căn giữa tiêu đề đó */
+  margin-bottom: 1rem;     /* thêm khoảng cách dưới tiêu đề */
+}
+
+/* Thông tin gói (khung xám bên trong form) */
+.plan-summary {
+  background: #e9eff1;     /* nền xám nhạt (tuỳ chọn màu phù hợp) */
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;   /* khoảng cách dưới khung thông tin gói */
+  text-align: left;        /* đảm bảo text trong khung thông tin gói căn trái */
+}
+
+/* Nhãn (label) của các trường trong form */
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin: 1rem 0 0.5rem;   /* khoảng cách trên nhãn (tách khỏi trường phía trên) và dưới nhãn */
+}
+
+/* Ô input và select của form */
+.form-input, .form-select {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 1rem;     /* khoảng cách dưới mỗi trường để tách các input */
+}
+
+/* Nút submit */
+.form-submit {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #1f2833; /* màu nền xanh đen đậm (giống ảnh) */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.form-submit:hover {
+  background-color: #121820; /* đổi màu nền khi hover cho nổi bật */
+}
+
+/* Chú thích, hướng dẫn ... (nếu có) */
 .read-the-docs {
   color: #888;
 }

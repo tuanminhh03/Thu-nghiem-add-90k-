@@ -1,84 +1,147 @@
+/* src/Header.css */
+
+/* chung cho container */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ====== Toàn bộ header ====== */
 .site-header {
-  width: 100%;
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 50;
-  font-family: sans-serif;
+  width: 100%;
+  z-index: 1000;
+  font-family: 'Poppins', sans-serif;
+  user-select: none;
 }
 
-/* -------- Top bar -------- */
+/* ====== Top bar ====== */
 .top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 2rem;
-  background: rgba(0,0,0,0.7);
-}
-
-.top-bar__left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  background: linear-gradient(90deg, #1f1f1fcc, #000000aa);
   color: #fff;
+  height: 3rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+.top-bar.container {
+  display: flex;
 }
 
+/* Logo text */
 .site-logo-text {
-    margin-left: 200px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
+/* Right side (phone, amount, logout, cart) */
 .top-bar__right {
-  font-weight: bold;
-  color: #fff;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
-
-.btn-cart {
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-}
-
-.btn-cart .icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* -------- Nav bar -------- */
-.nav-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 2rem;
-  background: #111;
+  gap: 1.2rem;
 }
 
+/* chung cho số điện thoại & tiền */
+.user-phone,
+.user-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.user-phone:hover,
+.user-amount:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+
+/* nút Đăng xuất / Đăng nhập */
+.btn-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.btn-link:hover {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+}
+
+
+
+/* ====== Nav bar ====== */
+.nav-bar {
+  background: #111;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+.nav-bar.container {
+  display: flex;
+}
+
+/* trái: icon + label */
 .nav-bar__left {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-left: 200px;
+  gap: 0.75rem;
 }
-
 .nav-icon {
-  width: 2rem;
-  height: 2rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  transition: transform 0.2s;
 }
-
+.nav-icon:hover {
+  transform: scale(1.05);
+}
 .nav-label {
-  color: #fff;
+  font-size: 1.2rem;
   font-weight: 600;
-  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
+/* phải: placeholder cho nav items nếu cần */
 .nav-bar__right {
-  /* để trống, hoặc bạn có thể thêm các link nav, tìm kiếm, v.v. */
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Responsive: rút gọn padding trên mobile */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+  .top-bar, .nav-bar {
+    height: auto;
+    padding: 0.5rem 0;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .site-logo-text {
+    font-size: 1rem;
+  }
+  .nav-label {
+    font-size: 1rem;
+  }
 }
