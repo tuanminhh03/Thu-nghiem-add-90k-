@@ -4,9 +4,10 @@ import cors     from 'cors';
 import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
+import bcrypt   from 'bcrypt';
+
 import Customer from './models/Customer.js';
 import Order    from './models/Order.js';
-import bcrypt   from 'bcrypt';
 import Admin    from './models/Admin.js';
 
 dotenv.config();
@@ -20,7 +21,7 @@ mongoose
   .then(() => console.log('🗄️  MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
 
-// --- middleware xác thực chung ---
+/** Middleware: Xác thực JWT chung */
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.split(' ')[1];
@@ -33,7 +34,7 @@ function authenticate(req, res, next) {
   }
 }
 
-// --- middleware chỉ dành cho Admin ---
+/** Middleware: Kiểm tra role admin */
 function requireAdmin(req, res, next) {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Chỉ admin mới có quyền' });
@@ -41,7 +42,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// --- User login/register bằng phone ---
+/** 1. Đăng ký/đăng nhập user bằng phone */
 app.post('/api/auth/login', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ message: 'Thiếu số điện thoại' });
@@ -58,11 +59,7 @@ app.post('/api/auth/login', async (req, res) => {
     );
     res.json({
       token,
-      user: {
-        id:     user._id,
-        phone:  user.phone,
-        amount: user.amount || 0
-      }
+      user: { id: user._id, phone: user.phone, amount: user.amount }
     });
   } catch (err) {
     console.error(err);
@@ -70,7 +67,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// --- Admin login bằng username/password ---
+/** 2. Đăng nhập admin bằng username/password */
 app.post('/api/auth/admin-login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -95,17 +92,47 @@ app.post('/api/auth/admin-login', async (req, res) => {
   }
 });
 
-// --- Xóa customer (tuỳ bạn có dùng) ---
-app.delete('/customers/:id', async (req, res) => {
+/** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
+app.post('/api/orders', authenticate, async (req, res) => {
+  const { plan, duration, amount } = req.body;
+  if (!plan || !duration || !amount) {
+    return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
+  }
   try {
-    await Customer.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Xóa thành công' });
-  } catch {
+    // Lưu đơn hàng
+    const order = await Order.create({
+      user:     req.user.id,
+      plan,
+      duration,
+      amount,
+      status:   'PAID'
+    });
+    // Trừ tiền customer.balance
+    await Customer.findByIdAndUpdate(
+      req.user.id,
+      { $inc: { amount: -amount } }
+    );
+    res.status(201).json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi tạo đơn hàng' });
+  }
+});
+
+/** 4. Lấy lịch sử đơn hàng của chính user */
+app.get('/api/orders', authenticate, async (req, res) => {
+  try {
+    const orders = await Order
+      .find({ user: req.user.id })
+      .sort({ purchaseDate: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
   }
 });
 
-// --- Route chỉ dành cho Admin: lấy danh sách all customers ---
+/** 5. Admin: Lấy danh sách tất cả customer */
 app.get(
   '/api/admin/users',
   authenticate,
@@ -121,41 +148,78 @@ app.get(
   }
 );
 
-// --- Route trả về Orders của user hiện tại ---
-app.get('/api/orders', authenticate, async (req, res) => {
-  try {
-    const orders = await Order
-      .find({ user: req.user.id })
-      .sort({ purchaseDate: -1 });
-    res.json(orders);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
+/** 6. Admin: Nạp tiền cho customer */
+app.post(
+  '/api/admin/top-up',
+  authenticate,
+  requireAdmin,
+  async (req, res) => {
+    const { userId, amount } = req.body;
+    if (!userId || !amount || amount <= 0) {
+      return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
+    }
+    try {
+      const user = await Customer.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'Không tìm thấy khách hàng' });
+      }
+      user.amount += amount;
+      await user.save();
+      res.json({ message: 'Top-up thành công', newAmount: user.amount });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Lỗi server khi nạp tiền' });
+    }
   }
-});
+);
 
-// --- Route tạo order mới (khi xử lý thanh toán) ---
-app.post('/api/orders', authenticate, async (req, res) => {
-  const { plan, duration, amount } = req.body;
-  if (!plan || !duration || !amount) {
-    return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
+/** 7. Admin: Thống kê doanh thu theo ngày hoặc tháng */
+app.get(
+  '/api/admin/revenue',
+  authenticate,
+  requireAdmin,
+  async (req, res) => {
+    const { period } = req.query; // 'daily' hoặc 'monthly'
+    try {
+      let groupId;
+      if (period === 'monthly') {
+        groupId = {
+          year:  { $year: '$purchaseDate' },
+          month: { $month: '$purchaseDate' }
+        };
+      } else {
+        groupId = {
+          year:  { $year: '$purchaseDate' },
+          month: { $month: '$purchaseDate' },
+          day:   { $dayOfMonth: '$purchaseDate' }
+        };
+      }
+
+      const stats = await Order.aggregate([
+        { $match: { status: 'PAID' } },
+        { $group: {
+            _id:   groupId,
+            total: { $sum: '$amount' }
+        }},
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ]);
+
+      // Format label
+      const data = stats.map(item => {
+        const { year, month, day } = item._id;
+        const label = period === 'monthly'
+          ? `${year}-${String(month).padStart(2,'0')}`
+          : `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        return { label, total: item.total };
+      });
+
+      res.json(data);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Lỗi thống kê doanh thu' });
+    }
   }
-  try {
-    const order = await Order.create({
-      user:     req.user.id,
-      plan,
-      duration,
-      amount,
-      status:   'PAID'
-    });
-    // Cộng số tiền vào account customer
-    await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount } });
-    res.status(201).json(order);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi tạo đơn hàng' });
-  }
-});
+);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

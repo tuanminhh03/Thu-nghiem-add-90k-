@@ -20,6 +20,11 @@ html, body, #root {
   width: 100%;
   box-sizing: border-box;
 }
+.main-content-admin {
+  padding: 0;  
+  margin: 0;      /* admin full màn hình, không có header */
+  background: #1f2937; /* ví dụ tông tối cho admin */
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;
