@@ -11,11 +11,6 @@ import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import TopUpPage         from './TopUpPage';
 
-import AdminLogin        from './AdminLogin';
-import AdminRoute        from './AdminRoute';
-import AdminLayout       from './Layouts/AdminLayout.jsx';
-import AdminDashboard    from './AdminDashboard';
-
 import './App.css';
 
 export default function App() {
@@ -74,25 +69,6 @@ export default function App() {
           }
         />
 
-        {/* ==== ADMIN ROUTES ==== */}
-        {/* 1. Login admin (layout riêng, không cần HeaderWrapper) */}
-        <Route path="/admin-login" element={<AdminLogin />} />
-
-        {/* 2. Tất cả các route /admin/* đều đi qua AdminRoute + AdminLayout */}
-        <Route 
-          path="/admin/*" 
-          element={
-            <AdminRoute>
-              <AdminLayout />
-            </AdminRoute>
-          }
-        >
-          {/* Khi vào /admin hoặc /admin/dashboard */}
-          <Route index element={<AdminDashboard />} />
-          {/* Thêm các sub-route khác nếu cần, ví dụ: users, transactions,... */}
-          {/* <Route path="users" element={<AdminUsers />} /> */}
-          {/* <Route path="transactions" element={<AdminTransactions />} /> */}
-        </Route>
       </Routes>
     </BrowserRouter>
   );
