@@ -9,7 +9,7 @@ import PhoneLogin        from './PhoneLogin';
 import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
-import Account from './Account';
+import Account           from './Account';
 import TopUpPage         from './TopUpPage';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
@@ -23,29 +23,29 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* ==== USER ROUTES (có Header) ==== */}
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
             <HeaderWrapper>
               <PlansOverview />
             </HeaderWrapper>
-          } 
+          }
         />
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             <HeaderWrapper>
               <PhoneLogin />
             </HeaderWrapper>
-          } 
+          }
         />
-        <Route 
-          path="/plan/:planKey" 
+        <Route
+          path="/plan/:planKey"
           element={
             <HeaderWrapper>
               <PlanDetail />
             </HeaderWrapper>
-          } 
+          }
         />
         <Route
           path="/dashboard"
@@ -58,7 +58,6 @@ export default function App() {
           }
         />
         <Route
-
           path="/my-orders"
           element={
             <HeaderWrapper>

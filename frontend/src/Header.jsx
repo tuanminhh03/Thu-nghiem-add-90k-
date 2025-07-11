@@ -36,7 +36,9 @@ export default function Header() {
   const handleTopUp = () => {
     if (!user) return;
     const { phone, amount } = user;
-    navigate(`/top-up?phone=${encodeURIComponent(phone)}&amount=${encodeURIComponent(amount)}`);
+    navigate(
+      `/top-up?phone=${encodeURIComponent(phone)}&amount=${encodeURIComponent(amount)}`
+    );
   };
 
   return (
@@ -61,7 +63,7 @@ export default function Header() {
                 </button>
                 {menuOpen && (
                   <ul className="user-dropdown">
-
+                    <li className="account-line">Tài khoản: {user.phone}</li>
                     <li>
                       <Link to="/my-orders" onClick={() => setMenuOpen(false)}>
                         Đơn hàng của tôi

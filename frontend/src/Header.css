@@ -119,6 +119,10 @@
   background-color: #f3f4f6;
 }
 
+.account-line {
+  cursor: default;
+  font-weight: 600;
+}
 
 .user-dropdown a,
 .user-dropdown button {
@@ -137,8 +141,6 @@
 .user-dropdown a:hover {
   text-decoration: none;
 }
-
-
 
 /* ====== Nav bar ====== */
 .nav-bar {
