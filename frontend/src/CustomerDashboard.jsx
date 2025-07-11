@@ -1,6 +1,7 @@
 // src/CustomerDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import './CustomerDashboard.css';
 
 export default function CustomerDashboard() {
   const [orders, setOrders]   = useState([]);
@@ -35,8 +36,10 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24 pb-8 px-4">
-      <div className="max-w-4xl mx-auto bg-white shadow rounded-lg p-6">
+    <div className="customer-dashboard pt-24 pb-8 px-4">
+      <div className="orders-bg" />
+      <div className="orders-overlay" />
+      <div className="max-w-4xl mx-auto bg-white shadow rounded-lg p-6 relative">
         <h2 className="text-2xl font-bold mb-4">Lịch sử mua hàng</h2>
         {loading ? (
           <p>Đang tải...</p>
