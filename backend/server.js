@@ -87,10 +87,63 @@ app.post('/api/orders', authenticate, async (req, res) => {
 });
 
 /** 4. Lấy lịch sử đơn hàng của chính user */
+
 app.get('/api/orders', authenticate, async (req, res) => {
   try {
     const orders = await Order
       .find({ user: req.user.id })
+      .sort({ purchaseDate: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+/** ===== ADMIN APIs ===== */
+app.get('/api/admin/customers', async (req, res) => {
+  try {
+    const customers = await Customer.find().sort({ createdAt: -1 });
+    res.json(customers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.delete('/api/admin/customers/:id', async (req, res) => {
+  try {
+    await Customer.findByIdAndDelete(req.params.id);
+    res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.post('/api/admin/customers/:id/topup', async (req, res) => {
+  const { amount } = req.body;
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ message: 'Số tiền không hợp lệ' });
+  }
+  try {
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { amount } },
+      { new: true }
+    );
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.get('/api/admin/orders', async (req, res) => {
+  try {
+    const orders = await Order
+      .find()
+      .populate('user')
       .sort({ purchaseDate: -1 });
     res.json(orders);
   } catch (err) {
