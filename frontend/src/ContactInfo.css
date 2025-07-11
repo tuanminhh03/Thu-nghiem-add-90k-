@@ -1,0 +1,43 @@
+.contact-info {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+  align-items: flex-end;
+  z-index: 999;
+  font-family: 'Poppins', sans-serif;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.contact-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 0.4rem;
+}
+
+.contact-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.contact-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.contact-hours {
+  font-size: 0.75rem;
+  color: #555;
+}
