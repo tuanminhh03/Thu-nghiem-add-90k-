@@ -58,16 +58,7 @@ export default function App() {
           }
         />
         <Route
-          path="/account"
-          element={
-            <HeaderWrapper>
-              <PrivateRoute>
-                <Account />
-              </PrivateRoute>
-            </HeaderWrapper>
-          }
-        />
-        <Route
+
           path="/my-orders"
           element={
             <HeaderWrapper>
