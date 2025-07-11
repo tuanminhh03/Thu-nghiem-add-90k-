@@ -56,7 +56,7 @@ export default function App() {
             </HeaderWrapper>
           }
         />
-        <Route 
+        <Route
           path="/my-orders"
           element={
             <HeaderWrapper>
