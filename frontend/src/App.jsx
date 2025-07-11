@@ -7,7 +7,6 @@ import PlansOverview     from './PlansOverview';
 import PlanDetail        from './PlanDetail';
 import PhoneLogin        from './PhoneLogin';
 import Dashboard         from './Dashboard';
-import AdminDashboard    from './AdminDashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import TopUpPage         from './TopUpPage';
@@ -49,16 +48,6 @@ export default function App() {
             <HeaderWrapper>
               <PrivateRoute>
                 <Dashboard />
-              </PrivateRoute>
-            </HeaderWrapper>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <HeaderWrapper>
-              <PrivateRoute>
-                <AdminDashboard />
               </PrivateRoute>
             </HeaderWrapper>
           }
