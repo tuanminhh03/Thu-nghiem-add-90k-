@@ -5,8 +5,9 @@ import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
 
-import Customer from './models/Customer.js';
-import Order    from './models/Order.js';
+import Customer       from './models/Customer.js';
+import Order          from './models/Order.js';
+import NetflixAccount from './models/NetflixAccount.js';
 
 dotenv.config();
 
@@ -26,6 +27,19 @@ function authenticate(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Không có token' });
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ message: 'Token không hợp lệ' });
+  }
+}
+
+// Middleware xác thực admin
+function authenticateAdmin(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Không có token' });
+  try {
+    req.admin = jwt.verify(token, process.env.JWT_SECRET + '_ADMIN');
     next();
   } catch {
     res.status(401).json({ message: 'Token không hợp lệ' });
@@ -94,6 +108,66 @@ app.get('/api/orders', authenticate, async (req, res) => {
       .find({ user: req.user.id })
       .sort({ purchaseDate: -1 });
     res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+/** ====== ADMIN ROUTES ====== */
+
+// Admin login
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  if (
+    username === process.env.ADMIN_USER &&
+    password === process.env.ADMIN_PASS
+  ) {
+    const token = jwt.sign(
+      { username },
+      process.env.JWT_SECRET + '_ADMIN',
+      { expiresIn: '7d' }
+    );
+    res.json({ token });
+  } else {
+    res.status(401).json({ message: 'Sai thông tin đăng nhập' });
+  }
+});
+
+// Lấy danh sách customers
+app.get('/api/admin/customers', authenticateAdmin, async (req, res) => {
+  try {
+    const customers = await Customer.find().sort({ createdAt: -1 });
+    res.json(customers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Nạp tiền cho customer
+app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) => {
+  const { amount } = req.body;
+  if (!amount) return res.status(400).json({ message: 'Thiếu số tiền' });
+  try {
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { amount } },
+      { new: true }
+    );
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Placeholder quản lý tài khoản Netflix
+app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
+  try {
+    const accs = await NetflixAccount.find();
+    res.json(accs);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
