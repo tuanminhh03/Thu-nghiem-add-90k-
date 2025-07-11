@@ -20,8 +20,8 @@ export default function PlansOverview() {
   const navigate = useNavigate();
 
   const planDescriptions = {
-    'Gói tiết kiệm': 'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản...',
-    'Gói cao cấp': 'Đối với gói cao cấp, bên em sẽ tạo hồ sơ riêng...',
+    'Gói tiết kiệm': 'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi. ',
+    'Gói cao cấp': 'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
   };
 
   // Giá dạng số để so sánh và trừ
