@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import Customer       from './Models/Customer.js';
 import Order          from './Models/Order.js';
 import NetflixAccount from './Models/NetflixAccount.js';
+import PageView       from './Models/PageView.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -149,6 +150,17 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
   }
 });
 
+// Ghi nhận lượt truy cập web
+app.post('/api/visit', async (req, res) => {
+  try {
+    await PageView.create({ path: req.body?.path || '/' });
+    res.json({ message: 'OK' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 /** ====== ADMIN ROUTES ====== */
 
 // Admin login
@@ -245,6 +257,67 @@ app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
   try {
     const accs = await NetflixAccount.find();
     res.json(accs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Thống kê tổng quan cho Dashboard
+app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date();
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+
+    const [customerCount, revenueAgg, visitAgg, visitsToday] = await Promise.all([
+      Customer.countDocuments(),
+      Order.aggregate([
+        { $match: { purchaseDate: { $gte: start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+            total: { $sum: '$amount' }
+          }
+        }
+      ]),
+      PageView.aggregate([
+        { $match: { createdAt: { $gte: start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            total: { $sum: 1 }
+          }
+        }
+      ]),
+      PageView.countDocuments({ createdAt: { $gte: today } })
+    ]);
+
+    const days = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, revenue: 0, visits: 0 });
+    }
+    const revMap = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
+    const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
+    days.forEach(d => {
+      d.revenue = revMap[d.date] || 0;
+      d.visits = visitMap[d.date] || 0;
+    });
+
+    const revenueLast30Days = days.reduce((s, d) => s + d.revenue, 0);
+
+    res.json({
+      customerCount,
+      revenueLast30Days,
+      visitsToday,
+      revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
+      visitChart: days.map(d => ({ date: d.date, total: d.visits }))
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });

@@ -6,6 +6,7 @@ export default function AdminLayout({ children }) {
   const navigate = useNavigate();
 
   const links = [
+    { href: '/admin/dashboard', label: 'Dashboard' },
     { href: '/admin', label: 'Khách hàng' },
     { href: '/admin/netflix-accounts', label: 'Tài khoản Netflix' }
   ];
@@ -27,7 +28,7 @@ export default function AdminLayout({ children }) {
               key={l.href}
               to={l.href}
               className={`block px-3 py-2 rounded hover:bg-gray-700 ${
-                location.pathname === l.href ? 'bg-gray-700' : ''
+                location.pathname.startsWith(l.href) ? 'bg-gray-700' : ''
               }`}
             >
               {l.label}
