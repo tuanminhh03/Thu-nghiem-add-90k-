@@ -9,6 +9,7 @@ import PhoneLogin        from './PhoneLogin';
 import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
+import Account from './Account';
 import TopUpPage         from './TopUpPage';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
@@ -56,7 +57,17 @@ export default function App() {
             </HeaderWrapper>
           }
         />
-        <Route 
+        <Route
+          path="/account"
+          element={
+            <HeaderWrapper>
+              <PrivateRoute>
+                <Account />
+              </PrivateRoute>
+            </HeaderWrapper>
+          }
+        />
+        <Route
           path="/my-orders"
           element={
             <HeaderWrapper>
