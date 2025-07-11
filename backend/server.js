@@ -4,13 +4,16 @@ import cors     from 'cors';
 import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 import Customer       from './Models/Customer.js';
 import Order          from './Models/Order.js';
 import NetflixAccount from './Models/NetflixAccount.js';
 
 
-dotenv.config();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, '.env') });
 
 const app = express();
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
