@@ -61,7 +61,7 @@ export default function Header() {
                 </button>
                 {menuOpen && (
                   <ul className="user-dropdown">
-                    <li className="account-line">Tài khoản: {user.phone}</li>
+
                     <li>
                       <Link to="/my-orders" onClick={() => setMenuOpen(false)}>
                         Đơn hàng của tôi
