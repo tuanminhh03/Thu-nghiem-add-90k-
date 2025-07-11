@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './CustomerDashboard.css';
+import { priceMapValue } from './priceMap';
 
 export default function CustomerDashboard() {
   const [orders, setOrders]   = useState([]);
@@ -24,6 +25,42 @@ export default function CustomerDashboard() {
       }
     })();
   }, [token]);
+
+  const handleExtend = async (order, months) => {
+    const amountMap = priceMapValue[order.plan];
+    const key = `${months.toString().padStart(2, '0')} tháng`;
+    const amount = amountMap ? amountMap[key] : 0;
+    if (!amount) {
+      alert('Không có giá cho lựa chọn này');
+      return;
+    }
+    if (!window.confirm(`Gia hạn ${months} tháng với giá ${amount.toLocaleString()}đ?`)) {
+      return;
+    }
+    try {
+      const { data } = await axios.post(
+        `http://localhost:5000/api/orders/${order._id}/extend`,
+        { months, amount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setOrders(orders.map(o => (o._id === order._id ? data : o)));
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.amount -= amount;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Lỗi gia hạn');
+    }
+  };
+
+  const handleExtendClick = (order) => {
+    const months = parseInt(prompt('Gia hạn thêm mấy tháng? (1,3,6,12)'), 10);
+    if (![1,3,6,12].includes(months)) return;
+    handleExtend(order, months);
+  };
 
   if (!token) {
     return (
@@ -52,8 +89,11 @@ export default function CustomerDashboard() {
                 <tr>
                   <th className="px-4 py-2 text-left">STT</th>
                   <th className="px-4 py-2 text-left">Mã đơn hàng</th>
+                  <th className="px-4 py-2 text-left">Tên sản phẩm</th>
                   <th className="px-4 py-2 text-left">Ngày mua</th>
                   <th className="px-4 py-2 text-left">Ngày hết hạn</th>
+                  <th className="px-4 py-2 text-left">Số ngày còn lại</th>
+                  <th className="px-4 py-2 text-center">Chức năng</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -62,15 +102,28 @@ export default function CustomerDashboard() {
                   const purchase = new Date(o.purchaseDate);
                   const expiry = new Date(purchase);
                   expiry.setMonth(purchase.getMonth() + months);
+                  const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
                   return (
                     <tr key={o._id} className="hover:bg-gray-50">
                       <td className="px-4 py-2">{idx + 1}</td>
                       <td className="px-4 py-2">{o._id}</td>
+                      <td className="px-4 py-2">{o.plan}</td>
                       <td className="px-4 py-2">
                         {purchase.toLocaleDateString('vi-VN')}
                       </td>
                       <td className="px-4 py-2">
                         {expiry.toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-2">
+                        {daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          onClick={() => handleExtendClick(o)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Gia hạn
+                        </button>
                       </td>
                     </tr>
                   );
