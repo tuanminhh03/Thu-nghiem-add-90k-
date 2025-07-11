@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import './PlansOverview.css';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   ChatBubbleLeftEllipsisIcon,
   ShoppingCartIcon,
@@ -43,7 +44,9 @@ export default function PlansOverview() {
     ? priceMapDisplay[selectedPlan][selectedDuration]
     : 'Giá từ 50.000₫ đến 1.000.000₫';
 
-  const handlePayment = () => {
+  const token = localStorage.getItem('token');
+
+  const handlePayment = async () => {
     if (!selectedPlan) return;
 
     if (!window.confirm('Bạn có muốn thanh toán không?')) {
@@ -64,13 +67,21 @@ export default function PlansOverview() {
       return;
     }
 
-    // Trừ tiền và cập nhật localStorage
-    user.amount -= amount;
-    localStorage.setItem('user', JSON.stringify(user));
-
-    alert('Thanh toán thành công!');
-    // quay về trang chủ hoặc nơi bạn muốn
-    navigate('/');
+    try {
+      await axios.post(
+        'http://localhost:5000/api/orders',
+        { plan: selectedPlan, duration: selectedDuration, amount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Trừ tiền và cập nhật localStorage
+      user.amount -= amount;
+      localStorage.setItem('user', JSON.stringify(user));
+      alert('Thanh toán thành công!');
+      navigate('/my-orders');
+    } catch (err) {
+      console.error(err);
+      alert('Thanh toán thất bại');
+    }
   };
 
   return (

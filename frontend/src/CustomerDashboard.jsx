@@ -43,43 +43,38 @@ export default function CustomerDashboard() {
         ) : orders.length === 0 ? (
           <p className="text-gray-500">Bạn chưa có đơn hàng nào.</p>
         ) : (
-          <ul className="space-y-4">
-            {orders.map(o => (
-              <li
-                key={o._id}
-                className="border p-4 rounded-lg hover:shadow"
-              >
-                <div className="flex justify-between">
-                  <div>
-                    <p>
-                      <span className="font-semibold">Gói:</span> {o.plan}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Thời gian:</span> {o.duration}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Số tiền:</span>{' '}
-                      {o.amount.toLocaleString()}₫
-                    </p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      o.status === 'PAID'
-                        ? 'bg-green-100 text-green-800'
-                        : o.status === 'PENDING'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {o.status}
-                  </span>
-                </div>
-                <p className="text-gray-500 text-sm mt-2">
-                  Ngày mua: {new Date(o.purchaseDate).toLocaleString()}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left">STT</th>
+                  <th className="px-4 py-2 text-left">Mã đơn hàng</th>
+                  <th className="px-4 py-2 text-left">Ngày mua</th>
+                  <th className="px-4 py-2 text-left">Ngày hết hạn</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {orders.map((o, idx) => {
+                  const months = parseInt(o.duration, 10) || 0;
+                  const purchase = new Date(o.purchaseDate);
+                  const expiry = new Date(purchase);
+                  expiry.setMonth(purchase.getMonth() + months);
+                  return (
+                    <tr key={o._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">{idx + 1}</td>
+                      <td className="px-4 py-2">{o._id}</td>
+                      <td className="px-4 py-2">
+                        {purchase.toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-2">
+                        {expiry.toLocaleDateString('vi-VN')}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
