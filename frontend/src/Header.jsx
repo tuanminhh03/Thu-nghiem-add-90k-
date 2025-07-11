@@ -57,7 +57,9 @@ export default function Header() {
           <span className="nav-label">Netflix</span>
         </div>
         <div className="nav-bar__right">
-          {/* Các item nav khác nếu cần */}
+          {user && (
+            <Link to="/admin" className="mr-4 text-sm text-blue-600">Quản lý</Link>
+          )}
         </div>
       </div>
     </header>
