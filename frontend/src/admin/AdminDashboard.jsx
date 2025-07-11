@@ -60,7 +60,7 @@ export default function AdminDashboard() {
             <tr>
               <th className="px-4 py-2 text-left">SĐT</th>
               <th className="px-4 py-2 text-left">Số dư</th>
-              <th className="px-4 py-2">Hành động</th>
+              <th className="px-4 py-2 text-center">Hành động</th>
             </tr>
           </thead>
           <tbody>

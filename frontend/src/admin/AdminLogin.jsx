@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async e => {
@@ -30,6 +31,7 @@ export default function AdminLogin() {
         className="bg-white shadow-lg rounded-lg p-8 w-full max-w-sm"
       >
         <h1 className="text-2xl font-semibold mb-6 text-center">Admin Login</h1>
+
         <input
           type="text"
           placeholder="Username"

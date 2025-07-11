@@ -104,7 +104,6 @@ app.post('/api/orders', authenticate, async (req, res) => {
 });
 
 /** 4. Lấy lịch sử đơn hàng của chính user */
-
 app.get('/api/orders', authenticate, async (req, res) => {
   try {
     const orders = await Order
@@ -155,6 +154,7 @@ app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) =
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Số tiền không hợp lệ' });
   }
+
   try {
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
@@ -179,7 +179,6 @@ app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
     res.status(500).json({ message: 'Lỗi server' });
   }
 });
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
