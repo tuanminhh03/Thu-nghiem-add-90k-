@@ -16,12 +16,14 @@ import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
 import AdminRoute            from './admin/AdminRoute';
 import AdminCustomerOrders   from './admin/AdminCustomerOrders';
+import ContactInfo       from './ContactInfo';
 
 import './App.css';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ContactInfo />
       <Routes>
         {/* ==== USER ROUTES (có Header) ==== */}
         <Route
