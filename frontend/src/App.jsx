@@ -15,6 +15,7 @@ import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
 import AdminRoute            from './admin/AdminRoute';
+import AdminCustomerOrders   from './admin/AdminCustomerOrders';
 
 import './App.css';
 
@@ -89,6 +90,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminNetflixAccounts />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/customers/:id/orders"
+          element={
+            <AdminRoute>
+              <AdminCustomerOrders />
             </AdminRoute>
           }
         />

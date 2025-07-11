@@ -169,11 +169,25 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// Lấy danh sách customers
+// Lấy danh sách customers (có thể tìm kiếm theo phone)
 app.get('/api/admin/customers', authenticateAdmin, async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const { phone } = req.query;
+    const query = phone ? { phone: new RegExp(phone, 'i') } : {};
+    const customers = await Customer.find(query).sort({ createdAt: -1 });
     res.json(customers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Lấy thông tin 1 customer
+app.get('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json(customer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
@@ -196,6 +210,30 @@ app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) =
     );
     if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
     res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Xóa customer
+app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await Order.deleteMany({ user: req.params.id });
+    const customer = await Customer.findByIdAndDelete(req.params.id);
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json({ message: 'Đã xóa user' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Lấy lịch sử mua hàng của customer
+app.get('/api/admin/customers/:id/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.params.id }).sort({ purchaseDate: -1 });
+    res.json(orders);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
