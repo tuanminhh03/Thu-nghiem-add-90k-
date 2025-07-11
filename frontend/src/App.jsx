@@ -10,6 +10,10 @@ import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import TopUpPage         from './TopUpPage';
+import AdminLogin            from './admin/AdminLogin';
+import AdminDashboard        from './admin/AdminDashboard';
+import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
+import AdminRoute            from './admin/AdminRoute';
 
 import './App.css';
 
@@ -60,12 +64,31 @@ export default function App() {
             </HeaderWrapper>
           }
         />
-        <Route 
+        <Route
           path="/top-up"
           element={
             <HeaderWrapper>
               <TopUpPage />
             </HeaderWrapper>
+          }
+        />
+
+        {/* ==== ADMIN ROUTES (không Header) ==== */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/netflix-accounts"
+          element={
+            <AdminRoute>
+              <AdminNetflixAccounts />
+            </AdminRoute>
           }
         />
 
