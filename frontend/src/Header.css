@@ -85,6 +85,65 @@
   border-color: #fff;
 }
 
+/* ===== User menu ===== */
+.user-menu {
+  position: relative;
+}
+
+.user-icon {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  list-style: none;
+  padding: 0.5rem 0;
+  min-width: 160px;
+  z-index: 100;
+}
+
+.user-dropdown li {
+  padding: 0.4rem 1rem;
+  white-space: nowrap;
+}
+
+.user-dropdown li:hover {
+  background-color: #f3f4f6;
+}
+
+.account-line {
+  cursor: default;
+  font-weight: 600;
+}
+
+.user-dropdown a,
+.user-dropdown button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.user-dropdown button:hover,
+.user-dropdown a:hover {
+  text-decoration: none;
+}
+
 
 
 /* ====== Nav bar ====== */

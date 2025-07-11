@@ -1,5 +1,5 @@
 // src/Header.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './Header.css';
 
@@ -7,16 +7,29 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
     setUser(stored ? JSON.parse(stored) : null);
   }, [location]);
 
+  useEffect(() => {
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [menuOpen]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setMenuOpen(false);
     navigate('/login');
   };
 
@@ -40,7 +53,27 @@ export default function Header() {
               <span className="user-amount clickable" onClick={handleTopUp}>
                 💰 {user.amount.toLocaleString()}₫
               </span>
-              <button className="btn-link" onClick={handleLogout}>Đăng xuất</button>
+              <div className="user-menu" ref={menuRef}>
+                <button
+                  className="user-icon"
+                  onClick={() => setMenuOpen((o) => !o)}
+                >
+                  👤
+                </button>
+                {menuOpen && (
+                  <ul className="user-dropdown">
+                    <li className="account-line">Tài khoản: {user.phone}</li>
+                    <li>
+                      <Link to="/my-orders" onClick={() => setMenuOpen(false)}>
+                        Đơn hàng của tôi
+                      </Link>
+                    </li>
+                    <li>
+                      <button onClick={handleLogout}>Đăng xuất</button>
+                    </li>
+                  </ul>
+                )}
+              </div>
             </>
           ) : (
             <Link to="/login" className="btn-link">Đăng nhập</Link>
