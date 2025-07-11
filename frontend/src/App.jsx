@@ -1,5 +1,5 @@
 // src/App.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import Header            from './Header';
@@ -16,11 +16,17 @@ import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
 import AdminRoute            from './admin/AdminRoute';
 import AdminCustomerOrders   from './admin/AdminCustomerOrders';
+import AdminStats            from './admin/AdminStats';
+import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
 import './App.css';
 
 export default function App() {
+  useEffect(() => {
+    axios.post('/api/visit').catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <ContactInfo />
@@ -79,6 +85,14 @@ export default function App() {
 
         {/* ==== ADMIN ROUTES (không Header) ==== */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminStats />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/admin"
           element={
