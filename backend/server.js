@@ -11,7 +11,6 @@ import Customer       from './Models/Customer.js';
 import Order          from './Models/Order.js';
 import NetflixAccount from './Models/NetflixAccount.js';
 
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 

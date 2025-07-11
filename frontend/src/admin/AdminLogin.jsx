@@ -20,25 +20,48 @@ export default function AdminLogin() {
   };
 
   return (
+
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-lg rounded-lg p-8 w-full max-w-sm"
+      >
+        <h1 className="text-2xl font-semibold mb-6 text-center">Admin Login</h1>
+
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white shadow rounded p-6 w-full max-w-sm">
         <h1 className="text-xl font-bold mb-4 text-center">Admin Login</h1>
+
         <input
           type="text"
           placeholder="Username"
           value={username}
           onChange={e => setUsername(e.target.value)}
+
+          className="border rounded w-full mb-4 p-2"
+
           className="border rounded w-full mb-3 p-2"
+
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
+
+          className="border rounded w-full mb-4 p-2"
+        />
+        {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2 rounded"
+        >
+
           className="border rounded w-full mb-3 p-2"
         />
         {error && <p className="text-red-600 mb-2 text-sm">{error}</p>}
         <button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white w-full py-2 rounded">
+
           Đăng nhập
         </button>
       </form>
