@@ -64,39 +64,42 @@ export default function CustomerDashboard() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg text-red-600">
-          Vui lòng đăng nhập để xem đơn hàng.
-        </p>
+      <div className="customer-dashboard">
+        <div className="card">
+          <p className="no-orders">
+            Vui lòng đăng nhập để xem đơn hàng.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="customer-dashboard pt-24 pb-8 px-4">
+    <div className="customer-dashboard">
       <div className="orders-bg" />
       <div className="orders-overlay" />
-      <div className="max-w-4xl mx-auto bg-white shadow rounded-lg p-6 relative">
-        <h2 className="text-2xl font-bold mb-4">Lịch sử mua hàng</h2>
+      <div className="card">
+        <h2>Lịch sử mua hàng</h2>
         {loading ? (
           <p>Đang tải...</p>
         ) : orders.length === 0 ? (
-          <p className="text-gray-500">Bạn chưa có đơn hàng nào.</p>
+          <p className="no-orders">Bạn chưa có đơn hàng nào.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+          <div className="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left">STT</th>
-                  <th className="px-4 py-2 text-left">Mã đơn hàng</th>
-                  <th className="px-4 py-2 text-left">Tên sản phẩm</th>
-                  <th className="px-4 py-2 text-left">Ngày mua</th>
-                  <th className="px-4 py-2 text-left">Ngày hết hạn</th>
-                  <th className="px-4 py-2 text-left">Số ngày còn lại</th>
-                  <th className="px-4 py-2 text-center">Chức năng</th>
+                  <th>STT</th>
+                  <th>Mã đơn hàng</th>
+                  <th>Tên sản phẩm</th>
+                  <th>Ngày mua</th>
+                  <th>Ngày hết hạn</th>
+                  <th>Số ngày còn lại</th>
+                  <th>Chức năng</th>
+                  <th>Chú thích</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody>
                 {orders.map((o, idx) => {
                   const months = parseInt(o.duration, 10) || 0;
                   const purchase = new Date(o.purchaseDate);
@@ -104,26 +107,22 @@ export default function CustomerDashboard() {
                   expiry.setMonth(purchase.getMonth() + months);
                   const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
                   return (
-                    <tr key={o._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">{idx + 1}</td>
-                      <td className="px-4 py-2">{o._id}</td>
-                      <td className="px-4 py-2">{o.plan}</td>
-                      <td className="px-4 py-2">
-                        {purchase.toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="px-4 py-2">
-                        {expiry.toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="px-4 py-2">
-                        {daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <button
-                          onClick={() => handleExtendClick(o)}
-                          className="text-blue-600 hover:underline"
-                        >
+                    <tr key={o._id}>
+                      <td>{idx + 1}</td>
+                      <td>{o._id}</td>
+                      <td>{o.plan}</td>
+                      <td>{purchase.toLocaleDateString('vi-VN')}</td>
+                      <td>{expiry.toLocaleDateString('vi-VN')}</td>
+                      <td>{daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}</td>
+                      <td className="text-center">
+                        <button onClick={() => handleExtendClick(o)}>
                           Gia hạn
                         </button>
+                      </td>
+                      <td>
+                        {o.plan === 'Gói cao cấp'
+                          ? 'Vui lòng liên hệ Admin để lấy tài khoản'
+                          : 'Ấn vào mã đơn hàng để lấy tài khoản'}
                       </td>
                     </tr>
                   );
