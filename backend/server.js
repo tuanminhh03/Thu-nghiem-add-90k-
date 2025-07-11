@@ -116,6 +116,39 @@ app.get('/api/orders', authenticate, async (req, res) => {
   }
 });
 
+/** Gia hạn đơn hàng */
+app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
+  const { months, amount } = req.body;
+  const monthsInt = parseInt(months, 10);
+  if (![1, 3, 6, 12].includes(monthsInt) || !amount) {
+    return res.status(400).json({ message: 'Dữ liệu gia hạn không hợp lệ' });
+  }
+  try {
+    const order = await Order.findOne({ _id: req.params.id, user: req.user.id });
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+
+    const customer = await Customer.findById(req.user.id);
+    if (!customer || customer.amount < amount) {
+      return res.status(400).json({ message: 'Số dư không đủ' });
+    }
+
+    const current = parseInt(order.duration, 10) || 0;
+    const total = current + monthsInt;
+
+    order.duration = `${total.toString().padStart(2, '0')} tháng`;
+    order.amount += amount;
+    await order.save();
+
+    customer.amount -= amount;
+    await customer.save();
+
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 /** ====== ADMIN ROUTES ====== */
 
 // Admin login

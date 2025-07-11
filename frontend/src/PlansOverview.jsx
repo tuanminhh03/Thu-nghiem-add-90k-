@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import './PlansOverview.css';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { priceMapValue } from './priceMap';
 import {
   ChatBubbleLeftEllipsisIcon,
   ShoppingCartIcon,
@@ -24,10 +25,6 @@ export default function PlansOverview() {
   };
 
   // Giá dạng số để so sánh và trừ
-  const priceMapValue = {
-    'Gói tiết kiệm': { '01 tháng': 50000, '03 tháng': 140000, '06 tháng': 270000, '12 tháng': 500000 },
-    'Gói cao cấp':  { '01 tháng': 90000, '03 tháng': 260000, '06 tháng': 515000, '12 tháng': 1000000 },
-  };
   // Giá hiển thị
   const priceMapDisplay = {
     'Gói tiết kiệm': { '01 tháng': '50.000₫', '03 tháng': '140.000₫', '06 tháng': '270.000₫', '12 tháng': '500.000₫' },
