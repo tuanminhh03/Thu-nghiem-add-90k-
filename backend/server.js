@@ -5,9 +5,10 @@ import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
 
-import Customer       from './models/Customer.js';
-import Order          from './models/Order.js';
-import NetflixAccount from './models/NetflixAccount.js';
+import Customer       from './Models/Customer.js';
+import Order          from './Models/Order.js';
+import NetflixAccount from './Models/NetflixAccount.js';
+
 
 dotenv.config();
 
