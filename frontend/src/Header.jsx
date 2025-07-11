@@ -36,7 +36,9 @@ export default function Header() {
   const handleTopUp = () => {
     if (!user) return;
     const { phone, amount } = user;
-    navigate(`/top-up?phone=${encodeURIComponent(phone)}&amount=${encodeURIComponent(amount)}`);
+    navigate(
+      `/top-up?phone=${encodeURIComponent(phone)}&amount=${encodeURIComponent(amount)}`
+    );
   };
 
   return (
@@ -49,7 +51,6 @@ export default function Header() {
         <div className="top-bar__right">
           {user ? (
             <>
-              <span className="user-phone">📱 {user.phone}</span>
               <span className="user-amount clickable" onClick={handleTopUp}>
                 💰 {user.amount.toLocaleString()}₫
               </span>

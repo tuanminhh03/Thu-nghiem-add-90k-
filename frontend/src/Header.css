@@ -48,8 +48,7 @@
   gap: 1.2rem;
 }
 
-/* chung cho số điện thoại & tiền */
-.user-phone,
+/* chung cho số dư */
 .user-amount {
   display: inline-flex;
   align-items: center;
@@ -61,7 +60,6 @@
   cursor: pointer;
   transition: background 0.2s ease, transform 0.1s ease;
 }
-.user-phone:hover,
 .user-amount:hover {
   background: rgba(255,255,255,0.2);
   transform: translateY(-1px);
@@ -143,8 +141,6 @@
 .user-dropdown a:hover {
   text-decoration: none;
 }
-
-
 
 /* ====== Nav bar ====== */
 .nav-bar {
