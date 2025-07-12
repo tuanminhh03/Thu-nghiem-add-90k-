@@ -76,6 +76,18 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+/** 2. Lấy thông tin user hiện tại */
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const user = await Customer.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json({ id: user._id, phone: user.phone, amount: user.amount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 
 /** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
 app.post('/api/orders', authenticate, async (req, res) => {
