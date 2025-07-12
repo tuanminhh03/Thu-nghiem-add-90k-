@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
+import './admin.css';
 
 export default function AdminStats() {
   const [stats, setStats] = useState(null);
@@ -25,28 +26,30 @@ export default function AdminStats() {
   return (
     <AdminLayout>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Metric label="Số lượng tài khoản" value={stats.customerCount} />
-        <Metric label="Doanh thu 30 ngày" value={stats.revenueLast30Days} />
-        <Metric label="Truy cập hôm nay" value={stats.visitsToday} />
+        <div className="card text-center">
+          <p className="text-sm text-gray-500">Số lượng tài khoản</p>
+          <p className="text-2xl font-bold">{stats.customerCount}</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-sm text-gray-500">Doanh thu 30 ngày</p>
+          <p className="text-2xl font-bold">{stats.revenueLast30Days}</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-sm text-gray-500">Truy cập hôm nay</p>
+          <p className="text-2xl font-bold">{stats.visitsToday}</p>
+        </div>
       </div>
-      <div className="bg-white shadow rounded-lg p-4 mb-6">
+
+      <div className="card mb-6">
         <h2 className="font-semibold mb-2">Doanh thu 30 ngày</h2>
         <BarChart data={stats.revenueChart} color="#3b82f6" />
       </div>
-      <div className="bg-white shadow rounded-lg p-4">
+
+      <div className="card">
         <h2 className="font-semibold mb-2">Lượt truy cập 30 ngày</h2>
         <BarChart data={stats.visitChart} color="#f97316" />
       </div>
     </AdminLayout>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="bg-white shadow rounded-lg p-4 text-center">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold">{value}</p>
-    </div>
   );
 }
 

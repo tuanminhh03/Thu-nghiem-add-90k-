@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import './admin.css';
 
 export default function AdminLayout({ children }) {
   const location = useLocation();
@@ -17,32 +18,40 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <aside className="w-64 bg-gray-800 text-white flex flex-col">
+    <div className="admin-container">
+      <aside className="admin-sidebar">
+        {/* tiêu đề sidebar */}
         <div className="text-2xl font-semibold p-4 border-b border-gray-700">
           Admin Panel
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+
+        {/* nav links */}
+        <nav className="flex-1 overflow-y-auto">
           {links.map(l => (
             <Link
               key={l.href}
               to={l.href}
-              className={`block px-3 py-2 rounded hover:bg-gray-700 ${
-                location.pathname.startsWith(l.href) ? 'bg-gray-700' : ''
+              className={`nav-link ${
+                location.pathname.startsWith(l.href) ? 'active' : ''
               }`}
             >
               {l.label}
             </Link>
           ))}
         </nav>
+
+        {/* logout */}
         <button
           onClick={handleLogout}
-          className="mt-auto p-4 border-t border-gray-700 text-left hover:bg-gray-700"
+          className="btn btn-danger"
         >
           Đăng xuất
         </button>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+
+      <main className="admin-content">
+        {children}
+      </main>
     </div>
   );
 }

@@ -2,13 +2,20 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import './admin.css';
 
 export default function AdminDashboard() {
+  // ========================
+  // 1. Khai báo states
+  // ========================
   const [customers, setCustomers] = useState([]);
-  const [msg, setMsg] = useState({ text: '', type: '' });
+  const [msg, setMsg] = useState({ text: '', type: '' });  // ← đảm bảo có dòng này
   const [search, setSearch] = useState('');
   const token = localStorage.getItem('adminToken');
 
+  // ========================
+  // 2. Fetch dữ liệu
+  // ========================
   const fetchCustomers = async () => {
     try {
       const { data } = await axios.get('/api/admin/customers', {
@@ -25,6 +32,9 @@ export default function AdminDashboard() {
     if (token) fetchCustomers();
   }, [token]);
 
+  // ========================
+  // 3. Handlers
+  // ========================
   const handleSearch = e => {
     e.preventDefault();
     fetchCustomers();
@@ -56,6 +66,7 @@ export default function AdminDashboard() {
       await axios.delete(`/api/admin/customers/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      setMsg({ text: 'Xóa thành công', type: 'success' });
       fetchCustomers();
     } catch (err) {
       console.error(err);
@@ -66,11 +77,18 @@ export default function AdminDashboard() {
     }
   };
 
+  // ========================
+  // 4. JSX
+  // ========================
   return (
     <AdminLayout>
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-xl font-semibold mb-4">Quản lý khách hàng</h1>
-        {msg.text && (
+      <div className="card">
+        <header className="admin-header">
+          <h1 className="text-xl font-semibold">Quản lý khách hàng</h1>
+        </header>
+
+        {/* Thông báo lỗi/thành công */}
+        {msg?.text && (
           <p
             className={`mb-4 text-center ${
               msg.type === 'success' ? 'text-green-600' : 'text-red-600'
@@ -79,62 +97,68 @@ export default function AdminDashboard() {
             {msg.text}
           </p>
         )}
-        <form onSubmit={handleSearch} className="mb-4 flex gap-2">
+
+        {/* Form tìm kiếm */}
+        <form onSubmit={handleSearch} className="form-search">
           <input
             type="text"
             placeholder="Tìm theo SĐT"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="border rounded p-2 flex-1"
+            className="input"
           />
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
+          <button type="submit" className="btn btn-primary">
             Tìm kiếm
           </button>
         </form>
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left">STT</th>
-              <th className="px-4 py-2 text-left">Tài khoản (SĐT)</th>
-              <th className="px-4 py-2 text-left">Ngày tạo TK</th>
-              <th className="px-4 py-2 text-left">Số dư hiện tại</th>
-              <th className="px-4 py-2 text-center">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.map((c, idx) => (
-              <tr key={c._id} className="odd:bg-gray-50">
-                <td className="px-4 py-2 border-b">{idx + 1}</td>
-                <td className="px-4 py-2 border-b">
-                  <Link
-                    to={`/admin/customers/${c._id}/orders`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {c.phone}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 border-b">
-                  {new Date(c.createdAt).toLocaleDateString('vi-VN')}
-                </td>
-                <td className="px-4 py-2 border-b">{c.amount}</td>
-                <td className="px-4 py-2 border-b text-center">
-                  <button
-                    onClick={() => handleTopup(c._id)}
-                    className="text-blue-600 hover:underline mr-2"
-                  >
-                    Nạp tiền
-                  </button>
-                  <button
-                    onClick={() => handleDelete(c._id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Xóa
-                  </button>
-                </td>
+
+        {/* Bảng dữ liệu */}
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Tài khoản (SĐT)</th>
+                <th>Ngày tạo TK</th>
+                <th>Số dư hiện tại</th>
+                <th>Hành động</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {customers.map((c, idx) => (
+                <tr key={c._id}>
+                  <td>{idx + 1}</td>
+                  <td>
+                    <Link
+                      to={`/admin/customers/${c._id}/orders`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {c.phone}
+                    </Link>
+                  </td>
+                  <td>
+                    {new Date(c.createdAt).toLocaleDateString('vi-VN')}
+                  </td>
+                  <td>{c.amount}</td>
+                  <td className="text-center">
+                    <button
+                      onClick={() => handleTopup(c._id)}
+                      className="btn btn-primary mr-2"
+                    >
+                      Nạp tiền
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c._id)}
+                      className="btn btn-danger"
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </AdminLayout>
   );
