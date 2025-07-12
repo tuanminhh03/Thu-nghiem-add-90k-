@@ -1,9 +1,17 @@
 /* === Global Admin Styles === */
+:root {
+  --admin-bg: #f3f4f6;
+  --sidebar-gradient-start: #1f2937;
+  --sidebar-gradient-end: #111827;
+  --primary-color: #2563eb;
+  --danger-color: #dc2626;
+}
+
 .admin-container {
   display: grid;
   grid-template-columns: 260px 1fr; /* sidebar cố định, content linh hoạt */
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--admin-bg);
   font-family: 'Inter', sans-serif;
   color: #374151;
   overflow-x: hidden;
@@ -12,7 +20,7 @@
 
 /* === Sidebar === */
 .admin-sidebar {
-  background: #1f2937;
+  background: linear-gradient(to bottom, var(--sidebar-gradient-start), var(--sidebar-gradient-end));
   color: #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -20,18 +28,21 @@
   top: 0;
   z-index: 10;
   padding-top: 1rem;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
 }
 .admin-sidebar .nav-link {
   padding: 0.75rem 1rem;
   margin: 0.25rem 1rem;
   border-radius: .5rem;
-  transition: background .2s;
+  transition: background .2s, color .2s;
   color: inherit;
   text-decoration: none;
+  font-weight: 500;
 }
 .admin-sidebar .nav-link:hover,
 .admin-sidebar .nav-link.active {
-  background: #374151;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 .admin-sidebar button {
   margin: auto 1rem 1rem;
@@ -40,7 +51,7 @@
 
 /* === Main Content Wrapper === */
 .admin-content {
-  background: #f3f4f6;
+  background: var(--admin-bg);
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -49,10 +60,11 @@
 .card {
   background: #fff;
   border-radius: .75rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   max-width: 900px;
   margin: 0 auto 2rem;
   overflow: hidden;
+  border: 1px solid #e5e7eb;
 }
 
 /* === Header inside card === */
@@ -61,12 +73,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  background: #fff;
+  background: #fafafa;
   border-bottom: 1px solid #e5e7eb;
 }
 .admin-header h1 {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 600;
 }
 
 /* === Form Search === */
@@ -82,12 +95,12 @@
   border: 1px solid #d1d5db;
   border-right: none;
   border-radius: .5rem 0 0 .5rem;
-  transition: border-color .2s, box-shadow .2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-search .input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
 }
 .form-search .btn {
   padding: 0.5rem 1rem;
@@ -98,6 +111,8 @@
 .table-container {
   overflow-x: auto;
   background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
 }
 .table {
   width: 100%;
@@ -110,12 +125,14 @@
   font-size: .75rem;
   color: #6b7280;
   text-align: left;
+  border-bottom: 1px solid #e5e7eb;
 }
 .table tbody tr:nth-child(even) {
   background: #f9fafb;
 }
 .table tbody tr:hover {
   background: #f3f4f6;
+  transition: background-color 0.2s;
 }
 .table td {
   padding: 0.75rem 1rem;
@@ -128,27 +145,41 @@
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: background .2s;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 .btn-primary {
-  background: #3b82f6;
+  background: var(--primary-color);
   color: #fff;
 }
 .btn-primary:hover {
-  background: #2563eb;
+  background: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .btn-danger {
-  background: #ef4444;
+  background: var(--danger-color);
   color: #fff;
 }
 .btn-danger:hover {
-  background: #dc2626;
+  background: #b91c1c;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* === Responsive === */
 @media (max-width: 768px) {
   .admin-container {
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 1fr;
+  }
+  .admin-sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.5rem;
+    box-shadow: none;
+  }
+  .admin-sidebar .nav-link {
+    margin: 0 0.25rem;
   }
   .admin-content {
     padding: 1rem;
@@ -162,5 +193,9 @@
     border-radius: .5rem;
     margin-bottom: .5rem;
     border-right: 1px solid #d1d5db;
+  }
+  .admin-sidebar button {
+    margin: 0.5rem;
+    width: auto;
   }
 }
