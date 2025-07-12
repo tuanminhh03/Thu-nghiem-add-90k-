@@ -1,6 +1,6 @@
 import React from 'react';
 import AdminLayout from './AdminLayout';
-import './admin.css';
+import './Admin.css';
 
 export default function AdminNetflixAccounts() {
   return (

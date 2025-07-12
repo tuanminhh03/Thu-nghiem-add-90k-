@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
-import './admin.css';
+import './Admin.css';
 
 export default function AdminStats() {
   const [stats, setStats] = useState(null);
