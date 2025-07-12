@@ -1,9 +1,9 @@
-// backend/server.js
 import express  from 'express';
 import cors     from 'cors';
 import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
+import { EventEmitter } from 'events';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 
 const app = express();
+const updates = new EventEmitter();
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
@@ -49,7 +50,6 @@ function authenticateAdmin(req, res, next) {
     res.status(401).json({ message: 'Token không hợp lệ' });
   }
 }
-
 
 /** 1. Đăng ký/đăng nhập user bằng phone */
 app.post('/api/auth/login', async (req, res) => {
@@ -88,6 +88,34 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
+/** SSE: lắng nghe cập nhật số dư */
+app.get('/api/auth/stream', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).end();
+
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).end();
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = data => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const onTopup = payload2 => send(payload2);
+  updates.on(`topup:${payload.id}`, onTopup);
+
+  req.on('close', () => {
+    updates.off(`topup:${payload.id}`, onTopup);
+  });
+});
 
 /** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
 app.post('/api/orders', authenticate, async (req, res) => {
@@ -96,7 +124,6 @@ app.post('/api/orders', authenticate, async (req, res) => {
     return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
   }
   try {
-    // Lưu đơn hàng
     const order = await Order.create({
       user:     req.user.id,
       plan,
@@ -104,7 +131,6 @@ app.post('/api/orders', authenticate, async (req, res) => {
       amount,
       status:   'PAID'
     });
-    // Trừ tiền customer.balance
     await Customer.findByIdAndUpdate(
       req.user.id,
       { $inc: { amount: -amount } }
@@ -233,6 +259,7 @@ app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) =
       { new: true }
     );
     if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    updates.emit(`topup:${customer._id}`, { amount: customer.amount, added: amount });
     res.json(customer);
   } catch (err) {
     console.error(err);
