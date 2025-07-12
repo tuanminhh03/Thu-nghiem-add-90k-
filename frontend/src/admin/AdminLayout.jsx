@@ -21,9 +21,7 @@ export default function AdminLayout({ children }) {
     <div className="admin-container">
       <aside className="admin-sidebar">
         {/* tiêu đề sidebar */}
-        <div className="text-2xl font-semibold p-4 border-b border-gray-700">
-          Admin Panel
-        </div>
+        <div className="admin-sidebar-header">Admin Panel</div>
 
         {/* nav links */}
         <nav className="flex-1 overflow-y-auto">

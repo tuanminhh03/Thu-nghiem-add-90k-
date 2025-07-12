@@ -85,6 +85,9 @@ export default function AdminDashboard() {
       <div className="card">
         <header className="admin-header">
           <h1 className="text-xl font-semibold">Quản lý khách hàng</h1>
+          <button onClick={fetchCustomers} className="btn btn-primary">
+            Làm mới
+          </button>
         </header>
 
         {/* Thông báo lỗi/thành công */}
