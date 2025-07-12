@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  UsersIcon,
+  CurrencyDollarIcon,
+  ChartBarIcon,
+} from '@heroicons/react/24/outline';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
@@ -25,29 +30,44 @@ export default function AdminStats() {
 
   return (
     <AdminLayout>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="card text-center">
-          <p className="text-sm text-gray-500">Số lượng tài khoản</p>
-          <p className="text-2xl font-bold">{stats.customerCount}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-sm text-gray-500">Doanh thu 30 ngày</p>
-          <p className="text-2xl font-bold">{stats.revenueLast30Days}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-sm text-gray-500">Truy cập hôm nay</p>
-          <p className="text-2xl font-bold">{stats.visitsToday}</p>
-        </div>
-      </div>
+      <div className="dashboard">
+        <header className="admin-header">
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+        </header>
 
-      <div className="card mb-6">
-        <h2 className="font-semibold mb-2">Doanh thu 30 ngày</h2>
-        <BarChart data={stats.revenueChart} color="#3b82f6" />
-      </div>
+        <div className="stats-grid">
+          <div className="card stats-card">
+            <div>
+              <p className="text-sm text-gray-500">Số lượng tài khoản</p>
+              <p className="text-2xl font-bold">{stats.customerCount}</p>
+            </div>
+            <UsersIcon className="icon" />
+          </div>
+          <div className="card stats-card">
+            <div>
+              <p className="text-sm text-gray-500">Doanh thu 30 ngày</p>
+              <p className="text-2xl font-bold">{stats.revenueLast30Days}</p>
+            </div>
+            <CurrencyDollarIcon className="icon" />
+          </div>
+          <div className="card stats-card">
+            <div>
+              <p className="text-sm text-gray-500">Truy cập hôm nay</p>
+              <p className="text-2xl font-bold">{stats.visitsToday}</p>
+            </div>
+            <ChartBarIcon className="icon" />
+          </div>
+        </div>
 
-      <div className="card">
-        <h2 className="font-semibold mb-2">Lượt truy cập 30 ngày</h2>
-        <BarChart data={stats.visitChart} color="#f97316" />
+        <div className="card mb-6">
+          <h2 className="font-semibold mb-2">Doanh thu 30 ngày</h2>
+          <BarChart data={stats.revenueChart} color="#3b82f6" />
+        </div>
+
+        <div className="card">
+          <h2 className="font-semibold mb-2">Lượt truy cập 30 ngày</h2>
+          <BarChart data={stats.visitChart} color="#f97316" />
+        </div>
       </div>
     </AdminLayout>
   );
