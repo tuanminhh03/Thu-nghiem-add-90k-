@@ -16,17 +16,35 @@ export default function Header() {
     setUser(stored ? JSON.parse(stored) : null);
 
     const token = localStorage.getItem('token');
-    if (token) {
+    let pollId;
+
+    const fetchUser = () => {
       axios
         .get('/api/auth/me', {
           headers: { Authorization: `Bearer ${token}` }
         })
         .then(({ data }) => {
-          setUser(data);
-          localStorage.setItem('user', JSON.stringify(data));
+          setUser(prev => {
+            if (prev && data.amount > prev.amount) {
+              alert(
+                `Bạn vừa được nạp ${(data.amount - prev.amount).toLocaleString()}đ`
+              );
+            }
+            localStorage.setItem('user', JSON.stringify(data));
+            return data;
+          });
         })
         .catch(() => {});
+    };
+
+    if (token) {
+      fetchUser();
+      pollId = setInterval(fetchUser, 30000); // 30 giây kiểm tra lại
     }
+
+    return () => {
+      if (pollId) clearInterval(pollId);
+    };
   }, [location]);
 
   useEffect(() => {
