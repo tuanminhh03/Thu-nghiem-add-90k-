@@ -1,8 +1,7 @@
 /* === CSS Variables === */
 :root {
-  --sidebar-bg: #1f2937;
-  --sidebar-gradient-start: #1f2937;
-  --sidebar-gradient-end: #111827;
+  --sidebar-bg-start: #1f2937;
+  --sidebar-bg-end: #111827;
   --sidebar-hover: #374151;
   --background: #f3f4f6;
   --text-color: #374151;
@@ -27,7 +26,11 @@
 
 /* === Sidebar === */
 .admin-sidebar {
-  background: linear-gradient(to bottom, var(--sidebar-gradient-start), var(--sidebar-gradient-end));
+  background: linear-gradient(
+    to bottom,
+    var(--sidebar-bg-start),
+    var(--sidebar-bg-end)
+  );
   color: #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -38,6 +41,7 @@
   box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
 }
 .admin-sidebar .nav-link {
+  display: block;
   padding: 0.75rem 1rem;
   margin: 0.25rem 1rem;
   border-radius: 0.5rem;
@@ -102,7 +106,7 @@
   border: 1px solid #d1d5db;
   border-right: none;
   border-radius: 0.5rem 0 0 0.5rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color .2s, box-shadow .2s;
 }
 .form-search .input:focus {
   outline: none;
@@ -119,7 +123,7 @@
   overflow-x: auto;
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: var(--card-radius);
 }
 .table {
   width: 100%;
@@ -138,11 +142,10 @@
   border-bottom: 1px solid #e5e7eb;
 }
 .table tbody tr:nth-child(even) {
-  background: #f9f4f6;
+  background: #f3f4f6;
 }
 .table tbody tr:hover {
-  background: #f3f4f6;
-  transition: background-color 0.2s;
+  background: #eaeaea;
 }
 .table td {
   padding: 0.75rem 1rem;
@@ -157,7 +160,7 @@
   cursor: pointer;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  transition: background-color .2s, box-shadow .2s;
 }
 .btn-primary {
   background: var(--primary);

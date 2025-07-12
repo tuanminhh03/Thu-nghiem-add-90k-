@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import './admin.css';
+import './Admin.css';
 
 export default function AdminLayout({ children }) {
   const location = useLocation();
