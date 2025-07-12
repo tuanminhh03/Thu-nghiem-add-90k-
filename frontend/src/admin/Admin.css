@@ -207,6 +207,32 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* === Dashboard === */
+.dashboard {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stats-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.stats-card .icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--primary);
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .admin-container {
