@@ -1,19 +1,26 @@
-/* === Global Admin Styles === */
+/* === CSS Variables === */
 :root {
-  --admin-bg: #f3f4f6;
+  --sidebar-bg: #1f2937;
   --sidebar-gradient-start: #1f2937;
   --sidebar-gradient-end: #111827;
-  --primary-color: #2563eb;
-  --danger-color: #dc2626;
+  --sidebar-hover: #374151;
+  --background: #f3f4f6;
+  --text-color: #374151;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --danger: #ef4444;
+  --danger-dark: #dc2626;
+  --card-radius: 0.75rem;
 }
 
+/* === Global Admin Styles === */
 .admin-container {
   display: grid;
-  grid-template-columns: 260px 1fr; /* sidebar cố định, content linh hoạt */
+  grid-template-columns: 260px 1fr;
   min-height: 100vh;
-  background: var(--admin-bg);
+  background: var(--background);
   font-family: 'Inter', sans-serif;
-  color: #374151;
+  color: var(--text-color);
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -33,7 +40,7 @@
 .admin-sidebar .nav-link {
   padding: 0.75rem 1rem;
   margin: 0.25rem 1rem;
-  border-radius: .5rem;
+  border-radius: 0.5rem;
   transition: background .2s, color .2s;
   color: inherit;
   text-decoration: none;
@@ -51,7 +58,7 @@
 
 /* === Main Content Wrapper === */
 .admin-content {
-  background: var(--admin-bg);
+  background: var(--background);
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -59,7 +66,7 @@
 /* === Card === */
 .card {
   background: #fff;
-  border-radius: .75rem;
+  border-radius: var(--card-radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   max-width: 900px;
   margin: 0 auto 2rem;
@@ -94,17 +101,17 @@
   padding: 0.5rem 1rem;
   border: 1px solid #d1d5db;
   border-right: none;
-  border-radius: .5rem 0 0 .5rem;
+  border-radius: 0.5rem 0 0 0.5rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-search .input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
 }
 .form-search .btn {
   padding: 0.5rem 1rem;
-  border-radius: 0 .5rem .5rem 0;
+  border-radius: 0 var(--card-radius) var(--card-radius) 0;
 }
 
 /* === Table Styles === */
@@ -116,19 +123,22 @@
 }
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--card-radius);
+  overflow: hidden;
 }
 .table thead th {
   padding: 0.75rem 1rem;
   background: #f9fafb;
   text-transform: uppercase;
-  font-size: .75rem;
+  font-size: 0.75rem;
   color: #6b7280;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
 }
 .table tbody tr:nth-child(even) {
-  background: #f9fafb;
+  background: #f9f4f6;
 }
 .table tbody tr:hover {
   background: #f3f4f6;
@@ -150,19 +160,19 @@
   transition: background-color 0.2s, box-shadow 0.2s;
 }
 .btn-primary {
-  background: var(--primary-color);
+  background: var(--primary);
   color: #fff;
 }
 .btn-primary:hover {
-  background: #1d4ed8;
+  background: var(--primary-dark);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .btn-danger {
-  background: var(--danger-color);
+  background: var(--danger);
   color: #fff;
 }
 .btn-danger:hover {
-  background: #b91c1c;
+  background: var(--danger-dark);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -190,8 +200,8 @@
   }
   .form-search .input,
   .form-search .btn {
-    border-radius: .5rem;
-    margin-bottom: .5rem;
+    border-radius: var(--card-radius);
+    margin-bottom: 0.5rem;
     border-right: 1px solid #d1d5db;
   }
   .admin-sidebar button {
