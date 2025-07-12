@@ -1,6 +1,7 @@
 // src/Header.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import './Header.css';
 
 export default function Header() {
@@ -13,6 +14,19 @@ export default function Header() {
   useEffect(() => {
     const stored = localStorage.getItem('user');
     setUser(stored ? JSON.parse(stored) : null);
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      axios
+        .get('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(({ data }) => {
+          setUser(data);
+          localStorage.setItem('user', JSON.stringify(data));
+        })
+        .catch(() => {});
+    }
   }, [location]);
 
   useEffect(() => {
