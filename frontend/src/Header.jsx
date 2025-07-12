@@ -1,4 +1,3 @@
-// src/Header.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -11,6 +10,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
+  // Lấy thông tin user và polling cập nhật định kỳ
   useEffect(() => {
     const stored = localStorage.getItem('user');
     setUser(stored ? JSON.parse(stored) : null);
@@ -42,19 +42,24 @@ export default function Header() {
       pollId = setInterval(fetchUser, 30000);
     }
 
-    return () => clearInterval(pollId);
+    return () => {
+      if (pollId) clearInterval(pollId);
+    };
   }, [location]);
 
   // Nghe sự kiện nạp tiền qua SSE
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
+
     const es = new EventSource(`/api/auth/stream?token=${token}`);
     es.onmessage = e => {
       const data = JSON.parse(e.data);
       setUser(prev => {
         if (prev) {
-          alert(`Bạn vừa được nạp ${data.added.toLocaleString()}đ`);
+          if (data.added > 0) {
+            alert(`Bạn vừa được nạp ${data.added.toLocaleString()}đ`);
+          }
           const next = { ...prev, amount: data.amount };
           localStorage.setItem('user', JSON.stringify(next));
           return next;
@@ -62,9 +67,11 @@ export default function Header() {
         return prev;
       });
     };
+
     return () => es.close();
   }, []);
 
+  // Đóng menu khi click ngoài
   useEffect(() => {
     function handleClick(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -107,7 +114,7 @@ export default function Header() {
               <div className="user-menu" ref={menuRef}>
                 <button
                   className="user-icon"
-                  onClick={() => setMenuOpen((o) => !o)}
+                  onClick={() => setMenuOpen(o => !o)}
                 >
                   👤
                 </button>

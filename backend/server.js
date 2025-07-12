@@ -1,4 +1,3 @@
-// backend/server.js
 import express  from 'express';
 import cors     from 'cors';
 import mongoose from 'mongoose';
@@ -52,7 +51,6 @@ function authenticateAdmin(req, res, next) {
   }
 }
 
-
 /** 1. Đăng ký/đăng nhập user bằng phone */
 app.post('/api/auth/login', async (req, res) => {
   const { phone } = req.body;
@@ -94,6 +92,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 app.get('/api/auth/stream', (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(401).end();
+
   let payload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
@@ -118,7 +117,6 @@ app.get('/api/auth/stream', (req, res) => {
   });
 });
 
-
 /** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
 app.post('/api/orders', authenticate, async (req, res) => {
   const { plan, duration, amount } = req.body;
@@ -126,7 +124,6 @@ app.post('/api/orders', authenticate, async (req, res) => {
     return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
   }
   try {
-    // Lưu đơn hàng
     const order = await Order.create({
       user:     req.user.id,
       plan,
@@ -134,7 +131,6 @@ app.post('/api/orders', authenticate, async (req, res) => {
       amount,
       status:   'PAID'
     });
-    // Trừ tiền customer.balance
     await Customer.findByIdAndUpdate(
       req.user.id,
       { $inc: { amount: -amount } }
