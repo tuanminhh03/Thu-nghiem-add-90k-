@@ -1,25 +1,36 @@
-/* === Global Admin Styles === */
+/* === CSS Variables === */
 :root {
   --sidebar-bg-start: #1f2937;
   --sidebar-bg-end: #111827;
-  --primary-color: #3b82f6;
-  --danger-color: #ef4444;
+  --sidebar-hover: #374151;
+  --background: #f3f4f6;
+  --text-color: #374151;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --danger: #ef4444;
+  --danger-dark: #dc2626;
+  --card-radius: 0.75rem;
 }
 
+/* === Global Admin Styles === */
 .admin-container {
   display: grid;
-  grid-template-columns: 260px 1fr; /* sidebar cố định, content linh hoạt */
+  grid-template-columns: 260px 1fr;
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--background);
   font-family: 'Inter', sans-serif;
-  color: #374151;
+  color: var(--text-color);
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
 /* === Sidebar === */
 .admin-sidebar {
-  background: linear-gradient(to bottom, var(--sidebar-bg-start), var(--sidebar-bg-end));
+  background: linear-gradient(
+    to bottom,
+    var(--sidebar-bg-start),
+    var(--sidebar-bg-end)
+  );
   color: #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -27,21 +38,21 @@
   top: 0;
   z-index: 10;
   padding-top: 1rem;
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
 }
 .admin-sidebar .nav-link {
+  display: block;
   padding: 0.75rem 1rem;
   margin: 0.25rem 1rem;
-  border-radius: .5rem;
+  border-radius: 0.5rem;
   transition: background .2s, color .2s;
   color: inherit;
   text-decoration: none;
-  display: block;
   font-weight: 500;
 }
 .admin-sidebar .nav-link:hover,
 .admin-sidebar .nav-link.active {
-  background: #374151;
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 .admin-sidebar button {
@@ -51,7 +62,7 @@
 
 /* === Main Content Wrapper === */
 .admin-content {
-  background: #f3f4f6;
+  background: var(--background);
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -59,11 +70,12 @@
 /* === Card === */
 .card {
   background: #fff;
-  border-radius: .75rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border-radius: var(--card-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   max-width: 900px;
   margin: 0 auto 2rem;
   overflow: hidden;
+  border: 1px solid #e5e7eb;
 }
 
 /* === Header inside card === */
@@ -72,12 +84,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  background: #fff;
+  background: #fafafa;
   border-bottom: 1px solid #e5e7eb;
 }
 .admin-header h1 {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 600;
 }
 
 /* === Form Search === */
@@ -92,51 +105,47 @@
   padding: 0.5rem 1rem;
   border: 1px solid #d1d5db;
   border-right: none;
-  border-radius: .5rem 0 0 .5rem;
+  border-radius: 0.5rem 0 0 0.5rem;
   transition: border-color .2s, box-shadow .2s;
 }
 .form-search .input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
 }
 .form-search .btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 0 .5rem .5rem 0;
+  padding: 0.5rem 1rem;
+  border-radius: 0 var(--card-radius) var(--card-radius) 0;
 }
 
 /* === Table Styles === */
 .table-container {
   overflow-x: auto;
   background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--card-radius);
 }
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--card-radius);
+  overflow: hidden;
 }
 .table thead th {
   padding: 0.75rem 1rem;
   background: #f9fafb;
   text-transform: uppercase;
-  font-size: .75rem;
+  font-size: 0.75rem;
   color: #6b7280;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
 }
-.table thead th:first-child {
-  border-top-left-radius: .5rem;
-}
-.table thead th:last-child {
-  border-top-right-radius: .5rem;
-}
-.table tbody tr {
-  transition: background .2s;
-}
 .table tbody tr:nth-child(even) {
-  background: #f9fafb;
+  background: #f3f4f6;
 }
 .table tbody tr:hover {
-  background: #f3f4f6;
+  background: #eaeaea;
 }
 .table td {
   padding: 0.75rem 1rem;
@@ -149,33 +158,41 @@
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: background .2s, transform .1s;
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: .5rem;
-}
-.btn:active {
-  transform: scale(0.97);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: background-color .2s, box-shadow .2s;
 }
 .btn-primary {
-  background: var(--primary-color);
+  background: var(--primary);
   color: #fff;
 }
 .btn-primary:hover {
-  background: #2563eb;
+  background: var(--primary-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .btn-danger {
-  background: var(--danger-color);
+  background: var(--danger);
   color: #fff;
 }
 .btn-danger:hover {
-  background: #dc2626;
+  background: var(--danger-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* === Responsive === */
 @media (max-width: 768px) {
   .admin-container {
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 1fr;
+  }
+  .admin-sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.5rem;
+    box-shadow: none;
+  }
+  .admin-sidebar .nav-link {
+    margin: 0 0.25rem;
   }
   .admin-content {
     padding: 1rem;
@@ -186,8 +203,12 @@
   }
   .form-search .input,
   .form-search .btn {
-    border-radius: .5rem;
-    margin-bottom: .5rem;
+    border-radius: var(--card-radius);
+    margin-bottom: 0.5rem;
     border-right: 1px solid #d1d5db;
+  }
+  .admin-sidebar button {
+    margin: 0.5rem;
+    width: auto;
   }
 }
