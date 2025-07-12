@@ -39,10 +39,12 @@ export default function Header() {
 
     if (token) {
       fetchUser();
-      pollId = setInterval(fetchUser, 30000);
+      pollId = setInterval(fetchUser, 30000); // 30 giây kiểm tra lại
     }
 
-    return () => clearInterval(pollId);
+    return () => {
+      if (pollId) clearInterval(pollId);
+    };
   }, [location]);
 
   useEffect(() => {
