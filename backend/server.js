@@ -4,6 +4,7 @@ import cors     from 'cors';
 import mongoose from 'mongoose';
 import jwt      from 'jsonwebtoken';
 import dotenv   from 'dotenv';
+import { EventEmitter } from 'events';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 
 const app = express();
+const updates = new EventEmitter();
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
@@ -74,6 +76,46 @@ app.post('/api/auth/login', async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Server lỗi' });
   }
+});
+
+/** 2. Lấy thông tin user hiện tại */
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const user = await Customer.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json({ id: user._id, phone: user.phone, amount: user.amount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+/** SSE: lắng nghe cập nhật số dư */
+app.get('/api/auth/stream', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).end();
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).end();
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = data => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const onTopup = payload2 => send(payload2);
+  updates.on(`topup:${payload.id}`, onTopup);
+
+  req.on('close', () => {
+    updates.off(`topup:${payload.id}`, onTopup);
+  });
 });
 
 
@@ -221,6 +263,7 @@ app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) =
       { new: true }
     );
     if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    updates.emit(`topup:${customer._id}`, { amount: customer.amount, added: amount });
     res.json(customer);
   } catch (err) {
     console.error(err);
