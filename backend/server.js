@@ -1,16 +1,16 @@
-import express  from 'express';
-import cors     from 'cors';
+import express from 'express';
+import cors from 'cors';
 import mongoose from 'mongoose';
-import jwt      from 'jsonwebtoken';
-import dotenv   from 'dotenv';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 import { EventEmitter } from 'events';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-import Customer       from './Models/Customer.js';
-import Order          from './Models/Order.js';
+import Customer from './Models/Customer.js';
+import Order from './Models/Order.js';
 import NetflixAccount from './Models/NetflixAccount.js';
-import PageView       from './Models/PageView.js';
+import PageView from './Models/PageView.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -151,16 +151,17 @@ app.post('/api/orders', authenticate, async (req, res) => {
   }
   try {
     const order = await Order.create({
-      user:     req.user.id,
+      user: req.user.id,
       plan,
       duration,
       amount,
-      status:   'PAID'
+      status: 'PAID'
     });
     await Customer.findByIdAndUpdate(
       req.user.id,
       { $inc: { amount: -amount } }
     );
+
     // Emit version có populated user để dashboard admin xem thông tin phone
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
@@ -266,4 +267,119 @@ app.get('/api/admin/customers', authenticateAdmin, async (req, res) => {
   }
 });
 
-// … phần còn lại không đổi …
+// Lấy thông tin 1 customer
+app.get('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Nạp tiền cho customer
+app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) => {
+  let { amount } = req.body;
+  amount = parseInt(amount, 10);
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Số tiền không hợp lệ' });
+  }
+
+  try {
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { amount } },
+      { new: true }
+    );
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    updates.emit(`topup:${customer._id}`, { amount: customer.amount, added: amount });
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Xóa customer
+app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await Order.deleteMany({ user: req.params.id });
+    const customer = await Customer.findByIdAndDelete(req.params.id);
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json({ message: 'Đã xóa user' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Lấy lịch sử mua hàng của customer
+app.get('/api/admin/customers/:id/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.params.id }).sort({ purchaseDate: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Lấy danh sách đơn hàng mới nhất
+app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const orders = await Order.find()
+      .sort({ purchaseDate: -1 })
+      .limit(limit)
+      .populate('user', 'phone');
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Placeholder quản lý tài khoản Netflix
+app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
+  try {
+    const accs = await NetflixAccount.find();
+    res.json(accs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Thống kê tổng quan cho Dashboard
+app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date();
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+
+    const [customerCount, revenueAgg, visitAgg, visitsToday] = await Promise.all([
+      Customer.countDocuments(),
+      Order.aggregate([
+        { $match: { purchaseDate: { $gte: start } } },
+        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }, total: { $sum: '$amount' } }
+      ]),
+      PageView.aggregate([
+        { $match: { createdAt: { $gte: start } } },
+        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } }
+      ]),
+      PageView.countDocuments({ createdAt: { $gte: today } })
+    ]);
+
+    const days = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, revenue: 0, visits: 0 });
+    }
+    const revMap = Object.fromEntries(revenueAgg.map(r => [r.
+]]}
