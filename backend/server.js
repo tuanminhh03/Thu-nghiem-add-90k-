@@ -365,11 +365,21 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       Customer.countDocuments(),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
-        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }, total: { $sum: '$amount' } }
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+            total: { $sum: '$amount' }
+          }
+        }
       ]),
       PageView.aggregate([
         { $match: { createdAt: { $gte: start } } },
-        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } }
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            total: { $sum: 1 }
+          }
+        }
       ]),
       PageView.countDocuments({ createdAt: { $gte: today } })
     ]);
@@ -381,5 +391,27 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       const key = d.toISOString().slice(0, 10);
       days.push({ date: key, revenue: 0, visits: 0 });
     }
-    const revMap = Object.fromEntries(revenueAgg.map(r => [r.
-]]}
+    const revMap = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
+    const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
+    days.forEach(d => {
+      d.revenue = revMap[d.date] || 0;
+      d.visits = visitMap[d.date] || 0;
+    });
+
+    const revenueLast30Days = days.reduce((s, d) => s + d.revenue, 0);
+
+    res.json({
+      customerCount,
+      revenueLast30Days,
+      visitsToday,
+      revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
+      visitChart: days.map(d => ({ date: d.date, total: d.visits }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
