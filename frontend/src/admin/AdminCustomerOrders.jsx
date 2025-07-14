@@ -31,6 +31,29 @@ export default function AdminCustomerOrders() {
     })();
   }, [id, token]);
 
+  // Subscribe to order stream for real-time updates
+  useEffect(() => {
+    if (!token) return;
+    const es = new EventSource(`/api/admin/orders/stream?token=${token}`);
+    es.onmessage = e => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.user === id) {
+          setOrders(prev => {
+            const idx = prev.findIndex(o => o._id === data._id);
+            if (idx !== -1) {
+              const copy = [...prev];
+              copy[idx] = data;
+              return copy;
+            }
+            return [data, ...prev];
+          });
+        }
+      } catch {}
+    };
+    return () => es.close();
+  }, [token, id]);
+
   return (
     <AdminLayout>
       <div className="card">
