@@ -4,16 +4,17 @@ import {
   UsersIcon,
   CurrencyDollarIcon,
   ChartBarIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
-// Recharts imports
+// Recharts
 import {
   ResponsiveContainer,
-  BarChart as ReBarChart,
+  BarChart,
   Bar,
-  LineChart as ReLineChart,
+  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -22,241 +23,188 @@ import {
   Legend,
 } from 'recharts';
 
+// Reusable Card component
+function Card({ children, onClick }) {
+  return (
+    <div className="card-ui" onClick={onClick}>
+      {children}
+    </div>
+  );
+}
+
 export default function AdminStats() {
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [selectedSection, setSelectedSection] = useState(null);
-  // date filters cho revenue detail
-  const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .substring(0, 10),
-    end: new Date().toISOString().substring(0, 10),
+  const [section, setSection] = useState(null); // 'revenue' | 'visits' | null
+  const [range, setRange] = useState({
+    start: new Date(Date.now() - 29 * 86400_000).toISOString().slice(0, 10),
+    end: new Date().toISOString().slice(0, 10),
   });
-
   const token = localStorage.getItem('adminToken');
 
-  useEffect(() => {
-    if (!token) return;
+  // Fetch stats & orders
+  const fetchStats = () =>
     axios
       .get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setStats(res.data))
-      .catch(err => console.error(err));
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
+      .then((r) => setStats(r.data))
+      .catch(console.error);
+  const fetchOrders = () =>
     axios
       .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setOrders(res.data))
-      .catch(err => console.error(err));
-  }, [token]);
+      .then((r) => setOrders(r.data))
+      .catch(console.error);
 
   useEffect(() => {
     if (!token) return;
+    fetchStats();
+    fetchOrders();
+    // real-time update
     const es = new EventSource(`/api/admin/orders/stream?token=${token}`);
-    es.onmessage = e => {
-      try {
-        const data = JSON.parse(e.data);
-        setOrders(prev => {
-          const idx = prev.findIndex(o => o._id === data._id);
-          if (idx !== -1) {
-            const copy = [...prev];
-            copy[idx] = data;
-            return copy;
-          }
-          return [data, ...prev].slice(0, 20);
-        });
-      } catch {}
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      fetchStats();
+      setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
     };
     return () => es.close();
   }, [token]);
 
-  if (!stats) {
+  if (!stats)
     return (
       <AdminLayout>
-        <p>Đang tải...</p>
+        <p className="loading">Đang tải...</p>
       </AdminLayout>
     );
-  }
 
-  // prepare data cho recharts
-  const revenueData = stats.revenueChart.map(d => ({
-    date: new Date(d.date).toLocaleDateString('vi-VN'),
-    total: d.total,
-  }));
-  const filteredRevenue = revenueData.filter(d => {
-    const dd = new Date(d.date.split('/').reverse().join('-'));
-    return (
-      dd >= new Date(dateRange.start) &&
-      dd <= new Date(dateRange.end)
-    );
-  });
+  // chart data filtered by date
+  const revenueData = stats.revenueChart
+    .map((d) => ({
+      date: new Date(d.date).toLocaleDateString('vi-VN'),
+      total: d.total,
+    }))
+    .filter((d) => {
+      const [dd, mm, yy] = d.date.split('/');
+      const dt = new Date(`${yy}-${mm}-${dd}`);
+      return dt >= new Date(range.start) && dt <= new Date(range.end);
+    });
 
   return (
     <AdminLayout>
-      {/* Header */}
-      <header className="admin-header">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+      {/* Header & Breadcrumb */}
+      <header className="stats-header">
+        <div className="breadcrumb">
+          <HomeIcon className="icon-sm" />
+          <span>/ Dashboard</span>
+        </div>
+        <h1>Dashboard</h1>
       </header>
 
-      <div className="dashboard">
-        {/* Stats cards */}
-        <div className="stats-grid">
-          <div className="card stats-card">
-            <div>
-              <p className="text-sm text-gray-500">Số lượng tài khoản</p>
-              <p className="text-2xl font-bold">{stats.customerCount}</p>
-            </div>
-            <UsersIcon className="icon" />
+      {/* Summary Banner */}
+      <section className="summary-banner">
+        <Card>
+          <UsersIcon className="icon-lg text-blue-500" />
+          <div>
+            <p className="label">Tài khoản Active</p>
+            <p className="value">{stats.customerCount}</p>
           </div>
-
-          <div
-            className={`card stats-card ${selectedSection === 'revenue' ? 'active' : ''}`}
-            onClick={() =>
-              setSelectedSection(prev => (prev === 'revenue' ? null : 'revenue'))
-            }
-          >
-            <div>
-              <p className="text-sm text-gray-500">Doanh thu 30 ngày</p>
-              <p className="text-2xl font-bold">{stats.revenueLast30Days}</p>
-            </div>
-            <CurrencyDollarIcon className="icon" />
+        </Card>
+        <Card onClick={() => setSection('revenue')}>
+          <CurrencyDollarIcon className="icon-lg text-green-500" />
+          <div>
+            <p className="label">Doanh thu 30d</p>
+            <p className="value">{stats.revenueLast30Days}</p>
           </div>
-
-          <div
-            className={`card stats-card ${selectedSection === 'visits' ? 'active' : ''}`}
-            onClick={() =>
-              setSelectedSection(prev => (prev === 'visits' ? null : 'visits'))
-            }
-          >
-            <div>
-              <p className="text-sm text-gray-500">Truy cập hôm nay</p>
-              <p className="text-2xl font-bold">{stats.visitsToday}</p>
-            </div>
-            <ChartBarIcon className="icon" />
+        </Card>
+        <Card onClick={() => setSection('visits')}>
+          <ChartBarIcon className="icon-lg text-purple-500" />
+          <div>
+            <p className="label">Truy cập 30d</p>
+            <p className="value">
+              {stats.visitChart.reduce((sum, d) => sum + d.total, 0)}
+            </p>
           </div>
-        </div>
+        </Card>
+      </section>
 
-        {/* Chi tiết doanh thu khi click */}
-        {selectedSection === 'revenue' && (
-          <div className="card mb-6">
-            <h2 className="font-semibold mb-4">Doanh thu theo ngày</h2>
-
-            {/* Date filters */}
-            <div className="flex items-center space-x-4 mb-4">
-              <div>
-                <label className="block text-sm">Từ ngày:</label>
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={e =>
-                    setDateRange(prev => ({ ...prev, start: e.target.value }))
-                  }
-                  className="border px-2 py-1 rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm">Đến ngày:</label>
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={e =>
-                    setDateRange(prev => ({ ...prev, end: e.target.value }))
-                  }
-                  className="border px-2 py-1 rounded"
-                />
-              </div>
-            </div>
-
-            {/* Bar Chart */}
-            <ResponsiveContainer width="100%" height={200}>
-              <ReBarChart data={filteredRevenue}>
+      {/* Charts & Filters */}
+      {section === 'revenue' && (
+        <section className="chart-section">
+          <div className="filter-date">
+            <label>
+              Từ: <input type="date" value={range.start} onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))} />
+            </label>
+            <label>
+              Đến: <input type="date" value={range.end} onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))} />
+            </label>
+          </div>
+          <div className="charts">
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="total" fill="#3b82f6" />
-              </ReBarChart>
+                <Bar dataKey="total" />
+              </BarChart>
             </ResponsiveContainer>
-
-            {/* Line Chart */}
-            <ResponsiveContainer width="100%" height={200} className="mt-6">
-              <ReLineChart data={filteredRevenue}>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                />
-              </ReLineChart>
+                <Line type="monotone" dataKey="total" strokeWidth={2} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Chi tiết visits */}
-        {selectedSection === 'visits' && (
-          <div className="card mb-6">
-            <h2 className="font-semibold mb-2">Lượt truy cập 30 ngày</h2>
-            <BarChart data={stats.visitChart} color="#f97316" />
-          </div>
-        )}
+      {section === 'visits' && (
+        <section className="chart-section">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart
+              data={stats.visitChart.map((d) => ({
+                date: new Date(d.date).toLocaleDateString('vi-VN'),
+                total: d.total,
+              }))}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="total" />
+            </BarChart>
+          </ResponsiveContainer>
+        </section>
+      )}
 
-        {/* Đơn hàng mới nhất */}
-        <div className="card">
-          <h2 className="font-semibold mb-4">Đơn hàng mới nhất</h2>
-          <div className="overflow-x-auto p-4">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KH</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PLAN</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày mua</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+      {/* Latest Orders */}
+      <section className="orders-section">
+        <h2>Đơn hàng mới</h2>
+        <div className="orders-table">
+          <table>
+            <thead>
+              <tr>
+                <th>KH</th>
+                <th>Plan</th>
+                <th>Ngày</th>
+                <th className="text-right">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o._id}>
+                  <td>{o.user.phone}</td>
+                  <td>{o.plan}</td>
+                  <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
+                  <td className="text-right">{o.amount}</td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {orders.map(o => (
-                  <tr key={o._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{o.user.phone}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{o.plan}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">{o.amount}</td>
-                  </tr>
-                ))}
-                {orders.length === 0 && (
-                  <tr>
-                    <td colSpan="4" className="text-center py-4">Không có đơn hàng</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </section>
     </AdminLayout>
-  );
-}
-
-// Giữ lại BarChart cũ cho visits
-function BarChart({ data, color }) {
-  const max = Math.max(...data.map(d => d.total), 1);
-  return (
-    <div className="flex items-end h-40 space-x-1">
-      {data.map(d => (
-        <div key={d.date} className="flex-1 flex flex-col items-center">
-          <div
-            style={{ height: `${(d.total / max) * 100}%`, backgroundColor: color }}
-            className="w-full"
-          />
-          <span className="text-[10px]">{new Date(d.date).getDate()}</span>
-        </div>
-      ))}
-    </div>
   );
 }
