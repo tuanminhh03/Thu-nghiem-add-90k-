@@ -16,7 +16,6 @@
   --header-gradient-end: #8b5cf6;
   --transition-speed: 0.2s;
 }
-
 /* === Global Admin Styles === */
 .admin-container {
   display: grid;
@@ -51,7 +50,7 @@
   margin: 0.25rem 1rem;
   border-radius: 0.5rem;
   transition: background var(--transition-speed), color var(--transition-speed),
-    transform .1s;
+    transform 0.1s;
   color: inherit;
   text-decoration: none;
   font-weight: 500;
@@ -114,6 +113,10 @@
   color: #fff;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  /* cho header Dashboard full chiều ngang */
+  width: 100%;
+  max-width: none;
 }
 .admin-header h1 {
   margin: 0;
@@ -125,8 +128,8 @@
 .form-search {
   display: flex;
   width: 100%;
-  max-width: 600px;
-  margin: 1.5rem auto;
+  max-width: 400px;
+  margin-bottom: 1rem;
 }
 .form-search .input {
   flex: 1;
@@ -218,7 +221,9 @@
 
 /* === Dashboard === */
 .dashboard {
-  max-width: 960px;
+  /* không còn giới hạn 960px nữa */
+  max-width: none;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -297,4 +302,39 @@
     margin: 0.5rem;
     width: auto;
   }
+}
+/* === Full-width Overrides === */
+.admin-content {
+  max-width: none !important; /* bỏ giới hạn 1200px */
+  margin: 0 !important;       /* không căn giữa */
+  width: 100% !important;     /* chiếm trọn cột 1fr */
+}
+
+.dashboard {
+  max-width: none !important; /* bỏ giới hạn 960px */
+  width: 100% !important;     /* chiếm 100% .admin-content */
+  margin: 0 !important;       /* không căn giữa */
+}
+
+.card {
+  max-width: none !important; /* các card chart/table full rộng */
+  margin: 0 0 2rem !important;/* chỉ giữ khoảng cách dọc */
+}
+
+.stats-card {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+/* highlight khi active */
+.stats-card.active {
+  border: 2px solid var(--primary);
+}
+
+/* Nếu muốn auto-hide chart khi bấm ra chỗ khác */
+.dashboard {
+  position: relative;
 }
