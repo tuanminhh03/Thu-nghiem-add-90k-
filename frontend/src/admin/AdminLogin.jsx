@@ -25,11 +25,8 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-lg rounded-lg p-8 w-full max-w-sm"
-      >
+    <div className="admin-login-page">
+      <form onSubmit={handleSubmit} className="admin-login-form">
         <h1 className="text-2xl font-semibold mb-6 text-center">Admin Login</h1>
 
         <input
