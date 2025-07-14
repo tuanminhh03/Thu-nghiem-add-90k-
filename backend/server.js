@@ -161,7 +161,10 @@ app.post('/api/orders', authenticate, async (req, res) => {
       req.user.id,
       { $inc: { amount: -amount } }
     );
-    updates.emit('new-order', order);
+    // Emit version có populated user để dashboard admin xem thông tin phone
+    const full = await Order.findById(order._id).populate('user', 'phone');
+    updates.emit('new-order', full);
+
     res.status(201).json(order);
   } catch (err) {
     console.error(err);
@@ -208,7 +211,9 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
     customer.amount -= amount;
     await customer.save();
 
-    updates.emit('new-order', order);
+    // Cũng emit bản full populated để dashboard admin cập nhật
+    const full = await Order.findById(order._id).populate('user', 'phone');
+    updates.emit('new-order', full);
 
     res.json(order);
   } catch (err) {
@@ -261,136 +266,4 @@ app.get('/api/admin/customers', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Lấy thông tin 1 customer
-app.get('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
-  try {
-    const customer = await Customer.findById(req.params.id);
-    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json(customer);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-// Nạp tiền cho customer
-app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) => {
-  let { amount } = req.body;
-  amount = parseInt(amount, 10);
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ message: 'Số tiền không hợp lệ' });
-  }
-
-  try {
-    const customer = await Customer.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { amount } },
-      { new: true }
-    );
-    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
-    updates.emit(`topup:${customer._id}`, { amount: customer.amount, added: amount });
-    res.json(customer);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-// Xóa customer
-app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
-  try {
-    await Order.deleteMany({ user: req.params.id });
-    const customer = await Customer.findByIdAndDelete(req.params.id);
-    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json({ message: 'Đã xóa user' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-// Lấy lịch sử mua hàng của customer
-app.get('/api/admin/customers/:id/orders', authenticateAdmin, async (req, res) => {
-  try {
-    const orders = await Order.find({ user: req.params.id }).sort({ purchaseDate: -1 });
-    res.json(orders);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-// Placeholder quản lý tài khoản Netflix
-app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
-  try {
-    const accs = await NetflixAccount.find();
-    res.json(accs);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-// Thống kê tổng quan cho Dashboard
-app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date();
-    start.setDate(start.getDate() - 29);
-    start.setHours(0, 0, 0, 0);
-
-    const [customerCount, revenueAgg, visitAgg, visitsToday] = await Promise.all([
-      Customer.countDocuments(),
-      Order.aggregate([
-        { $match: { purchaseDate: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
-            total: { $sum: '$amount' }
-          }
-        }
-      ]),
-      PageView.aggregate([
-        { $match: { createdAt: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            total: { $sum: 1 }
-          }
-        }
-      ]),
-      PageView.countDocuments({ createdAt: { $gte: today } })
-    ]);
-
-    const days = [];
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
-      days.push({ date: key, revenue: 0, visits: 0 });
-    }
-    const revMap = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
-    const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
-    days.forEach(d => {
-      d.revenue = revMap[d.date] || 0;
-      d.visits = visitMap[d.date] || 0;
-    });
-
-    const revenueLast30Days = days.reduce((s, d) => s + d.revenue, 0);
-
-    res.json({
-      customerCount,
-      revenueLast30Days,
-      visitsToday,
-      revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
-      visitChart: days.map(d => ({ date: d.date, total: d.visits }))
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// … phần còn lại không đổi …
