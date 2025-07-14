@@ -117,6 +117,32 @@ app.get('/api/auth/stream', (req, res) => {
   });
 });
 
+/** SSE: cập nhật đơn hàng cho admin */
+app.get('/api/admin/orders/stream', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).end();
+
+  try {
+    jwt.verify(token, process.env.JWT_SECRET + '_ADMIN');
+  } catch {
+    return res.status(401).end();
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const onOrder = order => {
+    res.write(`data: ${JSON.stringify(order)}\n\n`);
+  };
+  updates.on('new-order', onOrder);
+
+  req.on('close', () => {
+    updates.off('new-order', onOrder);
+  });
+});
+
 /** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
 app.post('/api/orders', authenticate, async (req, res) => {
   const { plan, duration, amount } = req.body;
@@ -135,6 +161,8 @@ app.post('/api/orders', authenticate, async (req, res) => {
       req.user.id,
       { $inc: { amount: -amount } }
     );
+    const full = await Order.findById(order._id).populate('user', 'phone');
+    updates.emit('new-order', full);
     res.status(201).json(order);
   } catch (err) {
     console.error(err);
@@ -180,6 +208,9 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
 
     customer.amount -= amount;
     await customer.save();
+
+    const full = await Order.findById(order._id).populate('user', 'phone');
+    updates.emit('new-order', full);
 
     res.json(order);
   } catch (err) {
@@ -284,6 +315,21 @@ app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
 app.get('/api/admin/customers/:id/orders', authenticateAdmin, async (req, res) => {
   try {
     const orders = await Order.find({ user: req.params.id }).sort({ purchaseDate: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Lấy danh sách đơn hàng mới nhất
+app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const orders = await Order.find()
+      .sort({ purchaseDate: -1 })
+      .limit(limit)
+      .populate('user', 'phone');
     res.json(orders);
   } catch (err) {
     console.error(err);
