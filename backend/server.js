@@ -1,16 +1,16 @@
-import express  from 'express';
-import cors     from 'cors';
+import express from 'express';
+import cors from 'cors';
 import mongoose from 'mongoose';
-import jwt      from 'jsonwebtoken';
-import dotenv   from 'dotenv';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 import { EventEmitter } from 'events';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-import Customer       from './Models/Customer.js';
-import Order          from './Models/Order.js';
+import Customer from './Models/Customer.js';
+import Order from './Models/Order.js';
 import NetflixAccount from './Models/NetflixAccount.js';
-import PageView       from './Models/PageView.js';
+import PageView from './Models/PageView.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -151,18 +151,21 @@ app.post('/api/orders', authenticate, async (req, res) => {
   }
   try {
     const order = await Order.create({
-      user:     req.user.id,
+      user: req.user.id,
       plan,
       duration,
       amount,
-      status:   'PAID'
+      status: 'PAID'
     });
     await Customer.findByIdAndUpdate(
       req.user.id,
       { $inc: { amount: -amount } }
     );
+
+    // Emit version có populated user để dashboard admin xem thông tin phone
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
+
     res.status(201).json(order);
   } catch (err) {
     console.error(err);
@@ -209,6 +212,7 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
     customer.amount -= amount;
     await customer.save();
 
+    // Cũng emit bản full populated để dashboard admin cập nhật
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
 
@@ -361,21 +365,11 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       Customer.countDocuments(),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
-            total: { $sum: '$amount' }
-          }
-        }
+        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }, total: { $sum: '$amount' } }
       ]),
       PageView.aggregate([
         { $match: { createdAt: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            total: { $sum: 1 }
-          }
-        }
+        { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } }
       ]),
       PageView.countDocuments({ createdAt: { $gte: today } })
     ]);
@@ -387,27 +381,5 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       const key = d.toISOString().slice(0, 10);
       days.push({ date: key, revenue: 0, visits: 0 });
     }
-    const revMap = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
-    const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
-    days.forEach(d => {
-      d.revenue = revMap[d.date] || 0;
-      d.visits = visitMap[d.date] || 0;
-    });
-
-    const revenueLast30Days = days.reduce((s, d) => s + d.revenue, 0);
-
-    res.json({
-      customerCount,
-      revenueLast30Days,
-      visitsToday,
-      revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
-      visitChart: days.map(d => ({ date: d.date, total: d.visits }))
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    const revMap = Object.fromEntries(revenueAgg.map(r => [r.
+]]}
