@@ -50,6 +50,7 @@ export default function PhoneLogin() {
     <div className="phone-login-page">
       <div className="phone-login-box">
         <h2>Đăng nhập bằng số điện thoại</h2>
+        <p className="login-subtitle">Vui lòng nhập số điện thoại của bạn</p>
         <form onSubmit={handleSubmit}>
           <label className="phone-login-label">
             Số điện thoại
