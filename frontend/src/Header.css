@@ -196,7 +196,29 @@
   .site-logo-text {
     font-size: 1rem;
   }
-  .nav-label {
-    font-size: 1rem;
-  }
+.nav-label {
+  font-size: 1rem;
+}
+}
+
+/* ====== Thông báo nạp tiền ====== */
+.topup-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+}
+
+.topup-message {
+  background: #1f2833;
+  color: #fff;
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  text-align: center;
 }
