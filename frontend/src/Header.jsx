@@ -8,6 +8,7 @@ export default function Header() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notice, setNotice] = useState('');
   const menuRef = useRef(null);
 
   // Lấy thông tin user và polling cập nhật định kỳ
@@ -26,9 +27,8 @@ export default function Header() {
         .then(({ data }) => {
           setUser(prev => {
             if (prev && data.amount > prev.amount) {
-              alert(
-                `Bạn vừa được nạp ${(data.amount - prev.amount).toLocaleString()}đ`
-              );
+              setNotice('Nạp tiền thành công');
+              setTimeout(() => setNotice(''), 3000);
             }
             localStorage.setItem('user', JSON.stringify(data));
             return data;
@@ -58,7 +58,8 @@ export default function Header() {
       setUser(prev => {
         if (prev) {
           if (data.added > 0) {
-            alert(`Bạn vừa được nạp ${data.added.toLocaleString()}đ`);
+            setNotice('Nạp tiền thành công');
+            setTimeout(() => setNotice(''), 3000);
           }
           const next = { ...prev, amount: data.amount };
           localStorage.setItem('user', JSON.stringify(next));
@@ -100,6 +101,11 @@ export default function Header() {
 
   return (
     <header className="site-header">
+      {notice && (
+        <div className="topup-overlay">
+          <div className="topup-message">{notice}</div>
+        </div>
+      )}
       {/* Top bar */}
       <div className="top-bar container">
         <div className="top-bar__left">
