@@ -1,5 +1,7 @@
+// src/Header.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import './Header.css';
 
@@ -8,27 +10,31 @@ export default function Header() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [addedAmount, setAddedAmount] = useState(0);
   const menuRef = useRef(null);
 
-  // Lấy thông tin user và polling cập nhật định kỳ
+  // Lấy user & polling cập nhật định kỳ nhanh hơn
   useEffect(() => {
     const stored = localStorage.getItem('user');
     setUser(stored ? JSON.parse(stored) : null);
-
     const token = localStorage.getItem('token');
     let pollId;
 
     const fetchUser = () => {
-      axios
-        .get('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      axios.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         .then(({ data }) => {
           setUser(prev => {
             if (prev && data.amount > prev.amount) {
-              setNotice('Nạp tiền thành công');
-              setTimeout(() => setNotice(''), 3000);
+              const diff = data.amount - prev.amount;
+              // Hiện notification
+              setAddedAmount(diff);
+              // 3s sau: clear notification và nếu đang ở page /top-up thì redirect về home
+              setTimeout(() => {
+                setAddedAmount(0);
+                if (location.pathname.startsWith('/top-up')) {
+                  navigate('/');
+                }
+              }, 3000);
             }
             localStorage.setItem('user', JSON.stringify(data));
             return data;
@@ -39,38 +45,36 @@ export default function Header() {
 
     if (token) {
       fetchUser();
-      pollId = setInterval(fetchUser, 30000);
+      // Giảm interval xuống 5s (trước là 30000ms) để notification hiện nhanh hơn
+      pollId = setInterval(fetchUser, 5000);
     }
+    return () => pollId && clearInterval(pollId);
+  }, [location, navigate]);
 
-    return () => {
-      if (pollId) clearInterval(pollId);
-    };
-  }, [location]);
-
-  // Nghe sự kiện nạp tiền qua SSE
+  // Nghe SSE nạp tiền (nhanh nhất)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-
     const es = new EventSource(`/api/auth/stream?token=${token}`);
     es.onmessage = e => {
       const data = JSON.parse(e.data);
       setUser(prev => {
-        if (prev) {
-          if (data.added > 0) {
-            setNotice('Nạp tiền thành công');
-            setTimeout(() => setNotice(''), 3000);
-          }
-          const next = { ...prev, amount: data.amount };
-          localStorage.setItem('user', JSON.stringify(next));
-          return next;
+        if (prev && data.added > 0) {
+          setAddedAmount(data.added);
+          setTimeout(() => {
+            setAddedAmount(0);
+            if (location.pathname.startsWith('/top-up')) {
+              navigate('/');
+            }
+          }, 3000);
         }
-        return prev;
+        const next = prev ? { ...prev, amount: data.amount } : prev;
+        localStorage.setItem('user', JSON.stringify(next));
+        return next;
       });
     };
-
     return () => es.close();
-  }, []);
+  }, [location, navigate]);
 
   // Đóng menu khi click ngoài
   useEffect(() => {
@@ -101,11 +105,16 @@ export default function Header() {
 
   return (
     <header className="site-header">
-      {notice && (
+      {addedAmount > 0 && (
         <div className="topup-overlay">
-          <div className="topup-message">{notice}</div>
+          <div className="topup-message">
+            <CheckCircle size={32} style={{ marginBottom: '0.5rem' }} />
+            <h3>Nạp tiền thành công</h3>
+            <p>Số tiền: {addedAmount.toLocaleString()} VNĐ</p>
+          </div>
         </div>
       )}
+
       {/* Top bar */}
       <div className="top-bar container">
         <div className="top-bar__left">
@@ -153,8 +162,10 @@ export default function Header() {
           </Link>
           <span className="nav-label">Netflix</span>
         </div>
-        <div className="nav-bar__right"></div>
+        <div className="nav-bar__right">
+          {/* Nav items nếu có */}
+        </div>
       </div>
     </header>
-  );
+);
 }

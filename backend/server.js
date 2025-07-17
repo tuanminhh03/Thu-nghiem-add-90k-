@@ -109,11 +109,19 @@ app.get('/api/auth/stream', (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
+    // Gửi ping định kỳ để giữ kết nối SSE tránh bị timeout
+  const keepAlive = setInterval(() => {
+    // Gửi comment theo chuẩn SSE, client sẽ bỏ qua
+    res.write(':\n\n');
+  }, 30000);
+
   const onTopup = payload2 => send(payload2);
   updates.on(`topup:${payload.id}`, onTopup);
 
   req.on('close', () => {
     updates.off(`topup:${payload.id}`, onTopup);
+    clearInterval(keepAlive);
+
   });
 });
 
@@ -132,6 +140,11 @@ app.get('/api/admin/orders/stream', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
+    // Ping keep-alive cho kết nối SSE
+  const keepAliveAdmin = setInterval(() => {
+    res.write(':\n\n');
+  }, 30000);
+
 
   const onOrder = order => {
     res.write(`data: ${JSON.stringify(order)}\n\n`);
@@ -140,6 +153,8 @@ app.get('/api/admin/orders/stream', (req, res) => {
 
   req.on('close', () => {
     updates.off('new-order', onOrder);
+        clearInterval(keepAliveAdmin);
+
   });
 });
 

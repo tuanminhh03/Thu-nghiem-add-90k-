@@ -1,31 +1,88 @@
 // src/TopUpPage.jsx
-import React from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Wallet } from 'lucide-react';
+import './TopUpPage.css';
 
 export default function TopUpPage() {
-  // Nếu bạn muốn nhận luôn plan & duration hay amount từ query:
   const { search } = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(search);
-  const plan     = params.get('plan');
-  const duration = params.get('duration');
-  const amount   = params.get('amount');
+  const plan      = params.get('plan');
+  const duration  = params.get('duration');
+  const amount    = params.get('amount') || '0';
+  const userPhone = params.get('phone') || '';
+
+  // QR config
+  const qrBankId    = 'mbbank';
+  const accountNo   = '5358111112003';
+  const template    = 'compact';
+  const accountName = encodeURIComponent('YOUR_ACCOUNT_NAME');
+  const qrUrl = `https://img.vietqr.io/image/${qrBankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${userPhone}&accountName=${accountName}`;
+
+  // Countdown 5 phút
+  const [secondsLeft, setSecondsLeft] = useState(5 * 60);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsLeft(s => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const minutes = Math.floor(secondsLeft / 60);
+  const secs    = secondsLeft % 60;
+
+  const handleContinue = () => {
+    navigate('/');
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24 flex justify-center items-start p-4">
-      <div className="bg-white shadow rounded-lg p-6 w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-4">Nạp tiền</h2>
+    <div className="topup-page page-wrapper">
+      <div className="topup-card">
+        <header className="topup-card__header">
+          <Wallet className="icon" />
+          <h2>Nạp tiền tài khoản</h2>
+        </header>
+
         {plan && (
-          <p className="mb-2">
-            <strong>Gói:</strong> {plan} — <strong>Thời gian:</strong> {duration}
-          </p>
+          <div className="badge badge-blue mb-4">
+            <span>Gói: {plan}</span>
+            <span>Thời gian: {duration}</span>
+          </div>
         )}
-        {amount && (
-          <p className="mb-4">
-            <strong>Số tiền cần nạp:</strong> {Number(amount).toLocaleString()}₫
-          </p>
-        )}
-        {/* TODO: chèn form hoặc QR nạp tiền ở đây */}
-        <p>Chức năng nạp tiền sẽ được triển khai tại đây.</p>
+
+        <div className="topup-info mb-6">
+          <div>
+            <p><strong>Ngân hàng:</strong> MBBank</p>
+            <p><strong>Số TK:</strong> {accountNo}</p>
+          </div>
+          <div>
+            <p><strong>Chủ TK:</strong> {decodeURIComponent(accountName)}</p>
+            <p>
+              <strong>Hạn QR:</strong> {minutes}:
+              {secs.toString().padStart(2,'0')} (mm:ss)
+            </p>
+          </div>
+        </div>
+
+        <ul className="instructions mb-6">
+          <li>Mở app ngân hàng, chọn “Quét mã QR”.</li>
+          <li>Không thay đổi nội dung chuyển khoản: <strong>{userPhone}</strong>.</li>
+          <li>Hoàn thành chuyển khoản, bấm “Tiếp tục” bên dưới.</li>
+        </ul>
+
+        <div className="qr-container mb-6">
+          <img
+            src={qrUrl}
+            alt="QR code nạp tiền"
+            className="qr-image"
+          />
+        </div>
+
+        <footer className="topup-card__footer">
+          <button onClick={handleContinue}>
+            Tiếp tục
+          </button>
+        </footer>
       </div>
     </div>
   );
