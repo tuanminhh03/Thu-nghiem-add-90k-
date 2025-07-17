@@ -52,22 +52,22 @@ export default function TopUpPage() {
 
         <div className="topup-info mb-6">
           <div>
-            <p><strong>Ngân hàng:</strong> MBBank</p>
+            <p><strong>Ngân hàng:</strong> MBBank </p>
             <p><strong>Số TK:</strong> {accountNo}</p>
           </div>
           <div>
-            <p><strong>Chủ TK:</strong> {decodeURIComponent(accountName)}</p>
+            <p><strong>Chủ TK: NGUYEN TUAN MINH</strong></p>
             <p>
               <strong>Hạn QR:</strong> {minutes}:
-              {secs.toString().padStart(2,'0')} (mm:ss)
+              {secs.toString().padStart(2,'0')} 
             </p>
           </div>
         </div>
 
         <ul className="instructions mb-6">
-          <li>Mở app ngân hàng, chọn “Quét mã QR”.</li>
-          <li>Không thay đổi nội dung chuyển khoản: <strong>{userPhone}</strong>.</li>
-          <li>Hoàn thành chuyển khoản, bấm “Tiếp tục” bên dưới.</li>
+          <li>Mở app ngân hàng, chọn “Quét mã QR”. Nhập số tiền muốn chuyển.</li>
+          <li>Nội dung chuyển khoản là số điện thoại mà quý khách đăng ký: <strong>{userPhone}</strong>.</li>
+          <li>Sau khi chuyển khoản, quý khách chờ 30s-1p sẽ có thông báo chuyển khoản thành công</li>
         </ul>
 
         <div className="qr-container mb-6">
