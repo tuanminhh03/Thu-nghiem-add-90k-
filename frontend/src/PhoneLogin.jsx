@@ -1,12 +1,12 @@
-/* Updated src/PhoneLogin.jsx */
+// src/PhoneLogin.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './PhoneLogin.css';
+import styles from './PhoneLogin.module.css';
 
 export default function PhoneLogin() {
-  const [phone, setPhone]     = useState('');
-  const [error, setError]     = useState('');
+  const [phone, setPhone] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
@@ -15,7 +15,6 @@ export default function PhoneLogin() {
     e.preventDefault();
     setError('');
 
-    // validate số điện thoại cơ bản
     if (!/^[0-9]{9,11}$/.test(phone)) {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
@@ -23,14 +22,9 @@ export default function PhoneLogin() {
 
     setLoading(true);
     try {
-      // 1) Gọi API đăng nhập
       const { data } = await axios.post('/api/auth/login', { phone });
-
-      // 2) Lưu token và thông tin user vào localStorage
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-
-      // 3) Hiển thị thông báo thành công
       setShowSuccess(true);
     } catch (err) {
       console.error(err);
@@ -42,47 +36,58 @@ export default function PhoneLogin() {
 
   const handleOk = () => {
     setShowSuccess(false);
-    // Điều hướng về trang chủ
     navigate('/');
   };
 
   return (
-    <div className="phone-login-page">
-      <div className="phone-login-box">
-        <h2>Đăng nhập bằng số điện thoại</h2>
-        <p className="login-subtitle">Vui lòng nhập số điện thoại của bạn</p>
-        <form onSubmit={handleSubmit}>
-          <label className="phone-login-label">
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <div className={styles.logo}>📱</div>
+        <h2 className={styles.title}>Đăng nhập nhanh</h2>
+        <p className={styles.subtitle}>
+          Không cần đăng ký, chỉ cần nhập số điện thoại để đăng nhập
+        </p>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <label className={styles.label}>
             Số điện thoại
             <input
               type="text"
-              className="phone-login-input"
-              placeholder="Nhập số điện thoại"
+              className={styles.input}
+              placeholder="Nhập số điện thoại của bạn"
               value={phone}
-              onChange={e => setPhone(e.target.value.trim())}
+              onChange={(e) => setPhone(e.target.value.trim())}
               disabled={loading}
             />
           </label>
-          {error && <p className="phone-login-error">{error}</p>}
+          {error && <p className={styles.error}>{error}</p>}
           <button
             type="submit"
-            className="phone-login-btn"
+            className={styles.button}
             disabled={loading}
           >
-            {loading ? 'Đang xử lý…' : 'Tiếp tục'}
+            {loading ? (
+              <span className={styles.buttonContent}>
+                <div className={styles.spinner}></div>
+                <span>Đang xử lý…</span>
+              </span>
+            ) : (
+              'Tiếp tục'
+            )}
           </button>
         </form>
       </div>
 
-      {/* Modal thông báo thành công */}
       {showSuccess && (
-        <div className="success-modal-overlay">
-          <div className="success-modal">
-            <p>Đăng nhập thành công</p>
-            <button className="success-modal-btn" onClick={handleOk}>OK</button>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h3>Thành công!</h3>
+            <p>Bạn đã đăng nhập thành công.</p>
+            <button className={styles.modalButton} onClick={handleOk}>
+              OK
+            </button>
           </div>
         </div>
       )}
     </div>
-  );
+);
 }

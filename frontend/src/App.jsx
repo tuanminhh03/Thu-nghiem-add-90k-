@@ -41,12 +41,8 @@ export default function App() {
           }
         />
         <Route
-          path="/login"
-          element={
-            <HeaderWrapper>
-              <PhoneLogin />
-            </HeaderWrapper>
-          }
+           path="/login"
+           element={<PhoneLogin />}
         />
         <Route
           path="/plan/:planKey"
