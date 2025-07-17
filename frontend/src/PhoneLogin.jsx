@@ -1,4 +1,4 @@
-// src/PhoneLogin.jsx
+/* Updated src/PhoneLogin.jsx */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -8,6 +8,7 @@ export default function PhoneLogin() {
   const [phone, setPhone]     = useState('');
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -29,14 +30,20 @@ export default function PhoneLogin() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // 3) Redirect về trang chủ (hoặc bất cứ route nào bạn muốn)
-      navigate('/');
+      // 3) Hiển thị thông báo thành công
+      setShowSuccess(true);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOk = () => {
+    setShowSuccess(false);
+    // Điều hướng về trang chủ
+    navigate('/');
   };
 
   return (
@@ -65,6 +72,16 @@ export default function PhoneLogin() {
           </button>
         </form>
       </div>
+
+      {/* Modal thông báo thành công */}
+      {showSuccess && (
+        <div className="success-modal-overlay">
+          <div className="success-modal">
+            <p>Đăng nhập thành công</p>
+            <button className="success-modal-btn" onClick={handleOk}>OK</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
