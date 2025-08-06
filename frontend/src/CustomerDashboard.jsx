@@ -95,8 +95,10 @@ export default function CustomerDashboard() {
                   <th>Ngày mua</th>
                   <th>Ngày hết hạn</th>
                   <th>Số ngày còn lại</th>
+                  <th>Email</th>
+                  <th>Mật khẩu</th>
+                  <th>Hồ sơ</th>
                   <th>Chức năng</th>
-                  <th>Chú thích</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,15 +116,13 @@ export default function CustomerDashboard() {
                       <td>{purchase.toLocaleDateString('vi-VN')}</td>
                       <td>{expiry.toLocaleDateString('vi-VN')}</td>
                       <td>{daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}</td>
+                      <td>{o.accountEmail || '-'}</td>
+                      <td>{o.accountPassword || '-'}</td>
+                      <td>{o.profileId || '-'}</td>
                       <td className="text-center">
                         <button onClick={() => handleExtendClick(o)}>
                           Gia hạn
                         </button>
-                      </td>
-                      <td>
-                        {o.plan === 'Gói cao cấp'
-                          ? 'Vui lòng liên hệ Admin để lấy tài khoản'
-                          : 'Ấn vào mã đơn hàng để lấy tài khoản'}
                       </td>
                     </tr>
                   );

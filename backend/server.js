@@ -162,12 +162,26 @@ app.post('/api/orders', authenticate, async (req, res) => {
     return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
   }
   try {
+    const acc = await NetflixAccount.findOne({ 'profiles.status': 'empty' });
+    if (!acc) {
+      return res.status(400).json({ message: 'Hết tài khoản khả dụng' });
+    }
+
+    const profile = acc.profiles.find(p => p.status === 'empty');
+    profile.status = 'used';
+    profile.customerEmail = req.user.phone;
+    profile.purchaseDate = new Date();
+    await acc.save();
+
     const order = await Order.create({
       user: req.user.id,
       plan,
       duration,
       amount,
-      status: 'PAID'
+      status: 'PAID',
+      accountEmail: acc.email,
+      accountPassword: acc.password,
+      profileId: profile.id
     });
     await Customer.findByIdAndUpdate(
       req.user.id,
@@ -178,7 +192,14 @@ app.post('/api/orders', authenticate, async (req, res) => {
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
 
-    res.status(201).json(order);
+    res.status(201).json({
+      order,
+      netflixAccount: {
+        email: acc.email,
+        password: acc.password,
+        profileId: profile.id
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi tạo đơn hàng' });

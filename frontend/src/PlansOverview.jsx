@@ -73,7 +73,6 @@ export default function PlansOverview() {
       // Trừ tiền và cập nhật localStorage
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
-      alert('Thanh toán thành công!');
       navigate('/my-orders');
     } catch (err) {
       console.error(err);

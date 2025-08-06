@@ -20,6 +20,15 @@ const orderSchema = new Schema({
     type: Number,
     required: true,
   },
+  accountEmail: {
+    type: String,
+  },
+  accountPassword: {
+    type: String,
+  },
+  profileId: {
+    type: String,
+  },
   status: {
     type: String,
     enum: ['PENDING', 'PAID', 'FAILED'],
