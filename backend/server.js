@@ -172,9 +172,13 @@ app.post('/api/orders', authenticate, async (req, res) => {
     profile.purchaseDate = new Date();
     await acc.save();
 
+    const prefix = plan === 'Gói cao cấp' ? 'GCC' : 'GTK';
+    const count = await Order.countDocuments({ plan });
+
     const order = await Order.create({
       user: req.user.id,
       plan,
+      code: `${prefix}${count + 1}`,
       duration,
       amount,
       status: 'PAID',

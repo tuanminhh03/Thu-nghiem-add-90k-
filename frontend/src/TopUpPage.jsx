@@ -18,7 +18,7 @@ export default function TopUpPage() {
   const accountNo   = '5358111112003';
   const template    = 'compact';
   const accountName = encodeURIComponent('YOUR_ACCOUNT_NAME');
-  const qrUrl = `https://img.vietqr.io/image/${qrBankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${userPhone}&accountName=${accountName}`;
+  const qrUrl = `https://img.vietqr.io/image/${qrBankId}-${accountNo}-${template}.png?&addInfo=${userPhone}&accountName=${accountName}`;
 
   // Countdown 5 phút
   const [secondsLeft, setSecondsLeft] = useState(5 * 60);
