@@ -1,4 +1,3 @@
-// models/Order.js
 import mongoose from 'mongoose';
 const { Schema, model, Types } = mongoose;
 
@@ -12,7 +11,8 @@ const orderSchema = new Schema({
     type: String,
     required: true,
   },
-  code: {
+  // Mã đơn hàng
+  orderCode: {
     type: String,
   },
   duration: {

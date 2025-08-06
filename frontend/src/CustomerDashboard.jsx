@@ -5,7 +5,7 @@ import './CustomerDashboard.css';
 import { priceMapValue } from './priceMap';
 
 export default function CustomerDashboard() {
-  const [orders, setOrders]   = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const token = localStorage.getItem('token');
@@ -117,7 +117,7 @@ export default function CustomerDashboard() {
                               setExpandedOrderId(expandedOrderId === o._id ? null : o._id)
                             }
                           >
-                            {o.code || o._id}
+                            {o.orderCode || o._id}
                           </button>
                         </td>
                         <td>{o.plan}</td>
