@@ -20,15 +20,25 @@ export default function PlansOverview() {
   const navigate = useNavigate();
 
   const planDescriptions = {
-    'Gói tiết kiệm': 'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi. ',
+    'Gói tiết kiệm': 'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi.',
     'Gói cao cấp': 'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
   };
 
   // Giá dạng số để so sánh và trừ
   // Giá hiển thị
   const priceMapDisplay = {
-    'Gói tiết kiệm': { '01 tháng': '50.000₫', '03 tháng': '140.000₫', '06 tháng': '270.000₫', '12 tháng': '500.000₫' },
-    'Gói cao cấp':  { '01 tháng': '90.000₫', '03 tháng': '260.000₫', '06 tháng': '515.000₫', '12 tháng': '1.000.000₫' },
+    'Gói tiết kiệm': {
+      '01 tháng': '50.000₫',
+      '03 tháng': '140.000₫',
+      '06 tháng': '270.000₫',
+      '12 tháng': '500.000₫'
+    },
+    'Gói cao cấp': {
+      '01 tháng': '90.000₫',
+      '03 tháng': '260.000₫',
+      '06 tháng': '515.000₫',
+      '12 tháng': '1.000.000₫'
+    },
   };
 
   const handlePlanChange = (plan) => {
@@ -65,7 +75,7 @@ export default function PlansOverview() {
     }
 
     try {
-      await axios.post(
+      const { data } = await axios.post(
         'http://localhost:5000/api/orders',
         { plan: selectedPlan, duration: selectedDuration, amount },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -73,6 +83,17 @@ export default function PlansOverview() {
       // Trừ tiền và cập nhật localStorage
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
+
+      // Hiển thị thông tin Netflix account nếu có
+      if (data.netflixAccount) {
+        const { email, password, profileId } = data.netflixAccount;
+        alert(
+          `Thanh toán thành công!\nEmail: ${email}\nMật khẩu: ${password}\nHồ sơ: ${profileId}`
+        );
+      } else {
+        alert('Thanh toán thành công!');
+      }
+
       navigate('/my-orders');
     } catch (err) {
       console.error(err);
@@ -82,23 +103,31 @@ export default function PlansOverview() {
 
   return (
     <div className="plans-overview">
-      <div className="bg-cover-bg"/>
-      <div className="bg-overlay"/>
+      <div className="bg-cover-bg" />
+      <div className="bg-overlay" />
 
       <div className="content-wrapper">
         {/* LEFT PANEL */}
         <div className="left-panel">
           <div className="netflix-card">
-            <img src="/images/netflix-icon.png" alt="Netflix" className="netflix-icon"/>
+            <img src="/images/netflix-icon.png" alt="Netflix" className="netflix-icon" />
             <button className="zoom-btn">
-              <ArrowsPointingOutIcon className="zoom-icon"/>
+              <ArrowsPointingOutIcon className="zoom-icon" />
             </button>
           </div>
           <div className="stats">
-            <div className="stat-item"><ChatBubbleLeftEllipsisIcon className="stat-icon"/> <span>178 Đánh giá</span></div>
-            <div className="stat-item"><ShoppingCartIcon className="stat-icon"/> <span>32419 Đã bán</span></div>
-            <div className="stat-item"><ShieldCheckIcon className="stat-icon"/> <span>Chính sách bảo hành</span></div>
-            <div className="stat-item"><StarIcon className="stat-icon star"/> <span>5.0</span></div>
+            <div className="stat-item">
+              <ChatBubbleLeftEllipsisIcon className="stat-icon" /> <span>178 Đánh giá</span>
+            </div>
+            <div className="stat-item">
+              <ShoppingCartIcon className="stat-icon" /> <span>32419 Đã bán</span>
+            </div>
+            <div className="stat-item">
+              <ShieldCheckIcon className="stat-icon" /> <span>Chính sách bảo hành</span>
+            </div>
+            <div className="stat-item">
+              <StarIcon className="stat-icon star" /> <span>5.0</span>
+            </div>
           </div>
         </div>
 

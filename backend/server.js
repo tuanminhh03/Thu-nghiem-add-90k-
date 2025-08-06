@@ -17,6 +17,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 const app = express();
 const updates = new EventEmitter();
+
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
@@ -38,7 +39,7 @@ function authenticate(req, res, next) {
   }
 }
 
-// Middleware xác thực admin
+/** Middleware xác thực admin */
 function authenticateAdmin(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.split(' ')[1];
@@ -114,11 +115,10 @@ app.get('/api/auth/stream', (req, res) => {
     res.write(':\n\n');
   }, 30000);
 
-  const onTopup = payload2 => send(payload2);
-  updates.on(`topup:${payload.id}`, onTopup);
+  updates.on(`topup:${payload.id}`, send);
 
   req.on('close', () => {
-    updates.off(`topup:${payload.id}`, onTopup);
+    updates.off(`topup:${payload.id}`, send);
     clearInterval(keepAlive);
   });
 });
@@ -155,24 +155,28 @@ app.get('/api/admin/orders/stream', (req, res) => {
   });
 });
 
-/** 3. Tạo đơn hàng (customer thanh toán – trừ tiền) */
+/** 3. Tạo đơn hàng (customer thanh toán – trừ tiền & cấp Netflix profile) */
 app.post('/api/orders', authenticate, async (req, res) => {
   const { plan, duration, amount } = req.body;
   if (!plan || !duration || !amount) {
     return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
   }
+
   try {
+    // Tìm account có profile trống
     const acc = await NetflixAccount.findOne({ 'profiles.status': 'empty' });
     if (!acc) {
       return res.status(400).json({ message: 'Hết tài khoản khả dụng' });
     }
 
+    // Cấp profile
     const profile = acc.profiles.find(p => p.status === 'empty');
     profile.status = 'used';
     profile.customerEmail = req.user.phone;
     profile.purchaseDate = new Date();
     await acc.save();
 
+    // Tạo Order kèm thông tin Netflix account
     const order = await Order.create({
       user: req.user.id,
       plan,
@@ -183,12 +187,11 @@ app.post('/api/orders', authenticate, async (req, res) => {
       accountPassword: acc.password,
       profileId: profile.id
     });
-    await Customer.findByIdAndUpdate(
-      req.user.id,
-      { $inc: { amount: -amount } }
-    );
 
-    // Emit version có populated user để dashboard admin xem thông tin phone
+    // Trừ tiền customer
+    await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
+
+    // Emit sự kiện cho admin dashboard
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
 
@@ -219,7 +222,7 @@ app.get('/api/orders', authenticate, async (req, res) => {
   }
 });
 
-/** Gia hạn đơn hàng */
+/** 5. Gia hạn đơn hàng */
 app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
   const { months, amount } = req.body;
   const monthsInt = parseInt(months, 10);
@@ -236,16 +239,13 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
     }
 
     const current = parseInt(order.duration, 10) || 0;
-    const total = current + monthsInt;
-
-    order.duration = `${total.toString().padStart(2, '0')} tháng`;
+    order.duration = `${(current + monthsInt).toString().padStart(2, '0')} tháng`;
     order.amount += amount;
     await order.save();
 
     customer.amount -= amount;
     await customer.save();
 
-    // Cũng emit bản full populated để dashboard admin cập nhật
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
 
@@ -256,7 +256,7 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
   }
 });
 
-// Ghi nhận lượt truy cập web
+/** 6. Ghi nhận lượt truy cập web */
 app.post('/api/visit', async (req, res) => {
   try {
     await PageView.create({ path: req.body?.path || '/' });
@@ -319,7 +319,6 @@ app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) =
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Số tiền không hợp lệ' });
   }
-
   try {
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
@@ -479,6 +478,7 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       PageView.countDocuments({ createdAt: { $gte: today } })
     ]);
 
+    // Build 30-day arrays
     const days = [];
     for (let i = 0; i < 30; i++) {
       const d = new Date(start);
@@ -493,7 +493,7 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       d.visits = visitMap[d.date] || 0;
     });
 
-    const revenueLast30Days = days.reduce((s, d) => s + d.revenue, 0);
+    const revenueLast30Days = days.reduce((sum, d) => sum + d.revenue, 0);
 
     res.json({
       customerCount,
