@@ -386,8 +386,8 @@ app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
 
 app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
   try {
-    const { email, password, note, plan } = req.body;
-    const acc = await NetflixAccount.create({ email, password, note, plan });
+    const { email, password, note } = req.body;
+    const acc = await NetflixAccount.create({ email, password, note });
     res.json(acc);
   } catch (err) {
     console.error(err);
@@ -397,10 +397,10 @@ app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
 
 app.put('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res) => {
   try {
-    const { email, password, note, plan } = req.body;
+    const { email, password, note } = req.body;
     const acc = await NetflixAccount.findByIdAndUpdate(
       req.params.id,
-      { email, password, note, plan },
+      { email, password, note },
       { new: true }
     );
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
@@ -424,7 +424,7 @@ app.delete('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res
 
 app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req, res) => {
   try {
-    const { email, expirationDate } = req.body;
+    const { phone, expirationDate } = req.body;
     const acc = await NetflixAccount.findById(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
 
@@ -432,7 +432,7 @@ app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req
     if (!profile) return res.status(400).json({ message: 'Hết hồ sơ trống' });
 
     profile.status = 'used';
-    profile.customerEmail = email;
+    profile.customerPhone = phone;
     profile.purchaseDate = new Date();
     if (expirationDate) {
       profile.expirationDate = new Date(expirationDate);
@@ -445,6 +445,31 @@ app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req
     res.status(500).json({ message: 'Lỗi server' });
   }
 });
+
+app.put(
+  '/api/admin/netflix-accounts/:accountId/profiles/:profileId',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const { name, pin } = req.body;
+      const acc = await NetflixAccount.findById(req.params.accountId);
+      if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+
+      const profile = acc.profiles.find(p => p.id === req.params.profileId);
+      if (!profile)
+        return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
+
+      if (name !== undefined) profile.name = name;
+      if (pin !== undefined) profile.pin = pin;
+
+      await acc.save();
+      res.json(profile);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  }
+);
 
 // Thống kê tổng quan cho Dashboard
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
