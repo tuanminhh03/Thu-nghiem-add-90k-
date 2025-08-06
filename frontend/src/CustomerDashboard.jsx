@@ -117,7 +117,7 @@ export default function CustomerDashboard() {
                               setExpandedOrderId(expandedOrderId === o._id ? null : o._id)
                             }
                           >
-                            {o._id}
+                            {o.code || o._id}
                           </button>
                         </td>
                         <td>{o.plan}</td>

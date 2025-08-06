@@ -12,6 +12,9 @@ const orderSchema = new Schema({
     type: String,
     required: true,
   },
+  code: {
+    type: String,
+  },
   duration: {
     type: String,
     required: true,
