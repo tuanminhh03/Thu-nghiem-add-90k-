@@ -2,23 +2,23 @@ import mongoose from 'mongoose';
 
 const profileSchema = new mongoose.Schema(
   {
-    id: { 
-      type: String, 
-      required: true 
+    id: {
+      type: String,
+      required: true
     },
-    status: { 
-      type: String, 
-      enum: ['empty', 'used'], 
-      default: 'empty' 
+    status: {
+      type: String,
+      enum: ['empty', 'used'],
+      default: 'empty'
     },
-    customerEmail: { 
-      type: String 
+    customerEmail: {
+      type: String
     },
-    purchaseDate: { 
-      type: Date 
+    purchaseDate: {
+      type: Date
     },
-    expirationDate: { 
-      type: Date 
+    expirationDate: {
+      type: Date
     }
   },
   { _id: false }
@@ -26,17 +26,17 @@ const profileSchema = new mongoose.Schema(
 
 const netflixAccountSchema = new mongoose.Schema(
   {
-    email: { 
-      type: String, 
-      required: true, 
-      unique: true 
+    email: {
+      type: String,
+      required: true,
+      unique: true
     },
-    password: { 
-      type: String, 
-      required: true 
+    password: {
+      type: String,
+      required: true
     },
-    note: { 
-      type: String 
+    note: {
+      type: String
     },
     profiles: {
       type: [profileSchema],
