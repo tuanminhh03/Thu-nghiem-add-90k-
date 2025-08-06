@@ -86,9 +86,9 @@ export default function PlansOverview() {
 
       // Hiển thị thông tin Netflix account nếu có
       if (data.netflixAccount) {
-        const { email, password, profileId } = data.netflixAccount;
+        const { email, password, profileName, pin } = data.netflixAccount;
         alert(
-          `Thanh toán thành công!\nEmail: ${email}\nMật khẩu: ${password}\nHồ sơ: ${profileId}`
+          `Thanh toán thành công!\nEmail: ${email}\nMật khẩu: ${password}\nTên hồ sơ: ${profileName}\nMã PIN: ${pin}`
         );
       } else {
         alert('Thanh toán thành công!');
