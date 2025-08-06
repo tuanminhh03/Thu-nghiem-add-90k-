@@ -65,7 +65,7 @@ export default function PlansOverview() {
     }
 
     try {
-      await axios.post(
+      const { data } = await axios.post(
         'http://localhost:5000/api/orders',
         { plan: selectedPlan, duration: selectedDuration, amount },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -73,7 +73,14 @@ export default function PlansOverview() {
       // Trừ tiền và cập nhật localStorage
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
-      alert('Thanh toán thành công!');
+      if (data.netflixAccount) {
+        const { email, password, profileId } = data.netflixAccount;
+        alert(
+          `Thanh toán thành công!\nEmail: ${email}\nMật khẩu: ${password}\nHồ sơ: ${profileId}`
+        );
+      } else {
+        alert('Thanh toán thành công!');
+      }
       navigate('/my-orders');
     } catch (err) {
       console.error(err);
