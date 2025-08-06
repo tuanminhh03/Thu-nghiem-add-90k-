@@ -10,10 +10,10 @@ export default function AdminNetflixAccounts() {
     email: '',
     password: '',
     note: '',
-    plan: 'Gói cao cấp',
   });
   const [editingId, setEditingId] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [profileEdits, setProfileEdits] = useState({});
 
   const fetchAccounts = async () => {
     try {
@@ -46,20 +46,19 @@ export default function AdminNetflixAccounts() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
-        setForm({ email: '', password: '', note: '', plan: 'Gói cao cấp' });
-        setEditingId(null);
-        fetchAccounts();
-      } catch (err) {
-        console.error(err);
-      }
-    };
+      setForm({ email: '', password: '', note: '' });
+      setEditingId(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleEdit = acc => {
     setForm({
       email: acc.email,
       password: acc.password,
       note: acc.note || '',
-      plan: acc.plan || 'Gói cao cấp',
     });
     setEditingId(acc._id);
   };
@@ -78,13 +77,13 @@ export default function AdminNetflixAccounts() {
   };
 
   const handleAssign = async id => {
-    const email = prompt('Email khách hàng');
-    if (!email) return;
+    const phone = prompt('SDT khách hàng');
+    if (!phone) return;
     const expirationDate = prompt('Ngày hết hạn (YYYY-MM-DD)') || '';
     try {
       await axios.post(
         `/api/admin/netflix-accounts/${id}/assign`,
-        { email, expirationDate },
+        { phone, expirationDate },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchAccounts();
@@ -95,7 +94,39 @@ export default function AdminNetflixAccounts() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ email: '', password: '', note: '', plan: 'Gói cao cấp' });
+    setForm({ email: '', password: '', note: '' });
+  };
+
+  const handleProfileChange = (id, field, value) => {
+    setProfileEdits(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value }
+    }));
+  };
+
+  const saveProfile = async id => {
+    if (!profileEdits[id]) return;
+    try {
+      await axios.put(
+        `/api/admin/netflix-accounts/${selected._id}/profiles/${id}`,
+        profileEdits[id],
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSelected(prev => ({
+        ...prev,
+        profiles: prev.profiles.map(p =>
+          p.id === id ? { ...p, ...profileEdits[id] } : p
+        )
+      }));
+      setProfileEdits(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      fetchAccounts();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -120,14 +151,6 @@ export default function AdminNetflixAccounts() {
             className="input"
             required
           />
-          <select
-            value={form.plan}
-            onChange={e => setForm({ ...form, plan: e.target.value })}
-            className="input"
-          >
-            <option value="Gói tiết kiệm">Gói tiết kiệm</option>
-            <option value="Gói cao cấp">Gói cao cấp</option>
-          </select>
           <input
             type="text"
             placeholder="Ghi chú"
@@ -211,9 +234,9 @@ export default function AdminNetflixAccounts() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Trạng thái</th>
-                    <th>Email khách</th>
+                    <th>Tên hồ sơ</th>
+                    <th>Mã Pin</th>
+                    <th>SDT khách</th>
                     <th>Ngày mua</th>
                     <th>Ngày hết hạn</th>
                   </tr>
@@ -221,9 +244,31 @@ export default function AdminNetflixAccounts() {
                 <tbody>
                   {selected.profiles.map(p => (
                     <tr key={p.id}>
-                      <td>{p.id}</td>
-                      <td>{p.status}</td>
-                      <td>{p.customerEmail || '-'}</td>
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            profileEdits[p.id]?.name ?? p.name ?? ''
+                          }
+                          onChange={e =>
+                            handleProfileChange(p.id, 'name', e.target.value)
+                          }
+                          onBlur={() => saveProfile(p.id)}
+                          className="input"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
+                          onChange={e =>
+                            handleProfileChange(p.id, 'pin', e.target.value)
+                          }
+                          onBlur={() => saveProfile(p.id)}
+                          className="input"
+                        />
+                      </td>
+                      <td>{p.customerPhone || '-'}</td>
                       <td>
                         {p.purchaseDate
                           ? new Date(p.purchaseDate).toLocaleDateString()
