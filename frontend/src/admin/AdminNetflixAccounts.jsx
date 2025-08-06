@@ -8,7 +8,7 @@ export default function AdminNetflixAccounts() {
   const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState({ email: '', password: '', note: '' });
   const [editingId, setEditingId] = useState(null);
-  const [selected, setSelected] = useState(null);
+
 
   const fetchAccounts = async () => {
     try {
@@ -63,13 +63,7 @@ export default function AdminNetflixAccounts() {
   };
 
   const handleAssign = async id => {
-    const email = prompt('Email khách hàng');
-    if (!email) return;
-    const expirationDate = prompt('Ngày hết hạn (YYYY-MM-DD)') || '';
-    try {
-      await axios.post(
-        `/api/admin/netflix-accounts/${id}/assign`,
-        { email, expirationDate },
+
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchAccounts();
@@ -129,43 +123,25 @@ export default function AdminNetflixAccounts() {
                 <th>Email</th>
                 <th>Mật khẩu</th>
                 <th>Hồ sơ đã dùng</th>
+
                 <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map(acc => (
-                <tr
-                  key={acc._id}
-                  onClick={() => setSelected(acc)}
-                  className="cursor-pointer"
-                >
-                  <td>{acc.email}</td>
-                  <td>{acc.password}</td>
-                  <td>{acc.profiles.filter(p => p.status === 'used').length}/5</td>
-                  <td className="text-center">
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleAssign(acc._id);
-                      }}
+
                       className="btn btn-primary mr-2"
                     >
                       Cấp hồ sơ
                     </button>
                     <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleEdit(acc);
-                      }}
+
                       className="btn btn-secondary mr-2"
                     >
                       Sửa
                     </button>
                     <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleDelete(acc._id);
-                      }}
+
                       className="btn btn-danger"
                     >
                       Xóa
@@ -176,49 +152,7 @@ export default function AdminNetflixAccounts() {
             </tbody>
           </table>
         </div>
-        {selected && (
-          <div className="modal-backdrop" onClick={() => setSelected(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <h2 className="mb-2">Hồ sơ của {selected.email}</h2>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Trạng thái</th>
-                    <th>Email khách</th>
-                    <th>Ngày mua</th>
-                    <th>Ngày hết hạn</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.profiles.map(p => (
-                    <tr key={p.id}>
-                      <td>{p.id}</td>
-                      <td>{p.status}</td>
-                      <td>{p.customerEmail || '-'}</td>
-                      <td>
-                        {p.purchaseDate
-                          ? new Date(p.purchaseDate).toLocaleDateString()
-                          : '-'}
-                      </td>
-                      <td>
-                        {p.expirationDate
-                          ? new Date(p.expirationDate).toLocaleDateString()
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button
-                onClick={() => setSelected(null)}
-                className="btn mt-4"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        )}
+
       </div>
     </AdminLayout>
   );

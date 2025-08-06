@@ -407,15 +407,7 @@ app.delete('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res
 
 app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req, res) => {
   try {
-    const { email, expirationDate } = req.body;
-    const acc = await NetflixAccount.findById(req.params.id);
-    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
-    const profile = acc.profiles.find(p => p.status === 'empty');
-    if (!profile) return res.status(400).json({ message: 'Hết hồ sơ trống' });
-    profile.status = 'used';
-    profile.customerEmail = email;
-    profile.purchaseDate = new Date();
-    profile.expirationDate = expirationDate ? new Date(expirationDate) : undefined;
+
     await acc.save();
     res.json(acc);
   } catch (err) {
