@@ -38,6 +38,11 @@ const netflixAccountSchema = new mongoose.Schema(
     note: {
       type: String
     },
+    plan: {
+      type: String,
+      enum: ['Gói tiết kiệm', 'Gói cao cấp'],
+      default: 'Gói cao cấp'
+    },
     profiles: {
       type: [profileSchema],
       default: () =>
