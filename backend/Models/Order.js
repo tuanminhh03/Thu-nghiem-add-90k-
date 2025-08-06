@@ -29,6 +29,12 @@ const orderSchema = new Schema({
   profileId: {
     type: String,
   },
+  profileName: {
+    type: String,
+  },
+  pin: {
+    type: String,
+  },
   status: {
     type: String,
     enum: ['PENDING', 'PAID', 'FAILED'],

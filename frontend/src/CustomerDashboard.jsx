@@ -136,7 +136,7 @@ export default function CustomerDashboard() {
                             <div className="order-details">
                               <p><strong>Email:</strong> {o.accountEmail || '-'}</p>
                               <p><strong>Password:</strong> {o.accountPassword || '-'}</p>
-                              <p><strong>Hồ sơ:</strong> {o.profileId || '-'}</p>
+                              <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
                               <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
                             </div>
                           </td>

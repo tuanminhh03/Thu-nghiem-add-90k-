@@ -6,12 +6,20 @@ const profileSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    name: {
+      type: String,
+      default: ''
+    },
+    pin: {
+      type: String,
+      default: ''
+    },
     status: {
       type: String,
       enum: ['empty', 'used'],
       default: 'empty'
     },
-    customerEmail: {
+    customerPhone: {
       type: String
     },
     purchaseDate: {
@@ -46,7 +54,7 @@ const netflixAccountSchema = new mongoose.Schema(
     profiles: {
       type: [profileSchema],
       default: () =>
-        Array.from({ length: 5 }, (_, i) => ({ id: `P${i + 1}` }))
+        Array.from({ length: 5 }, (_, i) => ({ id: `P${i + 1}`, name: '', pin: '' }))
     }
   },
   { timestamps: true }
