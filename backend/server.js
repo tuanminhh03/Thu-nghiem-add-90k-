@@ -172,7 +172,7 @@ app.post('/api/orders', authenticate, async (req, res) => {
     // Cấp profile
     const profile = acc.profiles.find(p => p.status === 'empty');
     profile.status = 'used';
-    profile.customerEmail = req.user.phone;
+    profile.customerPhone = req.user.phone;
     profile.purchaseDate = new Date();
     await acc.save();
 
@@ -185,7 +185,9 @@ app.post('/api/orders', authenticate, async (req, res) => {
       status: 'PAID',
       accountEmail: acc.email,
       accountPassword: acc.password,
-      profileId: profile.id
+      profileId: profile.id,
+      profileName: profile.name,
+      pin: profile.pin
     });
 
     // Trừ tiền customer
@@ -200,7 +202,9 @@ app.post('/api/orders', authenticate, async (req, res) => {
       netflixAccount: {
         email: acc.email,
         password: acc.password,
-        profileId: profile.id
+        profileId: profile.id,
+        profileName: profile.name,
+        pin: profile.pin
       }
     });
   } catch (err) {
