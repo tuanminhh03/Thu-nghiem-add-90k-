@@ -6,7 +6,12 @@ import './Admin.css';
 export default function AdminNetflixAccounts() {
   const token = localStorage.getItem('adminToken');
   const [accounts, setAccounts] = useState([]);
-  const [form, setForm] = useState({ email: '', password: '', note: '' });
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    note: '',
+    plan: 'Gói cao cấp',
+  });
   const [editingId, setEditingId] = useState(null);
   const [selected, setSelected] = useState(null);
 
@@ -41,16 +46,21 @@ export default function AdminNetflixAccounts() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
-      setForm({ email: '', password: '', note: '' });
-      setEditingId(null);
-      fetchAccounts();
-    } catch (err) {
-      console.error(err);
-    }
-  };
+        setForm({ email: '', password: '', note: '', plan: 'Gói cao cấp' });
+        setEditingId(null);
+        fetchAccounts();
+      } catch (err) {
+        console.error(err);
+      }
+    };
 
   const handleEdit = acc => {
-    setForm({ email: acc.email, password: acc.password, note: acc.note || '' });
+    setForm({
+      email: acc.email,
+      password: acc.password,
+      note: acc.note || '',
+      plan: acc.plan || 'Gói cao cấp',
+    });
     setEditingId(acc._id);
   };
 
@@ -85,7 +95,7 @@ export default function AdminNetflixAccounts() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ email: '', password: '', note: '' });
+    setForm({ email: '', password: '', note: '', plan: 'Gói cao cấp' });
   };
 
   return (
@@ -110,6 +120,14 @@ export default function AdminNetflixAccounts() {
             className="input"
             required
           />
+          <select
+            value={form.plan}
+            onChange={e => setForm({ ...form, plan: e.target.value })}
+            className="input"
+          >
+            <option value="Gói tiết kiệm">Gói tiết kiệm</option>
+            <option value="Gói cao cấp">Gói cao cấp</option>
+          </select>
           <input
             type="text"
             placeholder="Ghi chú"
@@ -133,6 +151,7 @@ export default function AdminNetflixAccounts() {
               <tr>
                 <th>Email</th>
                 <th>Mật khẩu</th>
+                <th>Gói</th>
                 <th>Hồ sơ đã dùng</th>
                 <th>Hành động</th>
               </tr>
@@ -146,6 +165,7 @@ export default function AdminNetflixAccounts() {
                 >
                   <td>{acc.email}</td>
                   <td>{acc.password}</td>
+                  <td>{acc.plan}</td>
                   <td>
                     {acc.profiles.filter(p => p.status === 'used').length}/5
                   </td>

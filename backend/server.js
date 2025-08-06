@@ -163,10 +163,10 @@ app.post('/api/orders', authenticate, async (req, res) => {
   }
 
   try {
-    // Tìm account có profile trống
-    const acc = await NetflixAccount.findOne({ 'profiles.status': 'empty' });
+    // Tìm account có profile trống phù hợp với gói
+    const acc = await NetflixAccount.findOne({ plan, 'profiles.status': 'empty' });
     if (!acc) {
-      return res.status(400).json({ message: 'Hết tài khoản khả dụng' });
+      return res.status(400).json({ message: 'Hết tài khoản khả dụng cho gói đã chọn' });
     }
 
     // Cấp profile
@@ -386,8 +386,8 @@ app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
 
 app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
   try {
-    const { email, password, note } = req.body;
-    const acc = await NetflixAccount.create({ email, password, note });
+    const { email, password, note, plan } = req.body;
+    const acc = await NetflixAccount.create({ email, password, note, plan });
     res.json(acc);
   } catch (err) {
     console.error(err);
@@ -397,10 +397,10 @@ app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
 
 app.put('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res) => {
   try {
-    const { email, password, note } = req.body;
+    const { email, password, note, plan } = req.body;
     const acc = await NetflixAccount.findByIdAndUpdate(
       req.params.id,
-      { email, password, note },
+      { email, password, note, plan },
       { new: true }
     );
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });

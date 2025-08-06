@@ -7,6 +7,7 @@ import { priceMapValue } from './priceMap';
 export default function CustomerDashboard() {
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -95,9 +96,6 @@ export default function CustomerDashboard() {
                   <th>Ngày mua</th>
                   <th>Ngày hết hạn</th>
                   <th>Số ngày còn lại</th>
-                  <th>Email</th>
-                  <th>Mật khẩu</th>
-                  <th>Hồ sơ</th>
                   <th>Chức năng</th>
                 </tr>
               </thead>
@@ -109,22 +107,42 @@ export default function CustomerDashboard() {
                   expiry.setMonth(purchase.getMonth() + months);
                   const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
                   return (
-                    <tr key={o._id}>
-                      <td>{idx + 1}</td>
-                      <td>{o._id}</td>
-                      <td>{o.plan}</td>
-                      <td>{purchase.toLocaleDateString('vi-VN')}</td>
-                      <td>{expiry.toLocaleDateString('vi-VN')}</td>
-                      <td>{daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}</td>
-                      <td>{o.accountEmail || '-'}</td>
-                      <td>{o.accountPassword || '-'}</td>
-                      <td>{o.profileId || '-'}</td>
-                      <td className="text-center">
-                        <button onClick={() => handleExtendClick(o)}>
-                          Gia hạn
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={o._id}>
+                      <tr>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <button
+                            className="order-id-button"
+                            onClick={() =>
+                              setExpandedOrderId(expandedOrderId === o._id ? null : o._id)
+                            }
+                          >
+                            {o._id}
+                          </button>
+                        </td>
+                        <td>{o.plan}</td>
+                        <td>{purchase.toLocaleDateString('vi-VN')}</td>
+                        <td>{expiry.toLocaleDateString('vi-VN')}</td>
+                        <td>{daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}</td>
+                        <td className="text-center">
+                          <button onClick={() => handleExtendClick(o)}>
+                            Gia hạn
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedOrderId === o._id && (
+                        <tr className="order-details-row">
+                          <td colSpan={7}>
+                            <div className="order-details">
+                              <p><strong>Email:</strong> {o.accountEmail || '-'}</p>
+                              <p><strong>Password:</strong> {o.accountPassword || '-'}</p>
+                              <p><strong>Hồ sơ:</strong> {o.profileId || '-'}</p>
+                              <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

@@ -84,6 +84,29 @@ td {
   color: #374151;
 }
 
+.order-id-button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.order-details-row {
+  background-color: #f9fafb;
+}
+
+.order-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.order-details p {
+  margin: 0.25rem 0;
+}
+
 .no-orders {
   text-align: center;
   color: #6b7280;
