@@ -110,7 +110,6 @@ app.get('/api/auth/stream', (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  // Gửi ping định kỳ để giữ kết nối SSE tránh bị timeout
   const keepAlive = setInterval(() => {
     res.write(':\n\n');
   }, 30000);
@@ -139,7 +138,6 @@ app.get('/api/admin/orders/stream', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  // Ping keep-alive cho kết nối SSE
   const keepAliveAdmin = setInterval(() => {
     res.write(':\n\n');
   }, 30000);
@@ -163,20 +161,17 @@ app.post('/api/orders', authenticate, async (req, res) => {
   }
 
   try {
-    // Tìm account có profile trống phù hợp với gói
-    const acc = await NetflixAccount.findOne({ plan, 'profiles.status': 'empty' });
+    const acc = await NetflixAccount.findOne({ 'profiles.status': 'empty' });
     if (!acc) {
-      return res.status(400).json({ message: 'Hết tài khoản khả dụng cho gói đã chọn' });
+      return res.status(400).json({ message: 'Hết tài khoản khả dụng' });
     }
 
-    // Cấp profile
     const profile = acc.profiles.find(p => p.status === 'empty');
     profile.status = 'used';
-    profile.customerPhone = req.user.phone;
+    profile.customerEmail = req.user.phone;
     profile.purchaseDate = new Date();
     await acc.save();
 
-    // Tạo Order kèm thông tin Netflix account
     const order = await Order.create({
       user: req.user.id,
       plan,
@@ -185,15 +180,11 @@ app.post('/api/orders', authenticate, async (req, res) => {
       status: 'PAID',
       accountEmail: acc.email,
       accountPassword: acc.password,
-      profileId: profile.id,
-      profileName: profile.name,
-      pin: profile.pin
+      profileId: profile.id
     });
 
-    // Trừ tiền customer
     await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
 
-    // Emit sự kiện cho admin dashboard
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
 
@@ -202,9 +193,7 @@ app.post('/api/orders', authenticate, async (req, res) => {
       netflixAccount: {
         email: acc.email,
         password: acc.password,
-        profileId: profile.id,
-        profileName: profile.name,
-        pin: profile.pin
+        profileId: profile.id
       }
     });
   } catch (err) {
@@ -318,8 +307,7 @@ app.get('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
 
 // Nạp tiền cho customer
 app.post('/api/admin/customers/:id/topup', authenticateAdmin, async (req, res) => {
-  let { amount } = req.body;
-  amount = parseInt(amount, 10);
+  let { amount } = req.body; amount = parseInt(amount, 10);
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Số tiền không hợp lệ' });
   }
@@ -402,12 +390,20 @@ app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
 app.put('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res) => {
   try {
     const { email, password, note } = req.body;
-    const acc = await NetflixAccount.findByIdAndUpdate(
-      req.params.id,
-      { email, password, note },
-      { new: true }
-    );
+    const acc = await NetflixAccount.findById(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+
+    const oldEmail = acc.email;
+    if (email !== undefined) acc.email = email;
+    if (password !== undefined) acc.password = password;
+    if (note !== undefined) acc.note = note;
+    await acc.save();
+
+    await Order.updateMany(
+      { accountEmail: oldEmail },
+      { accountEmail: acc.email, accountPassword: acc.password }
+    );
+
     res.json(acc);
   } catch (err) {
     console.error(err);
@@ -426,30 +422,7 @@ app.delete('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res
   }
 });
 
-app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req, res) => {
-  try {
-    const { phone, expirationDate } = req.body;
-    const acc = await NetflixAccount.findById(req.params.id);
-    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
-
-    const profile = acc.profiles.find(p => p.status === 'empty');
-    if (!profile) return res.status(400).json({ message: 'Hết hồ sơ trống' });
-
-    profile.status = 'used';
-    profile.customerPhone = phone;
-    profile.purchaseDate = new Date();
-    if (expirationDate) {
-      profile.expirationDate = new Date(expirationDate);
-    }
-
-    await acc.save();
-    res.json(acc);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-});
-
+// Cập nhật profile metadata
 app.put(
   '/api/admin/netflix-accounts/:accountId/profiles/:profileId',
   authenticateAdmin,
@@ -460,13 +433,17 @@ app.put(
       if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
 
       const profile = acc.profiles.find(p => p.id === req.params.profileId);
-      if (!profile)
-        return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
+      if (!profile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
 
       if (name !== undefined) profile.name = name;
       if (pin !== undefined) profile.pin = pin;
-
       await acc.save();
+
+      await Order.updateMany(
+        { accountEmail: acc.email, profileId: profile.id },
+        { profileName: profile.name, pin: profile.pin }
+      );
+
       res.json(profile);
     } catch (err) {
       console.error(err);
@@ -507,7 +484,6 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       PageView.countDocuments({ createdAt: { $gte: today } })
     ]);
 
-    // Build 30-day arrays
     const days = [];
     for (let i = 0; i < 30; i++) {
       const d = new Date(start);
