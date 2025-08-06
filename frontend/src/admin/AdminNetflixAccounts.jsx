@@ -29,13 +29,17 @@ export default function AdminNetflixAccounts() {
     e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(`/api/admin/netflix-accounts/${editingId}`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(
+          `/api/admin/netflix-accounts/${editingId}`,
+          form,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       } else {
-        await axios.post('/api/admin/netflix-accounts', form, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.post(
+          '/api/admin/netflix-accounts',
+          form,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       }
       setForm({ email: '', password: '', note: '' });
       setEditingId(null);
@@ -53,9 +57,10 @@ export default function AdminNetflixAccounts() {
   const handleDelete = async id => {
     if (!window.confirm('Xóa tài khoản này?')) return;
     try {
-      await axios.delete(`/api/admin/netflix-accounts/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(
+        `/api/admin/netflix-accounts/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       fetchAccounts();
     } catch (err) {
       console.error(err);
@@ -141,7 +146,9 @@ export default function AdminNetflixAccounts() {
                 >
                   <td>{acc.email}</td>
                   <td>{acc.password}</td>
-                  <td>{acc.profiles.filter(p => p.status === 'used').length}/5</td>
+                  <td>
+                    {acc.profiles.filter(p => p.status === 'used').length}/5
+                  </td>
                   <td className="text-center">
                     <button
                       onClick={e => {
@@ -176,6 +183,7 @@ export default function AdminNetflixAccounts() {
             </tbody>
           </table>
         </div>
+
         {selected && (
           <div className="modal-backdrop" onClick={() => setSelected(null)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
@@ -210,10 +218,7 @@ export default function AdminNetflixAccounts() {
                   ))}
                 </tbody>
               </table>
-              <button
-                onClick={() => setSelected(null)}
-                className="btn mt-4"
-              >
+              <button onClick={() => setSelected(null)} className="btn mt-4">
                 Đóng
               </button>
             </div>
