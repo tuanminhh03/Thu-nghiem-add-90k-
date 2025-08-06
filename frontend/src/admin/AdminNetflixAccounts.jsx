@@ -9,6 +9,7 @@ export default function AdminNetflixAccounts() {
   const [form, setForm] = useState({ email: '', password: '', note: '' });
   const [editingId, setEditingId] = useState(null);
 
+
   const fetchAccounts = async () => {
     try {
       const { data } = await axios.get('/api/admin/netflix-accounts', {
@@ -62,13 +63,7 @@ export default function AdminNetflixAccounts() {
   };
 
   const handleAssign = async id => {
-    const name = prompt('Tên khách hàng');
-    if (!name) return;
-    const email = prompt('Email khách hàng') || '';
-    try {
-      await axios.post(
-        `/api/admin/netflix-accounts/${id}/assign`,
-        { name, email },
+
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchAccounts();
@@ -128,38 +123,25 @@ export default function AdminNetflixAccounts() {
                 <th>Email</th>
                 <th>Mật khẩu</th>
                 <th>Hồ sơ đã dùng</th>
-                <th>Danh sách hồ sơ</th>
+
                 <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map(acc => (
-                <tr key={acc._id}>
-                  <td>{acc.email}</td>
-                  <td>{acc.password}</td>
-                  <td>{acc.profiles.filter(p => p.status === 'used').length}/5</td>
-                  <td>
-                    {acc.profiles.map(p => (
-                      <div key={p.profileId}>
-                        {p.profileId}: {p.status === 'used' ? `${p.customerName} (${p.contactEmail})` : 'trống'}
-                      </div>
-                    ))}
-                  </td>
-                  <td className="text-center">
-                    <button
-                      onClick={() => handleAssign(acc._id)}
+
                       className="btn btn-primary mr-2"
                     >
                       Cấp hồ sơ
                     </button>
                     <button
-                      onClick={() => handleEdit(acc)}
+
                       className="btn btn-secondary mr-2"
                     >
                       Sửa
                     </button>
                     <button
-                      onClick={() => handleDelete(acc._id)}
+
                       className="btn btn-danger"
                     >
                       Xóa
@@ -170,6 +152,7 @@ export default function AdminNetflixAccounts() {
             </tbody>
           </table>
         </div>
+
       </div>
     </AdminLayout>
   );
