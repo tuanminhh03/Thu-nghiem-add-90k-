@@ -356,11 +356,68 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Placeholder quản lý tài khoản Netflix
+// Quản lý tài khoản Netflix + hồ sơ
 app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
   try {
-    const accs = await NetflixAccount.find();
-    res.json(accs);
+    const accounts = await NetflixAccount.find();
+    res.json(accounts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.post('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
+  try {
+    const { email, password, note } = req.body;
+    const acc = await NetflixAccount.create({ email, password, note });
+    res.json(acc);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.put('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { email, password, note } = req.body;
+    const acc = await NetflixAccount.findByIdAndUpdate(
+      req.params.id,
+      { email, password, note },
+      { new: true }
+    );
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    res.json(acc);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.delete('/api/admin/netflix-accounts/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const acc = await NetflixAccount.findByIdAndDelete(req.params.id);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    res.json({ message: 'Đã xóa' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+app.post('/api/admin/netflix-accounts/:id/assign', authenticateAdmin, async (req, res) => {
+  try {
+    const { email, expirationDate } = req.body;
+    const acc = await NetflixAccount.findById(req.params.id);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    const profile = acc.profiles.find(p => p.status === 'empty');
+    if (!profile) return res.status(400).json({ message: 'Hết hồ sơ trống' });
+    profile.status = 'used';
+    profile.customerEmail = email;
+    profile.purchaseDate = new Date();
+    profile.expirationDate = expirationDate ? new Date(expirationDate) : undefined;
+    await acc.save();
+    res.json(acc);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
