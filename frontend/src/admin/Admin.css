@@ -485,3 +485,9 @@
   max-width: 600px;
   width: 90%;
 }
+.table tbody tr.expiring-soon {
+  background: #fff3cd;
+}
+.table tbody tr.expiring-soon:hover {
+  background: #ffecb5;
+}
