@@ -185,7 +185,7 @@ app.post('/api/orders', authenticate, async (req, res) => {
     const order = await Order.create({
       user: req.user.id,
       plan,
-      code: `${prefix}${count + 1}`,
+      orderCode: `${prefix}${count + 1}`,
       duration,
       amount,
       status: 'PAID',
