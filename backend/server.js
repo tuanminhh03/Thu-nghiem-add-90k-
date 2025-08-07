@@ -558,15 +558,11 @@ app.post(
       }
 
       toProfile.status = 'used';
-      toProfile.name = fromProfile.name;
-      toProfile.pin = fromProfile.pin;
       toProfile.customerPhone = fromProfile.customerPhone;
       toProfile.purchaseDate = fromProfile.purchaseDate;
       toProfile.expirationDate = fromProfile.expirationDate;
 
       fromProfile.status = 'empty';
-      fromProfile.name = '';
-      fromProfile.pin = '';
       fromProfile.customerPhone = undefined;
       fromProfile.purchaseDate = undefined;
       fromProfile.expirationDate = undefined;
