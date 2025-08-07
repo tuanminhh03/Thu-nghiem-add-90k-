@@ -394,6 +394,18 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Xóa đơn hàng
+app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    res.json({ message: 'Đã xóa' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 // Quản lý tài khoản Netflix + hồ sơ
 app.get('/api/admin/netflix-accounts', authenticateAdmin, async (req, res) => {
   try {
