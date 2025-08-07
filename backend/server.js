@@ -501,6 +501,9 @@ app.delete(
     try {
       const acc = await NetflixAccount.findById(req.params.accountId);
       if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+      if (acc.plan !== 'Gói cao cấp') {
+        return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+      }
 
       const profile = acc.profiles.find(p => p.id === req.params.profileId);
       if (!profile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
@@ -535,6 +538,9 @@ app.post(
       const { toAccountId } = req.body;
       const fromAcc = await NetflixAccount.findById(req.params.accountId);
       if (!fromAcc) return res.status(404).json({ message: 'Không tìm thấy tài khoản nguồn' });
+      if (fromAcc.plan !== 'Gói cao cấp') {
+        return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+      }
       const fromProfile = fromAcc.profiles.find(p => p.id === req.params.profileId);
       if (!fromProfile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ nguồn' });
       if (fromProfile.status !== 'used') {
@@ -543,6 +549,9 @@ app.post(
 
       const toAcc = await NetflixAccount.findById(toAccountId);
       if (!toAcc) return res.status(404).json({ message: 'Không tìm thấy tài khoản đích' });
+      if (toAcc.plan !== 'Gói cao cấp') {
+        return res.status(400).json({ message: 'Tài khoản đích không phải gói cao cấp' });
+      }
       const toProfile = toAcc.profiles.find(p => p.status === 'empty');
       if (!toProfile) {
         return res.status(400).json({ message: 'Tài khoản đích không còn hồ sơ trống' });
