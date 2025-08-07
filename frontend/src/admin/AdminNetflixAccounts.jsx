@@ -132,7 +132,7 @@ export default function AdminNetflixAccounts() {
   return (
     <AdminLayout>
       <div className="card">
-        <h1 className="text-xl font-semibold mb-4">Quản lý tài khoản Netflix</h1>
+        <h1 className="text-xl font-semibold mb-4">Tài Khoản 90k / Gói Cao Cấp</h1>
 
         <form onSubmit={handleSubmit} className="form-search mb-4">
           <input
