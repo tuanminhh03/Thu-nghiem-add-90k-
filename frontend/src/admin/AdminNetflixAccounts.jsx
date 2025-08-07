@@ -20,8 +20,9 @@ export default function AdminNetflixAccounts() {
       const { data } = await axios.get('/api/admin/netflix-accounts', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAccounts(data);
-      return data;
+      const premium = data.filter(acc => acc.plan === 'Gói cao cấp');
+      setAccounts(premium);
+      return premium;
     } catch (err) {
       console.error(err);
     }
