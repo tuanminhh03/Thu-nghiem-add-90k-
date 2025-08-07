@@ -1,3 +1,4 @@
+// src/AdminOrders.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
@@ -34,7 +35,6 @@ export default function AdminOrders() {
   };
 
   const getExpiry = o => {
-    if (o.expiresAt) return new Date(o.expiresAt);
     const purchase = new Date(o.purchaseDate);
     const months = parseInt(o.duration, 10) || 0;
     const exp = new Date(purchase);
@@ -114,7 +114,7 @@ export default function AdminOrders() {
                     <td>{o.plan}</td>
                     <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
                     <td>{expires.toLocaleDateString('vi-VN')}</td>
-                    <td>{left}</td>
+                    <td>{left > 0 ? left : 'Đã hết hạn'}</td>
                     <td>
                       <button
                         type="button"
