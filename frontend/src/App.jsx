@@ -18,6 +18,7 @@ import AdminRoute            from './admin/AdminRoute';
 import AdminCustomerOrders   from './admin/AdminCustomerOrders';
 import AdminStats            from './admin/AdminStats';
 import AdminExpiringOrders   from './admin/AdminExpiringOrders';
+import AdminOrders           from './admin/AdminOrders';
 import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
@@ -103,6 +104,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminNetflixAccounts />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <AdminRoute>
+              <AdminOrders />
             </AdminRoute>
           }
         />
