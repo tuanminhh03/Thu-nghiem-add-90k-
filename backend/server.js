@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { EventEmitter } from 'events';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import cron from 'node-cron';
 
 import Customer from './Models/Customer.js';
 import Order from './Models/Order.js';
@@ -167,9 +168,15 @@ app.post('/api/orders', authenticate, async (req, res) => {
     }
 
     const profile = acc.profiles.find(p => p.status === 'empty');
+    const purchaseDate = new Date();
+    const monthsInt = parseInt(duration, 10) || 0;
+    const expiresAt = new Date(purchaseDate);
+    expiresAt.setMonth(expiresAt.getMonth() + monthsInt);
+
     profile.status = 'used';
     profile.customerPhone = req.user.phone;
-    profile.purchaseDate = new Date();
+    profile.purchaseDate = purchaseDate;
+    profile.expirationDate = expiresAt;
     await acc.save();
 
     const prefix = plan === 'Gói cao cấp' ? 'GCC' : 'GTK';
@@ -186,7 +193,9 @@ app.post('/api/orders', authenticate, async (req, res) => {
       accountPassword: acc.password,
       profileId: profile.id,
       profileName: profile.name,
-      pin: profile.pin
+      pin: profile.pin,
+      purchaseDate,
+      expiresAt
     });
 
     await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
@@ -242,10 +251,22 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
     const current = parseInt(order.duration, 10) || 0;
     order.duration = `${(current + monthsInt).toString().padStart(2, '0')} tháng`;
     order.amount += amount;
+
+    const purchaseDate = order.purchaseDate || new Date();
+    const expiresAt = new Date(purchaseDate);
+    expiresAt.setMonth(expiresAt.getMonth() + (current + monthsInt));
+    order.expiresAt = expiresAt;
     await order.save();
 
     customer.amount -= amount;
     await customer.save();
+
+    if (order.profileId) {
+      await NetflixAccount.updateOne(
+        { 'profiles.id': order.profileId },
+        { $set: { 'profiles.$.expirationDate': expiresAt } }
+      );
+    }
 
     const full = await Order.findById(order._id).populate('user', 'phone');
     updates.emit('new-order', full);
@@ -518,6 +539,32 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+cron.schedule('0 0 * * *', async () => {
+  const now = new Date();
+  try {
+    const expiredOrders = await Order.find({ expiresAt: { $lt: now }, status: { $ne: 'EXPIRED' } });
+    for (const order of expiredOrders) {
+      order.status = 'EXPIRED';
+      await order.save();
+      if (order.profileId) {
+        await NetflixAccount.updateOne(
+          { 'profiles.id': order.profileId },
+          {
+            $set: { 'profiles.$.status': 'empty' },
+            $unset: {
+              'profiles.$.customerPhone': '',
+              'profiles.$.purchaseDate': '',
+              'profiles.$.expirationDate': ''
+            }
+          }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Cron job error:', err);
   }
 });
 
