@@ -1,3 +1,4 @@
+// src/AdminOrders.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
@@ -34,12 +35,28 @@ export default function AdminOrders() {
   };
 
   const getExpiry = o => {
-    if (o.expiresAt) return new Date(o.expiresAt);
     const purchase = new Date(o.purchaseDate);
     const months = parseInt(o.duration, 10) || 0;
     const exp = new Date(purchase);
     exp.setMonth(exp.getMonth() + months);
     return exp;
+  };
+
+  const daysLeft = o => {
+    const diff = Math.ceil((getExpiry(o) - Date.now()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
+  const handleDelete = async id => {
+    if (!window.confirm('Xóa đơn hàng này?')) return;
+    try {
+      await axios.delete(`/api/admin/orders/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrders(orders.filter(o => o._id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const sorted = [...orders].sort((a, b) => {
@@ -81,11 +98,14 @@ export default function AdminOrders() {
                 <th style={{ cursor: 'pointer' }} onClick={() => handleSort('expiresAt')}>
                   Ngày hết hạn {sortField === 'expiresAt' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
                 </th>
+                <th>Còn lại (ngày)</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((o, idx) => {
                 const expires = getExpiry(o);
+                const left = daysLeft(o);
                 return (
                   <tr key={o._id}>
                     <td>{idx + 1}</td>
@@ -94,12 +114,22 @@ export default function AdminOrders() {
                     <td>{o.plan}</td>
                     <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
                     <td>{expires.toLocaleDateString('vi-VN')}</td>
+                    <td>{left > 0 ? left : 'Đã hết hạn'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => handleDelete(o._id)}
+                      >
+                        Xóa
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="text-center">
+                  <td colSpan="8" className="text-center">
                     Không có đơn hàng
                   </td>
                 </tr>
