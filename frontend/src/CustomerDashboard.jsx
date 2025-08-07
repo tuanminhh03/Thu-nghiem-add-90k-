@@ -101,11 +101,17 @@ export default function CustomerDashboard() {
               </thead>
               <tbody>
                 {orders.map((o, idx) => {
-                  const months = parseInt(o.duration, 10) || 0;
                   const purchase = new Date(o.purchaseDate);
-                  const expiry = new Date(purchase);
-                  expiry.setMonth(purchase.getMonth() + months);
+                  let expiry;
+                  if (o.expiresAt) {
+                    expiry = new Date(o.expiresAt);
+                  } else {
+                    const months = parseInt(o.duration, 10) || 0;
+                    expiry = new Date(purchase);
+                    expiry.setMonth(purchase.getMonth() + months);
+                  }
                   const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+                  const isExpired = o.status === 'EXPIRED';
                   return (
                     <React.Fragment key={o._id}>
                       <tr>
@@ -123,7 +129,7 @@ export default function CustomerDashboard() {
                         <td>{o.plan}</td>
                         <td>{purchase.toLocaleDateString('vi-VN')}</td>
                         <td>{expiry.toLocaleDateString('vi-VN')}</td>
-                        <td>{daysLeft > 0 ? `${daysLeft} ngày` : 'Đã hết hạn'}</td>
+                        <td>{isExpired ? 'Đã hết hạn' : `${daysLeft} ngày`}</td>
                         <td className="text-center">
                           <button onClick={() => handleExtendClick(o)}>
                             Gia hạn
@@ -134,8 +140,8 @@ export default function CustomerDashboard() {
                         <tr className="order-details-row">
                           <td colSpan={7}>
                             <div className="order-details">
-                              <p><strong>Email:</strong> {o.accountEmail || '-'}</p>
-                              <p><strong>Password:</strong> {o.accountPassword || '-'}</p>
+                              <p><strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}</p>
+                              <p><strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}</p>
                               <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
                               <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
                             </div>

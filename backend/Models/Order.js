@@ -40,12 +40,15 @@ const orderSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['PENDING', 'PAID', 'FAILED'],
+    enum: ['PENDING', 'PAID', 'FAILED', 'EXPIRED'],
     default: 'PAID',
   },
   purchaseDate: {
     type: Date,
     default: Date.now,
+  },
+  expiresAt: {
+    type: Date,
   },
 }, { timestamps: true });
 
