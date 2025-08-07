@@ -493,6 +493,97 @@ app.put(
   }
 );
 
+// Xóa hồ sơ khỏi tài khoản
+app.delete(
+  '/api/admin/netflix-accounts/:accountId/profiles/:profileId',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const acc = await NetflixAccount.findById(req.params.accountId);
+      if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+
+      const profile = acc.profiles.find(p => p.id === req.params.profileId);
+      if (!profile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
+
+      profile.status = 'empty';
+      profile.name = '';
+      profile.pin = '';
+      profile.customerPhone = undefined;
+      profile.purchaseDate = undefined;
+      profile.expirationDate = undefined;
+      await acc.save();
+
+      await Order.updateMany(
+        { accountEmail: acc.email, profileId: profile.id },
+        { status: 'EXPIRED' }
+      );
+
+      res.json({ message: 'Đã xóa hồ sơ' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  }
+);
+
+// Chuyển hồ sơ sang tài khoản khác
+app.post(
+  '/api/admin/netflix-accounts/:accountId/profiles/:profileId/transfer',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const { toAccountId } = req.body;
+      const fromAcc = await NetflixAccount.findById(req.params.accountId);
+      if (!fromAcc) return res.status(404).json({ message: 'Không tìm thấy tài khoản nguồn' });
+      const fromProfile = fromAcc.profiles.find(p => p.id === req.params.profileId);
+      if (!fromProfile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ nguồn' });
+      if (fromProfile.status !== 'used') {
+        return res.status(400).json({ message: 'Hồ sơ nguồn đang trống' });
+      }
+
+      const toAcc = await NetflixAccount.findById(toAccountId);
+      if (!toAcc) return res.status(404).json({ message: 'Không tìm thấy tài khoản đích' });
+      const toProfile = toAcc.profiles.find(p => p.status === 'empty');
+      if (!toProfile) {
+        return res.status(400).json({ message: 'Tài khoản đích không còn hồ sơ trống' });
+      }
+
+      toProfile.status = 'used';
+      toProfile.name = fromProfile.name;
+      toProfile.pin = fromProfile.pin;
+      toProfile.customerPhone = fromProfile.customerPhone;
+      toProfile.purchaseDate = fromProfile.purchaseDate;
+      toProfile.expirationDate = fromProfile.expirationDate;
+
+      fromProfile.status = 'empty';
+      fromProfile.name = '';
+      fromProfile.pin = '';
+      fromProfile.customerPhone = undefined;
+      fromProfile.purchaseDate = undefined;
+      fromProfile.expirationDate = undefined;
+
+      await fromAcc.save();
+      await toAcc.save();
+
+      await Order.updateMany(
+        { accountEmail: fromAcc.email, profileId: fromProfile.id },
+        {
+          accountEmail: toAcc.email,
+          accountPassword: toAcc.password,
+          profileId: toProfile.id,
+          profileName: toProfile.name,
+          pin: toProfile.pin
+        }
+      );
+
+      res.json({ message: 'Đã chuyển hồ sơ', toProfileId: toProfile.id });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  }
+);
+
 // Thống kê tổng quan cho Dashboard
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   try {

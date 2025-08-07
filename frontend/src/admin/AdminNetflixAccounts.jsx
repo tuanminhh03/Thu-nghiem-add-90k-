@@ -21,6 +21,7 @@ export default function AdminNetflixAccounts() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAccounts(data);
+      return data;
     } catch (err) {
       console.error(err);
     }
@@ -70,9 +71,41 @@ export default function AdminNetflixAccounts() {
         `/api/admin/netflix-accounts/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchAccounts();
+      await fetchAccounts();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleProfileDelete = async id => {
+    if (!window.confirm('Xóa hồ sơ này?')) return;
+    try {
+      await axios.delete(
+        `/api/admin/netflix-accounts/${selected._id}/profiles/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await fetchAccounts();
+      setSelected(data.find(a => a._id === selected._id) || null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleProfileTransfer = async id => {
+    const email = prompt('Email tài khoản nhận hồ sơ');
+    if (!email) return;
+    const dest = accounts.find(a => a.email === email);
+    if (!dest) return alert('Không tìm thấy tài khoản đích');
+    try {
+      await axios.post(
+        `/api/admin/netflix-accounts/${selected._id}/profiles/${id}/transfer`,
+        { toAccountId: dest._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await fetchAccounts();
+      setSelected(data.find(a => a._id === selected._id) || null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi chuyển hồ sơ');
     }
   };
 
@@ -123,7 +156,8 @@ export default function AdminNetflixAccounts() {
         delete next[id];
         return next;
       });
-      fetchAccounts();
+      const data = await fetchAccounts();
+      setSelected(data.find(a => a._id === selected._id) || null);
     } catch (err) {
       console.error(err);
     }
@@ -239,6 +273,7 @@ export default function AdminNetflixAccounts() {
                     <th>SDT khách</th>
                     <th>Ngày mua</th>
                     <th>Ngày hết hạn</th>
+                    <th>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,6 +313,20 @@ export default function AdminNetflixAccounts() {
                         {p.expirationDate
                           ? new Date(p.expirationDate).toLocaleDateString()
                           : '-'}
+                      </td>
+                      <td className="text-center">
+                        <button
+                          onClick={() => handleProfileDelete(p.id)}
+                          className="btn btn-danger mr-2"
+                        >
+                          Xóa
+                        </button>
+                        <button
+                          onClick={() => handleProfileTransfer(p.id)}
+                          className="btn btn-secondary"
+                        >
+                          Chuyển
+                        </button>
                       </td>
                     </tr>
                   ))}
