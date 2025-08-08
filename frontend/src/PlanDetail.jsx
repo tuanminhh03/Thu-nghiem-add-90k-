@@ -30,7 +30,7 @@ export default function PlanDetail() {
   const plan = plansData[planKey];
   const navigate = useNavigate();
 
-  const handlePurchase = () => {
+  const handleSavingPurchase = () => {
     if (planKey !== 'saving') {
       alert('Chức năng mua chỉ áp dụng cho gói tiết kiệm');
       return;
@@ -41,7 +41,13 @@ export default function PlanDetail() {
       navigate('/login');
       return;
     }
-    const { phone } = JSON.parse(stored);
+    const user = JSON.parse(stored);
+    if (user.amount < 50000) {
+      alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
+      navigate(`/top-up?phone=${encodeURIComponent(user.phone)}`);
+      return;
+    }
+    const { phone } = user;
     const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
     const idx = accounts.findIndex(acc => !acc.phone);
     if (idx === -1) {
@@ -72,9 +78,12 @@ export default function PlanDetail() {
       expirationDate,
     });
     localStorage.setItem('orders50k', JSON.stringify(orders));
+    user.amount -= 50000;
+    localStorage.setItem('user', JSON.stringify(user));
     alert(
       `Mã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
     );
+    navigate('/my-orders');
   };
 
   if (!plan)
@@ -112,7 +121,7 @@ export default function PlanDetail() {
           </tbody>
         </table>
         <button
-          onClick={handlePurchase}
+          onClick={handleSavingPurchase}
           className="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition"
         >
           Thanh toán

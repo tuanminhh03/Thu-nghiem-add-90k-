@@ -67,7 +67,13 @@ export default function PlansOverview() {
         navigate('/login');
         return;
       }
-      const { phone } = JSON.parse(stored);
+      const user = JSON.parse(stored);
+      if (user.amount < amount) {
+        alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
+        navigate(`/top-up?phone=${encodeURIComponent(user.phone)}&amount=0`);
+        return;
+      }
+      const { phone } = user;
 
       const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
       const idx = accounts.findIndex(acc => !acc.phone);
@@ -79,7 +85,8 @@ export default function PlansOverview() {
       const soldCount = accounts.filter(a => a.phone).length;
       const purchaseDate = new Date();
       const expirationDate = new Date(purchaseDate);
-      expirationDate.setDate(expirationDate.getDate() + 30);
+      const months = parseInt(selectedDuration, 10) || 1;
+      expirationDate.setMonth(expirationDate.getMonth() + months);
       const orderCode = `GTK${soldCount + 1}`;
 
       const account = {
@@ -103,9 +110,13 @@ export default function PlansOverview() {
       });
       localStorage.setItem('orders50k', JSON.stringify(orders));
 
+      user.amount -= amount;
+      localStorage.setItem('user', JSON.stringify(user));
+
       alert(
         `Thanh toán thành công!\nMã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
       );
+      navigate('/my-orders');
       return;
     }
 
