@@ -113,6 +113,16 @@ export default function PlansOverview() {
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
 
+      try {
+        await axios.post(
+          'http://localhost:5000/api/orders/local-savings',
+          { amount },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        console.error(err);
+      }
+
       alert(
         `Thanh toán thành công!\nMã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
       );

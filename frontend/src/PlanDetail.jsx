@@ -1,6 +1,7 @@
 // src/PlanDetail.jsx
 import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const plansData = {
   saving: {
@@ -30,7 +31,7 @@ export default function PlanDetail() {
   const plan = plansData[planKey];
   const navigate = useNavigate();
 
-  const handleSavingPurchase = () => {
+  const handleSavingPurchase = async () => {
     if (planKey !== 'saving') {
       alert('Chức năng mua chỉ áp dụng cho gói tiết kiệm');
       return;
@@ -48,6 +49,7 @@ export default function PlanDetail() {
       return;
     }
     const { phone } = user;
+    const token = localStorage.getItem('token');
     const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
     const idx = accounts.findIndex(acc => !acc.phone);
     if (idx === -1) {
@@ -80,6 +82,16 @@ export default function PlanDetail() {
     localStorage.setItem('orders50k', JSON.stringify(orders));
     user.amount -= 50000;
     localStorage.setItem('user', JSON.stringify(user));
+
+    try {
+      await axios.post(
+        'http://localhost:5000/api/orders/local-savings',
+        { amount: 50000 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error(err);
+    }
     alert(
       `Mã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
     );
