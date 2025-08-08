@@ -59,6 +59,16 @@ export default function AdminOrders() {
 
   const handleDelete = async id => {
     if (!window.confirm('Xóa đơn hàng này?')) return;
+    const isLocal = !/^[0-9a-fA-F]{24}$/.test(id);
+
+    if (isLocal) {
+      const stored = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      const updated = stored.filter(o => o.orderCode !== id);
+      localStorage.setItem('orders50k', JSON.stringify(updated));
+      setOrders(orders.filter(o => o._id !== id));
+      return;
+    }
+
     try {
       await axios.delete(`/api/admin/orders/${id}`, {
         headers: { Authorization: `Bearer ${token}` }

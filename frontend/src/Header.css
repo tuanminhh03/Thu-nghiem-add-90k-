@@ -47,7 +47,9 @@
   align-items: center;
   gap: 1.2rem;
 }
-
+.top-bar__left img{
+  height: 150px;
+}
 /* chung cho số dư */
 .user-amount {
   display: inline-flex;

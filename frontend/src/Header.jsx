@@ -118,7 +118,7 @@ export default function Header() {
       {/* Top bar */}
       <div className="top-bar container">
         <div className="top-bar__left">
-          <Link to="/" className="site-logo-text">DAILYWITHMINH</Link>
+          <a href="/"><img src="./images/logo.png" alt="" /></a>
         </div>
         <div className="top-bar__right">
           {user ? (
@@ -160,7 +160,9 @@ export default function Header() {
           <Link to="/">
             <img src="/images/netflix-icon.png" alt="Netflix" className="nav-icon" />
           </Link>
-          <span className="nav-label">Netflix</span>
+          <Link to="/">
+            <span className="nav-label">NETFLIX</span>
+          </Link>
         </div>
         <div className="nav-bar__right">
           {/* Nav items nếu có */}
