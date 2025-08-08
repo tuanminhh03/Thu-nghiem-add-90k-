@@ -13,14 +13,23 @@ export default function AdminOrders() {
   useEffect(() => {
     if (!token) return;
     (async () => {
+      const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
+        _id: o.orderCode,
+        orderCode: o.orderCode,
+        plan: 'Gói tiết kiệm',
+        purchaseDate: o.purchaseDate,
+        expiresAt: o.expirationDate,
+        user: { phone: o.phone },
+      }));
       try {
         const { data } = await axios.get('/api/admin/orders', {
           headers: { Authorization: `Bearer ${token}` },
           params: { limit: 1000 }
         });
-        setOrders(data);
+        setOrders([...data, ...localOrders]);
       } catch (err) {
         console.error(err);
+        setOrders(localOrders);
       }
     })();
   }, [token]);
@@ -35,6 +44,7 @@ export default function AdminOrders() {
   };
 
   const getExpiry = o => {
+    if (o.expiresAt) return new Date(o.expiresAt);
     const purchase = new Date(o.purchaseDate);
     const months = parseInt(o.duration, 10) || 0;
     const exp = new Date(purchase);

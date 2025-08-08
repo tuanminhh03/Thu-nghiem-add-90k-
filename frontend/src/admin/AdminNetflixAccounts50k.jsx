@@ -3,7 +3,6 @@ import AdminLayout from './AdminLayout';
 import './Admin.css';
 
 export default function AdminNetflixAccounts50k() {
-  const PLAN_DAYS = 30;
   const [accounts, setAccounts] = useState(() => {
     const saved = localStorage.getItem('accounts50k');
     if (!saved) return [];
@@ -24,6 +23,7 @@ export default function AdminNetflixAccounts50k() {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('asc');
+  const PLAN_DAYS = 30;
 
   useEffect(() => {
     localStorage.setItem('accounts50k', JSON.stringify(accounts));
@@ -120,6 +120,9 @@ export default function AdminNetflixAccounts50k() {
   );
 
   const sorted = [...filtered].sort((a, b) => {
+    const aOnline = a.phone ? 1 : 0;
+    const bOnline = b.phone ? 1 : 0;
+    if (aOnline !== bOnline) return bOnline - aOnline;
     let aVal = a[sortField];
     let bVal = b[sortField];
     if (aVal === null || aVal === undefined) aVal = 0;
