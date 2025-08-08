@@ -60,6 +60,55 @@ export default function PlansOverview() {
       return;
     }
 
+    if (selectedPlan === 'Gói tiết kiệm') {
+      const stored = localStorage.getItem('user');
+      if (!stored) {
+        alert('Vui lòng đăng nhập để thanh toán');
+        navigate('/login');
+        return;
+      }
+      const { phone } = JSON.parse(stored);
+
+      const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
+      const idx = accounts.findIndex(acc => !acc.phone);
+      if (idx === -1) {
+        alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
+        return;
+      }
+
+      const soldCount = accounts.filter(a => a.phone).length;
+      const purchaseDate = new Date();
+      const expirationDate = new Date(purchaseDate);
+      expirationDate.setDate(expirationDate.getDate() + 30);
+      const orderCode = `GTK${soldCount + 1}`;
+
+      const account = {
+        ...accounts[idx],
+        phone,
+        orderCode,
+        purchaseDate,
+        expirationDate,
+      };
+      accounts[idx] = account;
+      localStorage.setItem('accounts50k', JSON.stringify(accounts));
+
+      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      orders.push({
+        orderCode,
+        phone,
+        username: account.username,
+        password: account.password,
+        purchaseDate,
+        expirationDate,
+      });
+      localStorage.setItem('orders50k', JSON.stringify(orders));
+
+      alert(
+        `Thanh toán thành công!\nMã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
+      );
+      return;
+    }
+
     const stored = localStorage.getItem('user');
     if (!stored) {
       alert('Vui lòng đăng nhập để thanh toán');
