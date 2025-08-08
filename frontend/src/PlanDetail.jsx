@@ -37,12 +37,12 @@ export default function PlanDetail() {
     const phone = prompt('Nhập số điện thoại của bạn:');
     if (!phone) return;
     const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
-    const idx = accounts.findIndex(acc => !acc.phone);
+    const idx = accounts.findIndex(acc => !acc.orderCode);
     if (idx === -1) {
       alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
       return;
     }
-    const soldCount = accounts.filter(a => a.phone).length;
+    const soldCount = accounts.filter(a => a.orderCode).length;
     const purchaseDate = new Date();
     const expirationDate = new Date(purchaseDate);
     expirationDate.setDate(expirationDate.getDate() + 30);
