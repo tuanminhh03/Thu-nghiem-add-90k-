@@ -81,6 +81,7 @@ export default function AdminNetflixAccounts50k() {
       const expirationDate = new Date(purchaseDate);
       expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
       const orderCode = `GTK${soldCount + 1}`;
+
       const updated = [...accs];
       updated[idx] = {
         ...updated[idx],
@@ -89,6 +90,7 @@ export default function AdminNetflixAccounts50k() {
         purchaseDate,
         expirationDate,
       };
+
       const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
       orders.push({
         orderCode,
@@ -99,6 +101,7 @@ export default function AdminNetflixAccounts50k() {
         expirationDate,
       });
       localStorage.setItem('orders50k', JSON.stringify(orders));
+
       return updated;
     });
   };
