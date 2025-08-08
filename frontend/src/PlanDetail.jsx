@@ -30,7 +30,7 @@ export default function PlanDetail() {
   const plan = plansData[planKey];
   const navigate = useNavigate();
 
-  const handleSavingPurchase = () => {
+  const handlePurchase = () => {
     if (planKey !== 'saving') {
       alert('Chức năng mua chỉ áp dụng cho gói tiết kiệm');
       return;
@@ -77,19 +77,22 @@ export default function PlanDetail() {
     );
   };
 
-  if (!plan) return (
-    <div className="p-6">
-      <p>Không tìm thấy gói này.</p>
-      <Link to="/" className="text-blue-600">Quay về trang chính</Link>
-    </div>
-  );
+  if (!plan)
+    return (
+      <div className="p-6">
+        <p>Không tìm thấy gói này.</p>
+        <Link to="/" className="text-blue-600">Quay về trang chính</Link>
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <Link to="/" className="text-blue-600 mb-4 inline-block">{`← Quay về`}</Link>
       <h1 className="text-3xl font-bold mb-4">{plan.title}</h1>
       <ul className="list-disc ml-6 mb-6 text-gray-700">
-        {plan.features.map(f => <li key={f}>{f}</li>)}
+        {plan.features.map(f => (
+          <li key={f}>{f}</li>
+        ))}
       </ul>
       <div className="max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-6">
         <table className="w-full text-sm mb-6">
@@ -109,7 +112,7 @@ export default function PlanDetail() {
           </tbody>
         </table>
         <button
-          onClick={handleSavingPurchase}
+          onClick={handlePurchase}
           className="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition"
         >
           Thanh toán
