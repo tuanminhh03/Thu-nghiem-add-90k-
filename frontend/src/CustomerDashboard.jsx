@@ -8,16 +8,17 @@ export default function CustomerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [warrantyProcessingId, setWarrantyProcessingId] = useState(null);
+  const [dotCount, setDotCount] = useState(1);
   const token = localStorage.getItem('token');
 
   useEffect(() => {
     if (!token) return;
     (async () => {
       try {
-        const { data } = await axios.get(
-          'http://localhost:5000/api/orders',
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const { data } = await axios.get('http://localhost:5000/api/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setOrders(data);
       } catch (err) {
         console.error(err);
@@ -27,24 +28,40 @@ export default function CustomerDashboard() {
     })();
   }, [token]);
 
+  useEffect(() => {
+    if (!warrantyProcessingId) return;
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [warrantyProcessingId]);
+
   const handleExtend = async (order, months) => {
     const amountMap = priceMapValue[order.plan];
     const key = `${months.toString().padStart(2, '0')} tháng`;
     const amount = amountMap ? amountMap[key] : 0;
+
     if (!amount) {
       alert('Không có giá cho lựa chọn này');
       return;
     }
-    if (!window.confirm(`Gia hạn ${months} tháng với giá ${amount.toLocaleString()}đ?`)) {
+    if (
+      !window.confirm(
+        `Gia hạn ${months} tháng với giá ${amount.toLocaleString()}đ?`
+      )
+    ) {
       return;
     }
+
     try {
       const { data } = await axios.post(
         `http://localhost:5000/api/orders/${order._id}/extend`,
         { months, amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setOrders(orders.map(o => (o._id === order._id ? data : o)));
+
+      setOrders((prev) => prev.map((o) => (o._id === order._id ? data : o)));
+
       const stored = localStorage.getItem('user');
       if (stored) {
         const user = JSON.parse(stored);
@@ -58,18 +75,27 @@ export default function CustomerDashboard() {
   };
 
   const handleExtendClick = (order) => {
-    const months = parseInt(prompt('Gia hạn thêm mấy tháng? (1,3,6,12)'), 10);
-    if (![1,3,6,12].includes(months)) return;
+    const input = prompt('Gia hạn thêm mấy tháng? (1,3,6,12)');
+    if (input === null) return; // user bấm Cancel
+    const months = parseInt(input, 10);
+    if (![1, 3, 6, 12].includes(months)) {
+      alert('Vui lòng nhập 1, 3, 6, hoặc 12');
+      return;
+    }
     handleExtend(order, months);
+  };
+
+  const handleWarrantyClick = (orderId) => {
+    setWarrantyProcessingId(orderId);
+    setDotCount(1);
+    // TODO: call API bảo hành nếu có, xong thì setWarrantyProcessingId(null)
   };
 
   if (!token) {
     return (
       <div className="customer-dashboard">
         <div className="card">
-          <p className="no-orders">
-            Vui lòng đăng nhập để xem đơn hàng.
-          </p>
+          <p className="no-orders">Vui lòng đăng nhập để xem đơn hàng.</p>
         </div>
       </div>
     );
@@ -81,6 +107,7 @@ export default function CustomerDashboard() {
       <div className="orders-overlay" />
       <div className="card">
         <h2>Lịch sử mua hàng</h2>
+
         {loading ? (
           <p>Đang tải...</p>
         ) : orders.length === 0 ? (
@@ -110,17 +137,25 @@ export default function CustomerDashboard() {
                     expiry = new Date(purchase);
                     expiry.setMonth(purchase.getMonth() + months);
                   }
-                  const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
-                  const isExpired = o.status === 'EXPIRED';
+
+                  const now = new Date();
+                  const daysLeft = Math.ceil(
+                    (expiry - now) / (1000 * 60 * 60 * 24)
+                  );
+                  const isExpired = o.status === 'EXPIRED' || daysLeft <= 0;
+
                   return (
                     <React.Fragment key={o._id}>
                       <tr>
                         <td>{idx + 1}</td>
                         <td>
                           <button
+                            type="button"
                             className="order-id-button"
                             onClick={() =>
-                              setExpandedOrderId(expandedOrderId === o._id ? null : o._id)
+                              setExpandedOrderId(
+                                expandedOrderId === o._id ? null : o._id
+                              )
                             }
                           >
                             {o.orderCode || o._id}
@@ -130,32 +165,66 @@ export default function CustomerDashboard() {
                         <td>{purchase.toLocaleDateString('vi-VN')}</td>
                         <td>{expiry.toLocaleDateString('vi-VN')}</td>
                         <td>{isExpired ? 'Đã hết hạn' : `${daysLeft} ngày`}</td>
-                        <td className="text-center">
-                          <button onClick={() => handleExtendClick(o)}>
+                        <td>
+                          <button
+                            type="button"
+                            className="extend-button"
+                            onClick={() => handleExtendClick(o)}
+                          >
                             Gia hạn
                           </button>
                         </td>
                       </tr>
+
                       {expandedOrderId === o._id && (
                         <tr className="order-details-row">
                           <td colSpan={7}>
                             <div className="order-details">
                               <p>
-                                <strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}
+                                <strong>Email:</strong>{' '}
+                                {isExpired ? '-' : o.accountEmail || '-'}
                               </p>
                               <p>
-                                <strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}
+                                <strong>Password:</strong>{' '}
+                                {isExpired ? '-' : o.accountPassword || '-'}
                               </p>
+
                               {o.plan === 'Gói cao cấp' && (
                                 <>
-                                  <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
-                                  <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                                  <p>
+                                    <strong>Tên hồ sơ:</strong>{' '}
+                                    {o.profileName || '-'}
+                                  </p>
+                                  <p>
+                                    <strong>Mã PIN:</strong> {o.pin || '-'}
+                                  </p>
                                 </>
                               )}
+
                               {o.plan === 'Gói tiết kiệm' && !isExpired && (
-                                <button type="button" className="warranty-button">
-                                  Bảo hành
-                                </button>
+                                warrantyProcessingId === o._id ? (
+                                  <div className="warranty-processing">
+                                    <p>
+                                      Vui lòng chờ hệ thống check tài khoản
+                                      xong
+                                    </p>
+                                    <button
+                                      type="button"
+                                      className="warranty-progress-button"
+                                      disabled
+                                    >
+                                      {'.'.repeat(dotCount)}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="warranty-button"
+                                    onClick={() => handleWarrantyClick(o._id)}
+                                  >
+                                    Bảo hành
+                                  </button>
+                                )
                               )}
                             </div>
                           </td>
@@ -163,12 +232,4 @@ export default function CustomerDashboard() {
                       )}
                     </React.Fragment>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+                })
