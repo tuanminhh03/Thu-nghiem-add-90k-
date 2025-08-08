@@ -491,3 +491,22 @@
 .table tbody tr.expiring-soon:hover {
   background: #ffecb5;
 }
+
+/* Cookie details styling */
+.cookie-details summary {
+  cursor: pointer;
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.cookie-content {
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+}
