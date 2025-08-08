@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
-import * as XLSX from 'xlsx';
 
 export default function AdminNetflixAccounts50k() {
   const PLAN_DAYS = 30;
@@ -15,13 +14,14 @@ export default function AdminNetflixAccounts50k() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = evt => {
+    reader.onload = async evt => {
       const data = evt.target.result;
       let rows = [];
       if (file.name.endsWith('.csv')) {
         const text = data.trim();
         rows = text.split(/\r?\n/).map(line => line.split('|'));
       } else {
+        const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
         const wb = XLSX.read(data, { type: 'binary' });
         const sheet = wb.SheetNames[0];
         rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1 });
