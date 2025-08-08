@@ -10,7 +10,6 @@ export default function TopUpPage() {
   const params = new URLSearchParams(search);
   const plan      = params.get('plan');
   const duration  = params.get('duration');
-  const amount    = params.get('amount') || '0';
   const userPhone = params.get('phone') || '';
 
   // QR config
