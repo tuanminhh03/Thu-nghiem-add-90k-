@@ -23,6 +23,7 @@ export default function AdminNetflixAccounts50k() {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('asc');
+  const PLAN_DAYS = 30;
 
   useEffect(() => {
     localStorage.setItem('accounts50k', JSON.stringify(accounts));
@@ -69,6 +70,40 @@ export default function AdminNetflixAccounts50k() {
   const remainingDays = acc => {
     if (!acc.expirationDate) return '-';
     return Math.ceil((acc.expirationDate - Date.now()) / (1000 * 60 * 60 * 24));
+  };
+
+  const handleSell = idx => {
+    const phone = prompt('Nhập số điện thoại khách hàng:');
+    if (!phone) return;
+    setAccounts(accs => {
+      const soldCount = accs.filter(a => a.orderCode).length;
+      const purchaseDate = new Date();
+      const expirationDate = new Date(purchaseDate);
+      expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
+      const orderCode = `GTK${soldCount + 1}`;
+
+      const updated = [...accs];
+      updated[idx] = {
+        ...updated[idx],
+        phone: phone.trim(),
+        orderCode,
+        purchaseDate,
+        expirationDate,
+      };
+
+      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      orders.push({
+        orderCode,
+        phone: phone.trim(),
+        username: updated[idx].username,
+        password: updated[idx].password,
+        purchaseDate,
+        expirationDate,
+      });
+      localStorage.setItem('orders50k', JSON.stringify(orders));
+
+      return updated;
+    });
   };
 
   const handleSort = field => {
@@ -179,6 +214,11 @@ export default function AdminNetflixAccounts50k() {
                       </span>
                     </td>
                     <td className="flex gap-2">
+                      {!acc.phone && (
+                        <button className="btn btn-primary" onClick={() => handleSell(idx)}>
+                          Bán
+                        </button>
+                      )}
                       <button className="btn btn-danger" onClick={() => handleDelete(idx)}>
                         Xóa
                       </button>
