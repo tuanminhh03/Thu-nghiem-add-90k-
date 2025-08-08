@@ -232,4 +232,12 @@ export default function CustomerDashboard() {
                       )}
                     </React.Fragment>
                   );
-                })
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
