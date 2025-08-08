@@ -77,53 +77,6 @@ export default function PlanDetail() {
     );
   };
 
-  const handlePurchase = () => {
-    if (planKey !== 'saving') {
-      alert('Chức năng mua chỉ áp dụng cho gói tiết kiệm');
-      return;
-    }
-    const phone = prompt('Nhập số điện thoại của bạn:');
-    if (!phone) return;
-
-    const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
-    const idx = accounts.findIndex(acc => !acc.orderCode);
-    if (idx === -1) {
-      alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
-      return;
-    }
-
-    const soldCount = accounts.filter(a => a.orderCode).length;
-    const purchaseDate = new Date();
-    const expirationDate = new Date(purchaseDate);
-    expirationDate.setDate(expirationDate.getDate() + 30);
-    const orderCode = `GTK${soldCount + 1}`;
-
-    const account = {
-      ...accounts[idx],
-      phone: phone.trim(),
-      orderCode,
-      purchaseDate,
-      expirationDate,
-    };
-    accounts[idx] = account;
-    localStorage.setItem('accounts50k', JSON.stringify(accounts));
-
-    const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
-    orders.push({
-      orderCode,
-      phone: phone.trim(),
-      username: account.username,
-      password: account.password,
-      purchaseDate,
-      expirationDate,
-    });
-    localStorage.setItem('orders50k', JSON.stringify(orders));
-
-    alert(
-      `Mã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
-    );
-  };
-
   if (!plan)
     return (
       <div className="p-6">
