@@ -8,6 +8,8 @@ export default function CustomerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [warrantyProcessingId, setWarrantyProcessingId] = useState(null);
+  const [dotCount, setDotCount] = useState(1);
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -26,6 +28,14 @@ export default function CustomerDashboard() {
       }
     })();
   }, [token]);
+
+  useEffect(() => {
+    if (!warrantyProcessingId) return;
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [warrantyProcessingId]);
 
   const handleExtend = async (order, months) => {
     const amountMap = priceMapValue[order.plan];
@@ -61,6 +71,11 @@ export default function CustomerDashboard() {
     const months = parseInt(prompt('Gia hạn thêm mấy tháng? (1,3,6,12)'), 10);
     if (![1,3,6,12].includes(months)) return;
     handleExtend(order, months);
+  };
+
+  const handleWarrantyClick = (orderId) => {
+    setWarrantyProcessingId(orderId);
+    setDotCount(1);
   };
 
   if (!token) {
@@ -140,10 +155,40 @@ export default function CustomerDashboard() {
                         <tr className="order-details-row">
                           <td colSpan={7}>
                             <div className="order-details">
-                              <p><strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}</p>
-                              <p><strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}</p>
-                              <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
-                              <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                              <p>
+                                <strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}
+                              </p>
+                              <p>
+                                <strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}
+                              </p>
+                              {o.plan === 'Gói cao cấp' && (
+                                <>
+                                  <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
+                                  <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                                </>
+                              )}
+                              {o.plan === 'Gói tiết kiệm' && !isExpired && (
+                                warrantyProcessingId === o._id ? (
+                                  <div className="warranty-processing">
+                                    <p>Vui lòng chờ hệ thống check tài khoản xong</p>
+                                    <button
+                                      type="button"
+                                      className="warranty-progress-button"
+                                      disabled
+                                    >
+                                      {'.'.repeat(dotCount)}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="warranty-button"
+                                    onClick={() => handleWarrantyClick(o._id)}
+                                  >
+                                    Bảo hành
+                                  </button>
+                                )
+                              )}
                             </div>
                           </td>
                         </tr>

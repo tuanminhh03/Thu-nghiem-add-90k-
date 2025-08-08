@@ -91,6 +91,41 @@
   padding: 1rem;
 }
 
+/* Nút Bảo hành */
+.warranty-button {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.warranty-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Trạng thái đang xử lý bảo hành */
+.warranty-processing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.warranty-progress-button {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: default;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .customer-dashboard .card {
