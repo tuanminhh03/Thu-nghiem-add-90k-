@@ -134,7 +134,14 @@ export default function AdminNetflixAccounts50k() {
                   <tr key={acc.orderCode}>
                     <td>{acc.username}</td>
                     <td>{acc.password}</td>
-                    <td>{acc.cookies}</td>
+                    <td>
+                      {acc.cookies && (
+                        <details className="cookie-details">
+                          <summary>Xem cookies</summary>
+                          <div className="cookie-content">{acc.cookies}</div>
+                        </details>
+                      )}
+                    </td>
                     <td>{acc.phone}</td>
                     <td>{acc.orderCode}</td>
                     <td>{new Date(acc.purchaseDate).toLocaleDateString('vi-VN')}</td>
