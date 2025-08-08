@@ -60,6 +60,66 @@ export default function PlansOverview() {
       return;
     }
 
+    if (selectedPlan === 'Gói tiết kiệm') {
+      const stored = localStorage.getItem('user');
+      if (!stored) {
+        alert('Vui lòng đăng nhập để thanh toán');
+        navigate('/login');
+        return;
+      }
+      const user = JSON.parse(stored);
+      if (user.amount < amount) {
+        alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
+        navigate(`/top-up?phone=${encodeURIComponent(user.phone)}&amount=0`);
+        return;
+      }
+      const { phone } = user;
+
+      const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
+      const idx = accounts.findIndex(acc => !acc.phone);
+      if (idx === -1) {
+        alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
+        return;
+      }
+
+      const soldCount = accounts.filter(a => a.phone).length;
+      const purchaseDate = new Date();
+      const expirationDate = new Date(purchaseDate);
+      const months = parseInt(selectedDuration, 10) || 1;
+      expirationDate.setMonth(expirationDate.getMonth() + months);
+      const orderCode = `GTK${soldCount + 1}`;
+
+      const account = {
+        ...accounts[idx],
+        phone,
+        orderCode,
+        purchaseDate,
+        expirationDate,
+      };
+      accounts[idx] = account;
+      localStorage.setItem('accounts50k', JSON.stringify(accounts));
+
+      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      orders.push({
+        orderCode,
+        phone,
+        username: account.username,
+        password: account.password,
+        purchaseDate,
+        expirationDate,
+      });
+      localStorage.setItem('orders50k', JSON.stringify(orders));
+
+      user.amount -= amount;
+      localStorage.setItem('user', JSON.stringify(user));
+
+      alert(
+        `Thanh toán thành công!\nMã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
+      );
+      navigate('/my-orders');
+      return;
+    }
+
     const stored = localStorage.getItem('user');
     if (!stored) {
       alert('Vui lòng đăng nhập để thanh toán');

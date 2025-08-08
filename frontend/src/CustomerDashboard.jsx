@@ -15,13 +15,28 @@ export default function CustomerDashboard() {
   useEffect(() => {
     if (!token) return;
     (async () => {
+      const storedUser = localStorage.getItem('user');
+      const phone = storedUser ? JSON.parse(storedUser).phone : null;
+      const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]')
+        .filter(o => o.phone === phone)
+        .map(o => ({
+          _id: o.orderCode,
+          orderCode: o.orderCode,
+          plan: 'Gói tiết kiệm',
+          purchaseDate: o.purchaseDate,
+          expiresAt: o.expirationDate,
+          accountEmail: o.username,
+          accountPassword: o.password,
+        }));
+
       try {
         const { data } = await axios.get('http://localhost:5000/api/orders', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setOrders(data);
+        setOrders([...data, ...localOrders]);
       } catch (err) {
         console.error(err);
+        setOrders(localOrders);
       } finally {
         setLoading(false);
       }
