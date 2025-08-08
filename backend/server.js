@@ -278,6 +278,22 @@ app.post('/api/orders/:id/extend', authenticate, async (req, res) => {
   }
 });
 
+/** Trừ tiền khi mua gói tiết kiệm (lưu order local) */
+app.post('/api/orders/local-savings', authenticate, async (req, res) => {
+  let { amount } = req.body; amount = parseInt(amount, 10);
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Số tiền không hợp lệ' });
+  }
+  try {
+    await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
+    const user = await Customer.findById(req.user.id, 'phone amount');
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 /** 6. Ghi nhận lượt truy cập web */
 app.post('/api/visit', async (req, res) => {
   try {

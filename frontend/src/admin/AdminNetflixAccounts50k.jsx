@@ -3,7 +3,6 @@ import AdminLayout from './AdminLayout';
 import './Admin.css';
 
 export default function AdminNetflixAccounts50k() {
-  const PLAN_DAYS = 30;
   const [accounts, setAccounts] = useState(() => {
     const saved = localStorage.getItem('accounts50k');
     if (!saved) return [];
@@ -46,24 +45,18 @@ export default function AdminNetflixAccounts50k() {
         const sheet = wb.SheetNames[0];
         rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1 });
       }
-      const now = new Date();
       const imported = rows
         .filter(r => r[0] && r[1])
-        .map((r, idx) => {
-          const purchaseDate = now;
-          const expirationDate = new Date(purchaseDate);
-          expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
-          return {
-            username: r[0].trim(),
-            password: r[1].trim(),
-            cookies: r[2] ? r[2].trim() : '',
-            phone: '',
-            orderCode: `GTK${accounts.length + idx + 1}`,
-            purchaseDate,
-            expirationDate,
-            lastUsed: null,
-          };
-        });
+        .map(r => ({
+          username: r[0].trim(),
+          password: r[1].trim(),
+          cookies: r[2] ? r[2].trim() : '',
+          phone: '',
+          orderCode: '',
+          purchaseDate: null,
+          expirationDate: null,
+          lastUsed: null,
+        }));
       setAccounts(prev => [...prev, ...imported]);
     };
     if (file.name.endsWith('.csv')) {
@@ -74,6 +67,7 @@ export default function AdminNetflixAccounts50k() {
   };
 
   const remainingDays = acc => {
+    if (!acc.expirationDate) return '-';
     return Math.ceil((acc.expirationDate - Date.now()) / (1000 * 60 * 60 * 24));
   };
 
@@ -87,10 +81,13 @@ export default function AdminNetflixAccounts50k() {
   };
 
   const filtered = accounts.filter(acc =>
-    acc.orderCode.toLowerCase().includes(search.toLowerCase())
+    (acc.orderCode || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const sorted = [...filtered].sort((a, b) => {
+    const aOnline = a.phone ? 1 : 0;
+    const bOnline = b.phone ? 1 : 0;
+    if (aOnline !== bOnline) return bOnline - aOnline;
     let aVal = a[sortField];
     let bVal = b[sortField];
     if (aVal === null || aVal === undefined) aVal = 0;
@@ -151,7 +148,7 @@ export default function AdminNetflixAccounts50k() {
                 const remain = remainingDays(acc);
                 const status = acc.phone ? 'Online' : 'Offline';
                 return (
-                  <tr key={acc.orderCode}>
+                  <tr key={acc.username + idx}>
                     <td>{acc.username}</td>
                     <td>{acc.password}</td>
                     <td>
@@ -164,8 +161,16 @@ export default function AdminNetflixAccounts50k() {
                     </td>
                     <td>{acc.phone}</td>
                     <td>{acc.orderCode}</td>
-                    <td>{new Date(acc.purchaseDate).toLocaleDateString('vi-VN')}</td>
-                    <td>{new Date(acc.expirationDate).toLocaleDateString('vi-VN')}</td>
+                    <td>
+                      {acc.purchaseDate
+                        ? new Date(acc.purchaseDate).toLocaleDateString('vi-VN')
+                        : ''}
+                    </td>
+                    <td>
+                      {acc.expirationDate
+                        ? new Date(acc.expirationDate).toLocaleDateString('vi-VN')
+                        : ''}
+                    </td>
                     <td>{remain}</td>
                     <td>{acc.lastUsed ? new Date(acc.lastUsed).toLocaleDateString('vi-VN') : ''}</td>
                     <td>
@@ -173,7 +178,7 @@ export default function AdminNetflixAccounts50k() {
                         {status}
                       </span>
                     </td>
-                    <td>
+                    <td className="flex gap-2">
                       <button className="btn btn-danger" onClick={() => handleDelete(idx)}>
                         Xóa
                       </button>
