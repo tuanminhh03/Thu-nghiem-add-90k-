@@ -1,13 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
 export default function AdminNetflixAccounts50k() {
   const PLAN_DAYS = 30;
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState(() => {
+    const saved = localStorage.getItem('accounts50k');
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved, (key, value) => {
+        if (
+          ['purchaseDate', 'expirationDate', 'lastUsed'].includes(key) &&
+          value
+        ) {
+          return new Date(value);
+        }
+        return value;
+      });
+    } catch {
+      return [];
+    }
+  });
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('asc');
+
+  useEffect(() => {
+    localStorage.setItem('accounts50k', JSON.stringify(accounts));
+  }, [accounts]);
 
   const handleImport = e => {
     const file = e.target.files[0];
