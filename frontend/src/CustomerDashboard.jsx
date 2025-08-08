@@ -140,10 +140,23 @@ export default function CustomerDashboard() {
                         <tr className="order-details-row">
                           <td colSpan={7}>
                             <div className="order-details">
-                              <p><strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}</p>
-                              <p><strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}</p>
-                              <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
-                              <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                              <p>
+                                <strong>Email:</strong> {isExpired ? '-' : (o.accountEmail || '-')}
+                              </p>
+                              <p>
+                                <strong>Password:</strong> {isExpired ? '-' : (o.accountPassword || '-')}
+                              </p>
+                              {o.plan === 'Gói cao cấp' && (
+                                <>
+                                  <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
+                                  <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
+                                </>
+                              )}
+                              {o.plan === 'Gói tiết kiệm' && !isExpired && (
+                                <button type="button" className="warranty-button">
+                                  Bảo hành
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
