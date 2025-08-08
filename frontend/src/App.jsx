@@ -14,6 +14,7 @@ import TopUpPage         from './TopUpPage';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
+import AdminNetflixAccounts50k from './admin/AdminNetflixAccounts50k';
 import AdminRoute            from './admin/AdminRoute';
 import AdminCustomerOrders   from './admin/AdminCustomerOrders';
 import AdminStats            from './admin/AdminStats';
@@ -104,6 +105,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminNetflixAccounts />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/netflix-accounts-50k"
+          element={
+            <AdminRoute>
+              <AdminNetflixAccounts50k />
             </AdminRoute>
           }
         />
