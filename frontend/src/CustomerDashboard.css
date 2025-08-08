@@ -18,6 +18,9 @@
 }
 
 /* Bảng */
+.table-wrapper {
+  overflow: auto; /* giúp sticky header hoạt động khi có scroll */
+}
 .table-wrapper table {
   width: 100%;
   border-collapse: collapse;
