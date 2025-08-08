@@ -1,6 +1,6 @@
 // src/PlanDetail.jsx
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
 const plansData = {
   saving: {
@@ -28,6 +28,63 @@ const plansData = {
 export default function PlanDetail() {
   const { planKey } = useParams();
   const plan = plansData[planKey];
+  const navigate = useNavigate();
+
+  const handleSavingPurchase = () => {
+    if (planKey !== 'saving') {
+      alert('Chức năng mua chỉ áp dụng cho gói tiết kiệm');
+      return;
+    }
+    const stored = localStorage.getItem('user');
+    if (!stored) {
+      alert('Vui lòng đăng nhập để mua gói này');
+      navigate('/login');
+      return;
+    }
+    const user = JSON.parse(stored);
+    if (user.amount < 50000) {
+      alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
+      navigate(`/top-up?phone=${encodeURIComponent(user.phone)}`);
+      return;
+    }
+    const { phone } = user;
+    const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
+    const idx = accounts.findIndex(acc => !acc.phone);
+    if (idx === -1) {
+      alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
+      return;
+    }
+    const soldCount = accounts.filter(a => a.phone).length;
+    const purchaseDate = new Date();
+    const expirationDate = new Date(purchaseDate);
+    expirationDate.setDate(expirationDate.getDate() + 30);
+    const orderCode = `GTK${soldCount + 1}`;
+    const account = {
+      ...accounts[idx],
+      phone,
+      orderCode,
+      purchaseDate,
+      expirationDate,
+    };
+    accounts[idx] = account;
+    localStorage.setItem('accounts50k', JSON.stringify(accounts));
+    const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+    orders.push({
+      orderCode,
+      phone,
+      username: account.username,
+      password: account.password,
+      purchaseDate,
+      expirationDate,
+    });
+    localStorage.setItem('orders50k', JSON.stringify(orders));
+    user.amount -= 50000;
+    localStorage.setItem('user', JSON.stringify(user));
+    alert(
+      `Mã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
+    );
+    navigate('/my-orders');
+  };
 
   if (!plan) return (
     <div className="p-6">
@@ -60,7 +117,10 @@ export default function PlanDetail() {
             ))}
           </tbody>
         </table>
-        <button className="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition">
+        <button
+          onClick={handleSavingPurchase}
+          className="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition"
+        >
           Thanh toán
         </button>
       </div>
