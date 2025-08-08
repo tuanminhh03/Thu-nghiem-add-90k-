@@ -61,8 +61,13 @@ export default function PlansOverview() {
     }
 
     if (selectedPlan === 'Gói tiết kiệm') {
-      const phone = prompt('Nhập số điện thoại của bạn:');
-      if (!phone) return;
+      const stored = localStorage.getItem('user');
+      if (!stored) {
+        alert('Vui lòng đăng nhập để thanh toán');
+        navigate('/login');
+        return;
+      }
+      const { phone } = JSON.parse(stored);
 
       const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
       const idx = accounts.findIndex(acc => !acc.phone);
@@ -79,7 +84,7 @@ export default function PlansOverview() {
 
       const account = {
         ...accounts[idx],
-        phone: phone.trim(),
+        phone,
         orderCode,
         purchaseDate,
         expirationDate,
@@ -90,7 +95,7 @@ export default function PlansOverview() {
       const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
       orders.push({
         orderCode,
-        phone: phone.trim(),
+        phone,
         username: account.username,
         password: account.password,
         purchaseDate,
