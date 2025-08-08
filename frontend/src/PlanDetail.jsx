@@ -56,6 +56,18 @@ export default function PlanDetail() {
     };
     accounts[idx] = account;
     localStorage.setItem('accounts50k', JSON.stringify(accounts));
+
+    const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+    orders.push({
+      orderCode,
+      phone: phone.trim(),
+      username: account.username,
+      password: account.password,
+      purchaseDate,
+      expirationDate,
+    });
+    localStorage.setItem('orders50k', JSON.stringify(orders));
+
     alert(
       `Mã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
     );
