@@ -4,6 +4,11 @@ import axios from 'axios';
 import './CustomerDashboard.css';
 import { priceMapValue } from './priceMap';
 
+function formatDateTime(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function CustomerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,10 +38,13 @@ export default function CustomerDashboard() {
         const { data } = await axios.get('http://localhost:5000/api/orders', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setOrders([...data, ...localOrders]);
+        const combined = [...data, ...localOrders];
+        combined.sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate));
+        setOrders(combined);
       } catch (err) {
         console.error(err);
-        setOrders(localOrders);
+        const sortedLocal = [...localOrders].sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate));
+        setOrders(sortedLocal);
       } finally {
         setLoading(false);
       }
@@ -177,7 +185,7 @@ export default function CustomerDashboard() {
                           </button>
                         </td>
                         <td>{o.plan}</td>
-                        <td>{purchase.toLocaleDateString('vi-VN')}</td>
+                        <td>{formatDateTime(purchase)}</td>
                         <td>{expiry.toLocaleDateString('vi-VN')}</td>
                         <td>{isExpired ? 'Đã hết hạn' : `${daysLeft} ngày`}</td>
                         <td>

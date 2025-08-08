@@ -224,7 +224,7 @@ app.get('/api/orders', authenticate, async (req, res) => {
   try {
     const orders = await Order
       .find({ user: req.user.id })
-      .sort({ purchaseDate: -1 });
+      .sort({ purchaseDate: 1 });
     res.json(orders);
   } catch (err) {
     console.error(err);
