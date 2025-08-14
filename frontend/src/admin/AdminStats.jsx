@@ -51,7 +51,7 @@ export default function AdminStats() {
   const fetchOrders = () =>
     axios
       .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setOrders(r.data))
+      .then((r) => setOrders(Array.isArray(r.data.data) ? r.data.data : []))
       .catch(console.error);
 
   useEffect(() => {
@@ -59,7 +59,9 @@ export default function AdminStats() {
     fetchStats();
     fetchOrders();
     // real-time update
-    const es = new EventSource(`/api/admin/orders/stream?token=${token}`);
+    const es = new EventSource(
+      `http://localhost:5000/api/admin/orders/stream?token=${token}`
+    );
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
       fetchStats();
