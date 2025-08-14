@@ -2,37 +2,52 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
+import Modal from './Modal';
 import './Admin.css';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [phone, setPhone] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
   const token = localStorage.getItem('adminToken');
 
-  useEffect(() => {
+  const fetchOrders = async () => {
     if (!token) return;
-    (async () => {
-      const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
-        _id: o.orderCode,
-        orderCode: o.orderCode,
-        plan: 'Gói tiết kiệm',
-        purchaseDate: o.purchaseDate,
-        expiresAt: o.expirationDate,
-        user: { phone: o.phone },
-      }));
-      try {
-        const { data } = await axios.get('/api/admin/orders', {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { limit: 1000 }
-        });
-        setOrders([...data, ...localOrders]);
-      } catch (err) {
-        console.error(err);
-        setOrders(localOrders);
-      }
-    })();
-  }, [token]);
+    const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
+      _id: o.orderCode,
+      orderCode: o.orderCode,
+      plan: 'Gói tiết kiệm',
+      purchaseDate: o.purchaseDate,
+      expiresAt: o.expirationDate,
+      user: { phone: o.phone },
+    }));
+    try {
+      const { data } = await axios.get('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page, phone: phone || undefined }
+      });
+      setOrders([...data.data, ...localOrders]);
+      setPages(data.pages);
+    } catch (err) {
+      console.error(err);
+      setOrders(localOrders);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [token, page]);
+
+  const handleSearch = e => {
+    e.preventDefault();
+    setPage(1);
+    fetchOrders();
+  };
 
   const handleSort = field => {
     if (sortField === field) {
@@ -57,18 +72,22 @@ export default function AdminOrders() {
     return diff;
   };
 
-  const handleDelete = async id => {
-    if (!window.confirm('Xóa đơn hàng này?')) return;
-    const isLocal = !/^[0-9a-fA-F]{24}$/.test(id);
+  const openDelete = id => {
+    setSelectedId(id);
+    setShowDelete(true);
+  };
 
+  const confirmDelete = async () => {
+    const id = selectedId;
+    const isLocal = !/^[0-9a-fA-F]{24}$/.test(id);
     if (isLocal) {
       const stored = JSON.parse(localStorage.getItem('orders50k') || '[]');
       const updated = stored.filter(o => o.orderCode !== id);
       localStorage.setItem('orders50k', JSON.stringify(updated));
       setOrders(orders.filter(o => o._id !== id));
+      setShowDelete(false);
       return;
     }
-
     try {
       await axios.delete(`/api/admin/orders/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -77,6 +96,7 @@ export default function AdminOrders() {
     } catch (err) {
       console.error(err);
     }
+    setShowDelete(false);
   };
 
   const sorted = [...orders].sort((a, b) => {
@@ -102,6 +122,18 @@ export default function AdminOrders() {
         <header className="admin-header">
           <h1 className="text-xl font-semibold">Quản lý đơn hàng</h1>
         </header>
+        <form onSubmit={handleSearch} className="form-search">
+          <input
+            type="text"
+            placeholder="Tìm theo SĐT"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            className="input"
+          />
+          <button type="submit" className="btn btn-primary">
+            Tìm kiếm
+          </button>
+        </form>
         <div className="table-container">
           <table className="table">
             <thead>
@@ -139,7 +171,7 @@ export default function AdminOrders() {
                       <button
                         type="button"
                         className="btn btn-danger"
-                        onClick={() => handleDelete(o._id)}
+                        onClick={() => openDelete(o._id)}
                       >
                         Xóa
                       </button>
@@ -157,7 +189,37 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
+        <div className="pagination">
+          <button
+            className="btn"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Trang trước
+          </button>
+          <span className="mx-2">{page}/{pages}</span>
+          <button
+            className="btn"
+            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            disabled={page === pages}
+          >
+            Trang sau
+          </button>
+        </div>
       </div>
+      {showDelete && (
+        <Modal onClose={() => setShowDelete(false)}>
+          <p>Bạn chắc chắn muốn xóa đơn này?</p>
+          <div className="text-right mt-4">
+            <button className="btn btn-danger mr-2" onClick={confirmDelete}>
+              Xóa
+            </button>
+            <button className="btn" onClick={() => setShowDelete(false)}>
+              Hủy
+            </button>
+          </div>
+        </Modal>
+      )}
     </AdminLayout>
   );
 }

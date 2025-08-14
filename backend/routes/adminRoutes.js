@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateAdmin } from '../middleware/auth.js';
+import { authenticateAdmin, authorizeRoles } from '../middleware/auth.js';
 import {
   login,
   ordersStream,
@@ -25,8 +25,8 @@ router.post('/login', login);
 router.get('/orders/stream', ordersStream);
 router.get('/customers', authenticateAdmin, getCustomers);
 router.get('/customers/:id', authenticateAdmin, getCustomer);
-router.post('/customers/:id/topup', authenticateAdmin, topupCustomer);
-router.delete('/customers/:id', authenticateAdmin, deleteCustomer);
+router.post('/customers/:id/topup', authenticateAdmin, authorizeRoles('superadmin'), topupCustomer);
+router.delete('/customers/:id', authenticateAdmin, authorizeRoles('superadmin'), deleteCustomer);
 router.get('/customers/:id/orders', authenticateAdmin, getCustomerOrders);
 router.get('/orders', authenticateAdmin, getOrders);
 router.delete('/orders/:id', authenticateAdmin, deleteOrder);
