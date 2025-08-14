@@ -227,6 +227,34 @@
   .right-panel {
     flex: 1 1 100%;
   }
+  /* Center panels and shrink Netflix card for small screens */
+  .left-panel {
+    align-items: center;
+  }
+  .netflix-card {
+    width: 10rem;
+    height: 10rem;
+  }
+  .netflix-icon {
+    width: 9rem;
+    height: 9rem;
+  }
+  .stats {
+    flex-direction: row;
+    justify-content: center;
+    max-width: none;
+  }
+  .stat-item {
+    margin-bottom: 0;
+  }
+  .right-panel {
+    align-items: center;
+    text-align: center;
+  }
+  .plan-selection,
+  .duration-selection {
+    justify-content: center;
+  }
   .btn-pay {
     width: 100%;
     text-align: center;
