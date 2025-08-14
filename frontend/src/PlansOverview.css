@@ -218,46 +218,100 @@
 }
 
 /* 4. Responsive */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
+  /* Bố cục chuyển 1 cột, gọn khoảng cách */
   .content-wrapper {
+    display: flex;
     flex-direction: column;
-    padding: 2rem 1rem;
+    gap: 12px;
+    padding: 12px;
+    min-height: auto;
   }
-  .left-panel,
-  .right-panel {
-    flex: 1 1 100%;
+
+  /* Khối trái: logo gọn + stats dạng chip kéo ngang */
+  .left-panel { align-items: center; gap: 10px; }
+
+  .netflix-card { width: 84px; height: 84px; border-radius: 14px; }
+  .netflix-icon { width: 72px; height: 72px; }
+  .zoom-btn { display: none; } /* ẩn nút phóng to trên mobile */
+  .left-panel .netflix-card {
+    width: 136px !important;   /* tăng/giảm tại đây */
+    height: 136px !important;
+    border-radius: 16px;
+    margin: 8px auto 12px;     /* canh giữa + khoảng cách với tiêu đề */
   }
-  /* Center panels and shrink Netflix card for small screens */
-  .left-panel {
-    align-items: center;
-  }
-  .netflix-card {
-    width: 10rem;
-    height: 10rem;
-  }
-  .netflix-icon {
-    width: 9rem;
-    height: 9rem;
+    .left-panel .netflix-card .netflix-icon {
+    width: 120px !important;   /* tăng/giảm tại đây */
+    height: 120px !important;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
   }
   .stats {
-    flex-direction: row;
-    justify-content: center;
-    max-width: none;
+    width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;           /* Firefox */
   }
+  .stats::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   .stat-item {
-    margin-bottom: 0;
+    margin: 0;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0.9rem;
   }
+
+  /* Khối phải: full-width, chữ/nút vừa tay */
   .right-panel {
-    align-items: center;
-    text-align: center;
+    max-width: 100%;
+    width: 100%;
+    align-items: stretch;
+    text-align: left;
+    gap: 12px;
   }
+
+  .title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+    margin: 2px 0 6px;
+  }
+  .price {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+  }
+
+  /* Nhóm chọn gói & thời hạn: lưới 2 cột cho gọn */
   .plan-selection,
   .duration-selection {
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
   }
+
+  .btn-plan,
+  .btn-duration {
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  /* Mô tả gọn hơn một chút */
+  .description {
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  /* Nút thanh toán: full-width, dễ bấm */
   .btn-pay {
     width: 100%;
-    text-align: center;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
   }
 }
 .description {
@@ -302,4 +356,8 @@
   line-height: 1;
   color: rgba(255,255,255,0.2);
 }
+/* Chỉ dùng 1 nút thanh toán (ẩn sticky-cta ở mọi kích thước) */
+.sticky-cta { display: none !important; }
 
+/* Đảm bảo nút trong nội dung luôn hiện */
+.btn-pay.main-pay { display: inline-flex !important; }
