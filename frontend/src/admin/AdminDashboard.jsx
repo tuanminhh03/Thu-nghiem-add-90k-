@@ -54,7 +54,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (token) fetchCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, page]);
 
   // ========================
