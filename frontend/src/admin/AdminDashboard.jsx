@@ -29,29 +29,38 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           phone: search || undefined,
-          page
-        }
+          page,
+        },
       });
       setCustomers(data.data);
       setPages(data.pages);
+      // Clear any previous message on successful refresh (kept from feature branch)
+      setMsg({ text: '', type: '' });
     } catch (err) {
       console.error(err);
+      setCustomers([]);
+      setMsg({
+        text: err.response?.data?.message || 'Không tải được dữ liệu',
+        type: 'error',
+      });
     }
   };
 
   useEffect(() => {
     if (token) fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, page]);
 
   // ========================
   // 3. Handlers
   // ========================
-  const handleSearch = e => {
+  const handleSearch = (e) => {
     e.preventDefault();
+    setPage(1);
     fetchCustomers();
   };
 
-  const openTopup = c => {
+  const openTopup = (c) => {
     setSelected(c);
     setAmount('');
     setShowTopup(true);
@@ -59,7 +68,7 @@ export default function AdminDashboard() {
 
   const submitTopup = async () => {
     const amt = parseInt(amount, 10);
-    if (!amt) return;
+    if (!amt || amt <= 0) return;
     try {
       await axios.post(
         `/api/admin/customers/${selected._id}/topup`,
@@ -73,12 +82,12 @@ export default function AdminDashboard() {
       console.error(err);
       setMsg({
         text: err.response?.data?.message || 'Lỗi nạp tiền',
-        type: 'error'
+        type: 'error',
       });
     }
   };
 
-  const openDelete = c => {
+  const openDelete = (c) => {
     setSelected(c);
     setShowDelete(true);
   };
@@ -86,7 +95,7 @@ export default function AdminDashboard() {
   const confirmDelete = async () => {
     try {
       await axios.delete(`/api/admin/customers/${selected._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setMsg({ text: 'Xóa thành công', type: 'success' });
       setShowDelete(false);
@@ -95,7 +104,7 @@ export default function AdminDashboard() {
       console.error(err);
       setMsg({
         text: err.response?.data?.message || 'Lỗi xóa tài khoản',
-        type: 'error'
+        type: 'error',
       });
     }
   };
@@ -130,7 +139,7 @@ export default function AdminDashboard() {
             type="text"
             placeholder="Tìm theo SĐT"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="input"
           />
           <button type="submit" className="btn btn-primary">
@@ -162,9 +171,7 @@ export default function AdminDashboard() {
                       {c.phone}
                     </Link>
                   </td>
-                  <td>
-                    {new Date(c.createdAt).toLocaleDateString('vi-VN')}
-                  </td>
+                  <td>{new Date(c.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td>{c.amount}</td>
                   <td className="text-center">
                     <button
@@ -182,21 +189,30 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
+              {customers.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="text-center">
+                    Không có khách hàng
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         <div className="pagination">
           <button
             className="btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
             Trang trước
           </button>
-          <span className="mx-2">{page}/{pages}</span>
+          <span className="mx-2">
+            {page}/{pages}
+          </span>
           <button
             className="btn"
-            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={page === pages}
           >
             Trang sau
@@ -210,7 +226,7 @@ export default function AdminDashboard() {
             type="number"
             className="input mb-4"
             value={amount}
-            onChange={e => setAmount(e.target.value)}
+            onChange={(e) => setAmount(e.target.value)}
           />
           <div className="text-right">
             <button className="btn btn-primary mr-2" onClick={submitTopup}>
