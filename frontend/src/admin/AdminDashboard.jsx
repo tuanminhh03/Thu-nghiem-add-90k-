@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import Modal from './Modal';
 import './Admin.css';
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [selected, setSelected] = useState(null);
   const [amount, setAmount] = useState('');
   const token = localStorage.getItem('adminToken');
+  const navigate = useNavigate();
 
   // ========================
   // 2. Fetch dữ liệu
@@ -38,6 +39,11 @@ export default function AdminDashboard() {
       setMsg({ text: '', type: '' });
     } catch (err) {
       console.error(err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
       setCustomers([]);
       setMsg({
         text: err.response?.data?.message || 'Không tải được dữ liệu',
@@ -80,6 +86,11 @@ export default function AdminDashboard() {
       fetchCustomers();
     } catch (err) {
       console.error(err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
       setMsg({
         text: err.response?.data?.message || 'Lỗi nạp tiền',
         type: 'error',
@@ -102,6 +113,11 @@ export default function AdminDashboard() {
       fetchCustomers();
     } catch (err) {
       console.error(err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
       setMsg({
         text: err.response?.data?.message || 'Lỗi xóa tài khoản',
         type: 'error',
