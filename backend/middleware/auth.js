@@ -23,3 +23,12 @@ export function authenticateAdmin(req, res, next) {
     res.status(401).json({ message: 'Token không hợp lệ' });
   }
 }
+
+export function authorizeRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.admin || !roles.includes(req.admin.role)) {
+      return res.status(403).json({ message: 'Không có quyền' });
+    }
+    next();
+  };
+}

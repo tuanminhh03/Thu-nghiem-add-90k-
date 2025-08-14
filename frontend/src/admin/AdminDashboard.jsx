@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import Modal from './Modal';
 import './Admin.css';
 
 export default function AdminDashboard() {
@@ -9,8 +10,14 @@ export default function AdminDashboard() {
   // 1. Khai báo states
   // ========================
   const [customers, setCustomers] = useState([]);
-  const [msg, setMsg] = useState({ text: '', type: '' });  // ← đảm bảo có dòng này
+  const [msg, setMsg] = useState({ text: '', type: '' });
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [showTopup, setShowTopup] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [amount, setAmount] = useState('');
   const token = localStorage.getItem('adminToken');
 
   // ========================
@@ -20,9 +27,13 @@ export default function AdminDashboard() {
     try {
       const { data } = await axios.get('/api/admin/customers', {
         headers: { Authorization: `Bearer ${token}` },
-        params: search ? { phone: search } : {}
+        params: {
+          phone: search || undefined,
+          page
+        }
       });
-      setCustomers(data);
+      setCustomers(data.data);
+      setPages(data.pages);
     } catch (err) {
       console.error(err);
     }
@@ -30,7 +41,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (token) fetchCustomers();
-  }, [token]);
+  }, [token, page]);
 
   // ========================
   // 3. Handlers
@@ -40,16 +51,23 @@ export default function AdminDashboard() {
     fetchCustomers();
   };
 
-  const handleTopup = async id => {
-    const amount = parseInt(prompt('Nhập số tiền muốn nạp'), 10);
-    if (!amount) return;
+  const openTopup = c => {
+    setSelected(c);
+    setAmount('');
+    setShowTopup(true);
+  };
+
+  const submitTopup = async () => {
+    const amt = parseInt(amount, 10);
+    if (!amt) return;
     try {
       await axios.post(
-        `/api/admin/customers/${id}/topup`,
-        { amount },
+        `/api/admin/customers/${selected._id}/topup`,
+        { amount: amt },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMsg({ text: 'Nạp tiền thành công', type: 'success' });
+      setShowTopup(false);
       fetchCustomers();
     } catch (err) {
       console.error(err);
@@ -60,13 +78,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async id => {
-    if (!window.confirm('Xóa tài khoản này?')) return;
+  const openDelete = c => {
+    setSelected(c);
+    setShowDelete(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`/api/admin/customers/${id}`, {
+      await axios.delete(`/api/admin/customers/${selected._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg({ text: 'Xóa thành công', type: 'success' });
+      setShowDelete(false);
       fetchCustomers();
     } catch (err) {
       console.error(err);
@@ -145,13 +168,13 @@ export default function AdminDashboard() {
                   <td>{c.amount}</td>
                   <td className="text-center">
                     <button
-                      onClick={() => handleTopup(c._id)}
+                      onClick={() => openTopup(c)}
                       className="btn btn-primary mr-2"
                     >
                       Nạp tiền
                     </button>
                     <button
-                      onClick={() => handleDelete(c._id)}
+                      onClick={() => openDelete(c)}
                       className="btn btn-danger"
                     >
                       Xóa
@@ -162,7 +185,56 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+        <div className="pagination">
+          <button
+            className="btn"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Trang trước
+          </button>
+          <span className="mx-2">{page}/{pages}</span>
+          <button
+            className="btn"
+            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            disabled={page === pages}
+          >
+            Trang sau
+          </button>
+        </div>
       </div>
+      {showTopup && (
+        <Modal onClose={() => setShowTopup(false)}>
+          <h2 className="text-lg mb-4">Nạp tiền cho {selected?.phone}</h2>
+          <input
+            type="number"
+            className="input mb-4"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+          />
+          <div className="text-right">
+            <button className="btn btn-primary mr-2" onClick={submitTopup}>
+              Xác nhận
+            </button>
+            <button className="btn" onClick={() => setShowTopup(false)}>
+              Hủy
+            </button>
+          </div>
+        </Modal>
+      )}
+      {showDelete && (
+        <Modal onClose={() => setShowDelete(false)}>
+          <p>Bạn chắc chắn muốn xóa {selected?.phone}?</p>
+          <div className="text-right mt-4">
+            <button className="btn btn-danger mr-2" onClick={confirmDelete}>
+              Xóa
+            </button>
+            <button className="btn" onClick={() => setShowDelete(false)}>
+              Hủy
+            </button>
+          </div>
+        </Modal>
+      )}
     </AdminLayout>
   );
 }

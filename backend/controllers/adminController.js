@@ -3,6 +3,7 @@ import Customer from '../Models/Customer.js';
 import Order from '../Models/Order.js';
 import NetflixAccount from '../Models/NetflixAccount.js';
 import PageView from '../Models/PageView.js';
+import AdminLog from '../Models/AdminLog.js';
 import updates from '../services/eventService.js';
 
 export function ordersStream(req, res) {
@@ -37,12 +38,26 @@ export function ordersStream(req, res) {
 
 export async function login(req, res) {
   const { username, password } = req.body;
-  if (
-    username === process.env.ADMIN_USER &&
-    password === process.env.ADMIN_PASS
-  ) {
+  const admins = [
+    {
+      username: process.env.ADMIN_USER,
+      password: process.env.ADMIN_PASS,
+      role: 'superadmin'
+    },
+    {
+      username: process.env.STAFF_USER,
+      password: process.env.STAFF_PASS,
+      role: 'staff'
+    }
+  ].filter(a => a.username && a.password);
+
+  const admin = admins.find(
+    a => a.username === username && a.password === password
+  );
+
+  if (admin) {
     const token = jwt.sign(
-      { username },
+      { username: admin.username, role: admin.role },
       process.env.JWT_SECRET + '_ADMIN',
       { expiresIn: '7d' }
     );
@@ -55,9 +70,15 @@ export async function login(req, res) {
 export async function getCustomers(req, res) {
   try {
     const { phone } = req.query;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
     const query = phone ? { phone: new RegExp(phone, 'i') } : {};
-    const customers = await Customer.find(query).sort({ createdAt: -1 });
-    res.json(customers);
+    const [customers, total] = await Promise.all([
+      Customer.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Customer.countDocuments(query)
+    ]);
+    res.json({ data: customers, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
@@ -88,6 +109,11 @@ export async function topupCustomer(req, res) {
     );
     if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
     updates.emit(`topup:${customer._id}`, { amount: customer.amount, added: amount });
+    await AdminLog.create({
+      admin: req.admin?.username || 'unknown',
+      action: 'topupCustomer',
+      target: customer._id.toString()
+    });
     res.json(customer);
   } catch (err) {
     console.error(err);
@@ -100,6 +126,11 @@ export async function deleteCustomer(req, res) {
     await Order.deleteMany({ user: req.params.id });
     const customer = await Customer.findByIdAndDelete(req.params.id);
     if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    await AdminLog.create({
+      admin: req.admin?.username || 'unknown',
+      action: 'deleteCustomer',
+      target: req.params.id
+    });
     res.json({ message: 'Đã xóa user' });
   } catch (err) {
     console.error(err);
@@ -119,12 +150,30 @@ export async function getCustomerOrders(req, res) {
 
 export async function getOrders(req, res) {
   try {
+    const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const orders = await Order.find()
-      .sort({ purchaseDate: -1 })
-      .limit(limit)
-      .populate('user', 'phone');
-    res.json(orders);
+    const skip = (page - 1) * limit;
+    const { phone } = req.query;
+
+    let query = {};
+    if (phone) {
+      const customers = await Customer.find(
+        { phone: new RegExp(phone, 'i') },
+        '_id'
+      );
+      query.user = { $in: customers.map(c => c._id) };
+    }
+
+    const [orders, total] = await Promise.all([
+      Order.find(query)
+        .sort({ purchaseDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('user', 'phone'),
+      Order.countDocuments(query)
+    ]);
+
+    res.json({ data: orders, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
