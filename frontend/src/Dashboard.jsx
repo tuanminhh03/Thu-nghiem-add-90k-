@@ -1,11 +1,13 @@
 // src/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
   const [customers, setCustomers] = useState([]);
   const [filter, setFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const perPage = 5;
 
   // Fetch all customers
@@ -17,6 +19,7 @@ export default function Dashboard() {
     try {
       const res = await axios.get('http://localhost:5000/customers');
       setCustomers(res.data);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
     }
@@ -45,7 +48,25 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-100 p-6 pt-24">
       <div className="max-w-5xl mx-auto bg-white shadow rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-4">Dashboard Quản lý Khách hàng</h1>
-        
+
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-gray-600">Tổng khách hàng: {customers.length}</p>
+          <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-sm text-gray-500">
+                Cập nhật: {lastUpdated.toLocaleString()}
+              </span>
+            )}
+            <button
+              onClick={fetchCustomers}
+              className="flex items-center gap-1 bg-green-500 text-white rounded px-3 py-1 hover:bg-green-600 transition"
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+              Làm mới
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center mb-4">
           <input
             type="text"
