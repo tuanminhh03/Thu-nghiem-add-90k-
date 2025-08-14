@@ -20,24 +20,25 @@ export default function PlansOverview() {
   const navigate = useNavigate();
 
   const planDescriptions = {
-    'Gói tiết kiệm': 'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi.',
-    'Gói cao cấp': 'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
+    'Gói tiết kiệm':
+      'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi.',
+    'Gói cao cấp':
+      'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
   };
 
-  // Giá dạng số để so sánh và trừ
   // Giá hiển thị
   const priceMapDisplay = {
     'Gói tiết kiệm': {
       '01 tháng': '50.000₫',
       '03 tháng': '140.000₫',
       '06 tháng': '270.000₫',
-      '12 tháng': '500.000₫'
+      '12 tháng': '500.000₫',
     },
     'Gói cao cấp': {
       '01 tháng': '90.000₫',
       '03 tháng': '260.000₫',
       '06 tháng': '515.000₫',
-      '12 tháng': '1.000.000₫'
+      '12 tháng': '1.000.000₫',
     },
   };
 
@@ -56,10 +57,9 @@ export default function PlansOverview() {
   const handlePayment = async () => {
     if (!selectedPlan) return;
 
-    if (!window.confirm('Bạn có muốn thanh toán không?')) {
-      return;
-    }
+    if (!window.confirm('Bạn có muốn thanh toán không?')) return;
 
+    // Nhánh "Gói tiết kiệm" dùng kho nội bộ
     if (selectedPlan === 'Gói tiết kiệm') {
       const stored = localStorage.getItem('user');
       if (!stored) {
@@ -76,13 +76,13 @@ export default function PlansOverview() {
       const { phone } = user;
 
       const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
-      const idx = accounts.findIndex(acc => !acc.phone);
+      const idx = accounts.findIndex((acc) => !acc.phone);
       if (idx === -1) {
         alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
         return;
       }
 
-      const soldCount = accounts.filter(a => a.phone).length;
+      const soldCount = accounts.filter((a) => a.phone).length;
       const purchaseDate = new Date();
       const expirationDate = new Date(purchaseDate);
       const months = parseInt(selectedDuration, 10) || 1;
@@ -130,6 +130,7 @@ export default function PlansOverview() {
       return;
     }
 
+    // Nhánh gói còn lại (gọi API)
     const stored = localStorage.getItem('user');
     if (!stored) {
       alert('Vui lòng đăng nhập để thanh toán');
@@ -150,11 +151,9 @@ export default function PlansOverview() {
         { plan: selectedPlan, duration: selectedDuration, amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Trừ tiền và cập nhật localStorage
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
 
-      // Hiển thị thông tin Netflix account nếu có
       if (data.netflixAccount) {
         const { email, password, profileName, pin } = data.netflixAccount;
         alert(
@@ -185,6 +184,7 @@ export default function PlansOverview() {
               <ArrowsPointingOutIcon className="zoom-icon" />
             </button>
           </div>
+
           <div className="stats">
             <div className="stat-item">
               <ChatBubbleLeftEllipsisIcon className="stat-icon" /> <span>178 Đánh giá</span>
@@ -193,21 +193,21 @@ export default function PlansOverview() {
               <ShoppingCartIcon className="stat-icon" /> <span>32419 Đã bán</span>
             </div>
             <div className="stat-item">
-              <ShieldCheckIcon className="stat-icon" /> <span>Chính sách bảo hành</span>
+              <ShieldCheckIcon className="stat-icon" /> <span>Bảo hành 24/7</span>
             </div>
             <div className="stat-item">
-              <StarIcon className="stat-icon star" /> <span>5.0</span>
+              <StarIcon className="stat-icon" /> <span>5.0</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT PANEL */}
-        <div className="right-panel">
+        {/* RIGHT PANEL -> thêm 'mobile-card' để có style glass trên mobile */}
+        <div className="right-panel mobile-card">
           <h1 className="title">Mua Tài khoản Netflix Premium</h1>
           <p className="price">{displayPrice}</p>
 
           <div className="plan-selection">
-            {plans.map(p => (
+            {plans.map((p) => (
               <button
                 key={p}
                 onClick={() => handlePlanChange(p)}
@@ -222,7 +222,7 @@ export default function PlansOverview() {
             <>
               <p className="description">{planDescriptions[selectedPlan]}</p>
               <div className="duration-selection">
-                {durations.map(d => (
+                {durations.map((d) => (
                   <button
                     key={d}
                     onClick={() => setSelectedDuration(d)}
@@ -235,13 +235,29 @@ export default function PlansOverview() {
             </>
           )}
 
+          {/* Nút pay cho desktop/tablet (mobile sẽ dùng sticky-cta) */}
           {selectedPlan && (
-            <button className="btn-pay" onClick={handlePayment}>
+            <button className="btn-pay main-pay" onClick={handlePayment}>
               Thanh toán
             </button>
           )}
         </div>
       </div>
+
+      {/* Sticky CTA (hiện trên mobile nhờ CSS) */}
+      {selectedPlan && (
+        <div className="sticky-cta">
+          <div className="summary">
+            <div>
+              <strong>{selectedPlan}</strong> • {selectedDuration}
+            </div>
+            <div>{displayPrice}</div>
+          </div>
+          <button className="btn-pay" onClick={handlePayment}>
+            Thanh toán
+          </button>
+        </div>
+      )}
     </div>
   );
 }
