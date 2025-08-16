@@ -20,6 +20,7 @@ import AdminCustomerOrders   from './admin/AdminCustomerOrders';
 import AdminStats            from './admin/AdminStats';
 import AdminExpiringOrders   from './admin/AdminExpiringOrders';
 import AdminOrders           from './admin/AdminOrders';
+import AdminLogs            from './admin/AdminLogs';
 import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
@@ -121,6 +122,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminOrders />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/logs"
+          element={
+            <AdminRoute>
+              <AdminLogs />
             </AdminRoute>
           }
         />

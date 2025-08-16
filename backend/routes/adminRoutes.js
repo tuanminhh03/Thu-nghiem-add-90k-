@@ -16,7 +16,8 @@ import {
   deleteNetflixAccount,
   deleteProfile,
   transferProfile,
-  stats
+  stats,
+  getAdminLogs
 } from '../controllers/adminController.js';
 
 const router = Router();
@@ -37,5 +38,6 @@ router.delete('/netflix-accounts/:id', authenticateAdmin, deleteNetflixAccount);
 router.delete('/netflix-accounts/:accountId/profiles/:profileId', authenticateAdmin, deleteProfile);
 router.post('/netflix-accounts/:accountId/profiles/:profileId/transfer', authenticateAdmin, transferProfile);
 router.get('/stats', authenticateAdmin, stats);
+router.get('/logs', authenticateAdmin, authorizeRoles('superadmin'), getAdminLogs);
 
 export default router;
