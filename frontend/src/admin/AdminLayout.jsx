@@ -12,7 +12,8 @@ export default function AdminLayout({ children }) {
     { href: '/admin/orders', label: 'Đơn hàng' },
     { href: '/admin/orders/expiring', label: 'Đơn sắp hết hạn' },
     { href: '/admin/netflix-accounts', label: 'Tài khoản gói cao cấp' },
-    { href: '/admin/netflix-accounts-50k', label: 'Tài khoản gói tiết kiệm' }
+    { href: '/admin/netflix-accounts-50k', label: 'Tài khoản gói tiết kiệm' },
+    { href: '/admin/logs', label: 'Nhật ký' }
   ];
 
   const handleLogout = () => {

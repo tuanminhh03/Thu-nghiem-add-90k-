@@ -393,3 +393,19 @@ export async function stats(req, res) {
     res.status(500).json({ message: 'Lỗi server' });
   }
 }
+
+export async function getAdminLogs(req, res) {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    const [logs, total] = await Promise.all([
+      AdminLog.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+      AdminLog.countDocuments()
+    ]);
+    res.json({ data: logs, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
