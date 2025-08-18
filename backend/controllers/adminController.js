@@ -39,21 +39,11 @@ export function ordersStream(req, res) {
 export async function login(req, res) {
   const { username, password } = req.body;
   const admins = [
-    {
-      username: process.env.ADMIN_USER,
-      password: process.env.ADMIN_PASS,
-      role: 'superadmin'
-    },
-    {
-      username: process.env.STAFF_USER,
-      password: process.env.STAFF_PASS,
-      role: 'staff'
-    }
+    { username: process.env.ADMIN_USER,  password: process.env.ADMIN_PASS,  role: 'superadmin' },
+    { username: process.env.STAFF_USER,  password: process.env.STAFF_PASS,  role: 'staff' }
   ].filter(a => a.username && a.password);
 
-  const admin = admins.find(
-    a => a.username === username && a.password === password
-  );
+  const admin = admins.find(a => a.username === username && a.password === password);
 
   if (admin) {
     const token = jwt.sign(
@@ -70,9 +60,9 @@ export async function login(req, res) {
 export async function getCustomers(req, res) {
   try {
     const { phone } = req.query;
-    const page = parseInt(req.query.page, 10) || 1;
+    const page  = parseInt(req.query.page, 10)  || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
     const query = phone ? { phone: new RegExp(phone, 'i') } : {};
     const [customers, total] = await Promise.all([
       Customer.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -97,7 +87,8 @@ export async function getCustomer(req, res) {
 }
 
 export async function topupCustomer(req, res) {
-  let { amount } = req.body; amount = parseInt(amount, 10);
+  let { amount } = req.body;
+  amount = parseInt(amount, 10);
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Số tiền không hợp lệ' });
   }
@@ -150,26 +141,19 @@ export async function getCustomerOrders(req, res) {
 
 export async function getOrders(req, res) {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
+    const page  = parseInt(req.query.page, 10)  || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
     const { phone } = req.query;
 
     let query = {};
     if (phone) {
-      const customers = await Customer.find(
-        { phone: new RegExp(phone, 'i') },
-        '_id'
-      );
+      const customers = await Customer.find({ phone: new RegExp(phone, 'i') }, '_id');
       query.user = { $in: customers.map(c => c._id) };
     }
 
     const [orders, total] = await Promise.all([
-      Order.find(query)
-        .sort({ purchaseDate: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate('user', 'phone'),
+      Order.find(query).sort({ purchaseDate: -1 }).skip(skip).limit(limit).populate('user', 'phone'),
       Order.countDocuments(query)
     ]);
 
@@ -230,25 +214,17 @@ export async function updateNetflixAccount(req, res) {
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
 
     const oldEmail = acc.email;
-    if (email !== undefined) acc.email = email;
+    if (email !== undefined)    acc.email = email;
     if (password !== undefined) acc.password = password;
-    if (note !== undefined) acc.note = note;
-    if (plan !== undefined) acc.plan = plan;
+    if (note !== undefined)     acc.note = note;
+    if (plan !== undefined)     acc.plan = plan;
     await acc.save();
 
     await Order.updateMany(
       { accountEmail: oldEmail },
       {
-        $set: {
-          accountEmail: acc.email,
-          accountPassword: acc.password
-        },
-        $push: {
-          history: {
-            message: 'Cập nhật thông tin tài khoản',
-            date: new Date()
-          }
-        }
+        $set:  { accountEmail: acc.email, accountPassword: acc.password },
+        $push: { history: { message: 'Cập nhật thông tin tài khoản', date: new Date() } }
       }
     );
 
@@ -316,11 +292,11 @@ export async function assignProfile(req, res) {
     await acc.save();
 
     // (6) Cập nhật đơn hàng
-    order.accountEmail = acc.email;
-    order.accountPassword = acc.password;
-    order.profileId = profile.id;
-    order.profileName = profile.name;
-    order.pin = profile.pin;
+    order.accountEmail   = acc.email;
+    order.accountPassword= acc.password;
+    order.profileId      = profile.id;
+    order.profileName    = profile.name;
+    order.pin            = profile.pin;
     if (expirationDate) order.expiresAt = new Date(expirationDate);
     order.history.push({ message: 'Cấp hồ sơ', date: new Date() });
     await order.save();
@@ -345,8 +321,17 @@ export async function updateProfile(req, res) {
 
     const { name, pin } = req.body;
     if (name !== undefined) profile.name = name;
-    if (pin !== undefined) profile.pin = pin;
+    if (pin  !== undefined) profile.pin  = pin;
     await acc.save();
+
+    // Đồng bộ thông tin hiển thị ở Order
+    await Order.updateMany(
+      { accountEmail: acc.email, profileId: profile.id },
+      {
+        $set:  { profileName: profile.name, pin: profile.pin },
+        $push: { history: { message: 'Cập nhật hồ sơ', date: new Date() } }
+      }
+    );
 
     res.json({ message: 'Đã cập nhật hồ sơ', profile });
   } catch (err) {
@@ -370,8 +355,8 @@ export async function deleteProfile(req, res) {
     profile.name = '';
     profile.pin = '';
     profile.customerPhone = undefined;
-    profile.purchaseDate = undefined;
-    profile.expirationDate = undefined;
+    profile.purchaseDate  = undefined;
+    profile.expirationDate= undefined;
     await acc.save();
 
     await Order.updateMany(
@@ -411,15 +396,15 @@ export async function transferProfile(req, res) {
     }
 
     // copy dữ liệu
-    toProfile.status = 'used';
-    toProfile.customerPhone = fromProfile.customerPhone;
-    toProfile.purchaseDate = fromProfile.purchaseDate;
+    toProfile.status         = 'used';
+    toProfile.customerPhone  = fromProfile.customerPhone;
+    toProfile.purchaseDate   = fromProfile.purchaseDate;
     toProfile.expirationDate = fromProfile.expirationDate;
 
     // làm trống profile cũ
-    fromProfile.status = 'empty';
-    fromProfile.customerPhone = undefined;
-    fromProfile.purchaseDate = undefined;
+    fromProfile.status         = 'empty';
+    fromProfile.customerPhone  = undefined;
+    fromProfile.purchaseDate   = undefined;
     fromProfile.expirationDate = undefined;
 
     await fromAcc.save();
@@ -432,15 +417,13 @@ export async function transferProfile(req, res) {
       { accountEmail: fromAcc.email, profileId: fromProfile.id },
       {
         $set: {
-          accountEmail: toAcc.email,
+          accountEmail:  toAcc.email,
           accountPassword: toAcc.password,
-          profileId: toProfile.id,
-          profileName: toProfile.name,
-          pin: toProfile.pin
+          profileId:     toProfile.id,
+          profileName:   toProfile.name,
+          pin:           toProfile.pin
         },
-        $push: {
-          history: { message, date: new Date() }
-        }
+        $push: { history: { message, date: new Date() } }
       }
     );
 
@@ -463,21 +446,11 @@ export async function stats(req, res) {
       Customer.countDocuments(),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
-            total: { $sum: '$amount' }
-          }
-        }
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }, total: { $sum: '$amount' } } }
       ]),
       PageView.aggregate([
         { $match: { createdAt: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            total: { $sum: 1 }
-          }
-        }
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } } }
       ]),
       PageView.countDocuments({ createdAt: { $gte: today } })
     ]);
@@ -489,11 +462,11 @@ export async function stats(req, res) {
       const key = d.toISOString().slice(0, 10);
       days.push({ date: key, revenue: 0, visits: 0 });
     }
-    const revMap = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
+    const revMap   = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
     const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
     days.forEach(d => {
-      d.revenue = revMap[d.date] || 0;
-      d.visits = visitMap[d.date] || 0;
+      d.revenue = revMap[d.date]  || 0;
+      d.visits  = visitMap[d.date]|| 0;
     });
 
     const revenueLast30Days = days.reduce((sum, d) => sum + d.revenue, 0);
@@ -503,7 +476,7 @@ export async function stats(req, res) {
       revenueLast30Days,
       visitsToday,
       revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
-      visitChart: days.map(d => ({ date: d.date, total: d.visits }))
+      visitChart:  days.map(d => ({ date: d.date, total: d.visits  }))
     });
   } catch (err) {
     console.error(err);
@@ -513,9 +486,9 @@ export async function stats(req, res) {
 
 export async function getAdminLogs(req, res) {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
+    const page  = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
     const [logs, total] = await Promise.all([
       AdminLog.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
       AdminLog.countDocuments()
