@@ -238,7 +238,18 @@ export async function updateNetflixAccount(req, res) {
 
     await Order.updateMany(
       { accountEmail: oldEmail },
-      { accountEmail: acc.email, accountPassword: acc.password }
+      {
+        $set: {
+          accountEmail: acc.email,
+          accountPassword: acc.password
+        },
+        $push: {
+          history: {
+            message: 'Cập nhật thông tin tài khoản',
+            date: new Date()
+          }
+        }
+      }
     );
 
     res.json(acc);
@@ -253,6 +264,87 @@ export async function deleteNetflixAccount(req, res) {
     const acc = await NetflixAccount.findByIdAndDelete(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
     res.json({ message: 'Đã xóa' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
+export async function assignProfile(req, res) {
+  try {
+    const { phone, expirationDate } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: 'Thiếu SDT khách hàng' });
+    }
+    const customer = await Customer.findOne({ phone });
+    if (!customer) {
+      return res.status(404).json({ message: 'Không tìm thấy khách hàng' });
+    }
+
+    const acc = await NetflixAccount.findById(req.params.id);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    if (acc.plan !== 'Gói cao cấp') {
+      return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+    }
+
+    const profile = acc.profiles.find(p => p.status === 'empty');
+    if (!profile) {
+      return res.status(400).json({ message: 'Tài khoản không còn hồ sơ trống' });
+    }
+
+    const order = await Order.findOne(
+      {
+        user: customer._id,
+        $or: [
+          { accountEmail: { $exists: false } },
+          { accountEmail: '' }
+        ]
+      }
+    ).sort({ purchaseDate: -1 });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng đang chờ' });
+    }
+
+    profile.status = 'used';
+    profile.customerPhone = phone;
+    profile.purchaseDate = new Date();
+    profile.expirationDate = expirationDate ? new Date(expirationDate) : undefined;
+    await acc.save();
+
+    order.accountEmail = acc.email;
+    order.accountPassword = acc.password;
+    order.profileId = profile.id;
+    order.profileName = profile.name;
+    order.pin = profile.pin;
+    if (expirationDate) order.expiresAt = new Date(expirationDate);
+    order.history.push({ message: 'Cấp hồ sơ', date: new Date() });
+    await order.save();
+
+    res.json({ message: 'Đã cấp hồ sơ', profileId: profile.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
+export async function updateProfile(req, res) {
+  try {
+    const acc = await NetflixAccount.findById(req.params.accountId);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    if (acc.plan !== 'Gói cao cấp') {
+      return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+    }
+
+    const profile = acc.profiles.find(p => p.id === req.params.profileId);
+    if (!profile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
+
+    const { name, pin } = req.body;
+    if (name !== undefined) profile.name = name;
+    if (pin !== undefined) profile.pin = pin;
+    await acc.save();
+
+    res.json({ message: 'Đã cập nhật hồ sơ', profile });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
