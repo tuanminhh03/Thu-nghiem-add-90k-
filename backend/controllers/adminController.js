@@ -19,7 +19,7 @@ export function ordersStream(req, res) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+  res.flushHeaders?.();
 
   const keepAliveAdmin = setInterval(() => {
     res.write(':\n\n');
@@ -276,29 +276,31 @@ export async function assignProfile(req, res) {
     if (!phone) {
       return res.status(400).json({ message: 'Thiếu SDT khách hàng' });
     }
+
+    // (1) Tìm khách hàng theo số điện thoại
     const customer = await Customer.findOne({ phone });
     if (!customer) {
       return res.status(404).json({ message: 'Không tìm thấy khách hàng' });
     }
 
+    // (2) Lấy tài khoản Netflix
     const acc = await NetflixAccount.findById(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
     if (acc.plan !== 'Gói cao cấp') {
       return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
     }
 
+    // (3) Tìm hồ sơ trống
     const profile = acc.profiles.find(p => p.status === 'empty');
     if (!profile) {
       return res.status(400).json({ message: 'Tài khoản không còn hồ sơ trống' });
     }
 
+    // (4) Tìm đơn hàng đang chờ của user (chưa có accountEmail)
     const order = await Order.findOne(
       {
         user: customer._id,
-        $or: [
-          { accountEmail: { $exists: false } },
-          { accountEmail: '' }
-        ]
+        $or: [{ accountEmail: { $exists: false } }, { accountEmail: '' }]
       }
     ).sort({ purchaseDate: -1 });
 
@@ -306,12 +308,14 @@ export async function assignProfile(req, res) {
       return res.status(404).json({ message: 'Không tìm thấy đơn hàng đang chờ' });
     }
 
+    // (5) Gán hồ sơ cho tài khoản
     profile.status = 'used';
     profile.customerPhone = phone;
     profile.purchaseDate = new Date();
     profile.expirationDate = expirationDate ? new Date(expirationDate) : undefined;
     await acc.save();
 
+    // (6) Cập nhật đơn hàng
     order.accountEmail = acc.email;
     order.accountPassword = acc.password;
     order.profileId = profile.id;
@@ -372,7 +376,7 @@ export async function deleteProfile(req, res) {
 
     await Order.updateMany(
       { accountEmail: acc.email, profileId: profile.id },
-      { status: 'EXPIRED' }
+      { $set: { status: 'EXPIRED' } }
     );
 
     res.json({ message: 'Đã xóa hồ sơ' });
@@ -406,11 +410,13 @@ export async function transferProfile(req, res) {
       return res.status(400).json({ message: 'Tài khoản đích không còn hồ sơ trống' });
     }
 
+    // copy dữ liệu
     toProfile.status = 'used';
     toProfile.customerPhone = fromProfile.customerPhone;
     toProfile.purchaseDate = fromProfile.purchaseDate;
     toProfile.expirationDate = fromProfile.expirationDate;
 
+    // làm trống profile cũ
     fromProfile.status = 'empty';
     fromProfile.customerPhone = undefined;
     fromProfile.purchaseDate = undefined;
@@ -420,23 +426,21 @@ export async function transferProfile(req, res) {
     await toAcc.save();
 
     const sameAccount = fromAcc._id.equals(toAcc._id);
-    const message = sameAccount
-      ? 'Chuyển sang hồ sơ khác'
-      : 'Đổi sang tài khoản khác';
+    const message = sameAccount ? 'Chuyển sang hồ sơ khác' : 'Đổi sang tài khoản khác';
 
     await Order.updateMany(
       { accountEmail: fromAcc.email, profileId: fromProfile.id },
       {
-        accountEmail: toAcc.email,
-        accountPassword: toAcc.password,
-        profileId: toProfile.id,
-        profileName: toProfile.name,
-        pin: toProfile.pin,
-
+        $set: {
+          accountEmail: toAcc.email,
+          accountPassword: toAcc.password,
+          profileId: toProfile.id,
+          profileName: toProfile.name,
+          pin: toProfile.pin
+        },
         $push: {
-          history: { message: 'Đổi sang tài khoản khác', date: new Date() }
+          history: { message, date: new Date() }
         }
-
       }
     );
 
