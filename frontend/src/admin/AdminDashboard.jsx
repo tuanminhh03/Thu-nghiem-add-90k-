@@ -118,6 +118,7 @@ export default function AdminDashboard() {
       );
       setMsg({ text: 'Đặt lại PIN thành công', type: 'success' });
       setShowReset(false);
+      // Làm mới danh sách sau khi đặt lại PIN
       fetchCustomers();
     } catch (err) {
       console.error(err);
