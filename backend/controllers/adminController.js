@@ -238,7 +238,18 @@ export async function updateNetflixAccount(req, res) {
 
     await Order.updateMany(
       { accountEmail: oldEmail },
-      { accountEmail: acc.email, accountPassword: acc.password }
+      {
+        $set: {
+          accountEmail: acc.email,
+          accountPassword: acc.password
+        },
+        $push: {
+          history: {
+            message: 'Cập nhật thông tin tài khoản',
+            date: new Date()
+          }
+        }
+      }
     );
 
     res.json(acc);
