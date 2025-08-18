@@ -10,6 +10,7 @@ import {
   getCustomerOrders,
   getOrders,
   deleteOrder,
+  getOrderHistory,
   getNetflixAccounts,
   createNetflixAccount,
   updateNetflixAccount,
@@ -30,6 +31,7 @@ router.post('/customers/:id/topup', authenticateAdmin, authorizeRoles('superadmi
 router.delete('/customers/:id', authenticateAdmin, authorizeRoles('superadmin'), deleteCustomer);
 router.get('/customers/:id/orders', authenticateAdmin, getCustomerOrders);
 router.get('/orders', authenticateAdmin, getOrders);
+router.get('/orders/:id/history', authenticateAdmin, getOrderHistory);
 router.delete('/orders/:id', authenticateAdmin, deleteOrder);
 router.get('/netflix-accounts', authenticateAdmin, getNetflixAccounts);
 router.post('/netflix-accounts', authenticateAdmin, createNetflixAccount);

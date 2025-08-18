@@ -14,6 +14,9 @@ export default function AdminOrders() {
   const [phone, setPhone] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyOrder, setHistoryOrder] = useState(null);
   const token = localStorage.getItem('adminToken');
 
   const fetchOrders = async () => {
@@ -75,6 +78,22 @@ export default function AdminOrders() {
   const openDelete = id => {
     setSelectedId(id);
     setShowDelete(true);
+  };
+
+  const openHistory = async o => {
+    setHistoryOrder(o);
+    setShowHistory(true);
+    setHistory([]);
+    if (/^[0-9a-fA-F]{24}$/.test(o._id)) {
+      try {
+        const { data } = await axios.get(`/api/admin/orders/${o._id}/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setHistory(data.history || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
   };
 
   const confirmDelete = async () => {
@@ -161,7 +180,15 @@ export default function AdminOrders() {
                 return (
                   <tr key={o._id}>
                     <td>{idx + 1}</td>
-                    <td>{o.orderCode || o.code || o._id}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="text-blue-600 underline"
+                        onClick={() => openHistory(o)}
+                      >
+                        {o.orderCode || o.code || o._id}
+                      </button>
+                    </td>
                     <td>{o.user?.phone || ''}</td>
                     <td>{o.plan}</td>
                     <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
@@ -218,6 +245,24 @@ export default function AdminOrders() {
               Hủy
             </button>
           </div>
+        </Modal>
+      )}
+      {showHistory && (
+        <Modal onClose={() => setShowHistory(false)}>
+          <h2 className="text-lg font-semibold mb-2">
+            Lịch sử đơn {historyOrder?.orderCode || historyOrder?._id}
+          </h2>
+          {history.length > 0 ? (
+            <ul className="list-disc pl-5">
+              {history.map((h, idx) => (
+                <li key={idx}>
+                  {new Date(h.date).toLocaleString('vi-VN')} - {h.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Không có lịch sử</p>
+          )}
         </Modal>
       )}
     </AdminLayout>

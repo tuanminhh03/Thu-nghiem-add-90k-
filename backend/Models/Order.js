@@ -50,6 +50,12 @@ const orderSchema = new Schema({
   expiresAt: {
     type: Date,
   },
+  history: [
+    {
+      message: String,
+      date: { type: Date, default: Date.now },
+    },
+  ],
 }, { timestamps: true });
 
 export default model('Order', orderSchema);
