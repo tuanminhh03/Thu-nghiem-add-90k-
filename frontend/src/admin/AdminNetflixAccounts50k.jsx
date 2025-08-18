@@ -2,16 +2,15 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
+const PLAN_DAYS = 30; // số ngày mặc định của gói
+
 export default function AdminNetflixAccounts50k() {
   const [accounts, setAccounts] = useState(() => {
     const saved = localStorage.getItem('accounts50k');
     if (!saved) return [];
     try {
       return JSON.parse(saved, (key, value) => {
-        if (
-          ['purchaseDate', 'expirationDate', 'lastUsed'].includes(key) &&
-          value
-        ) {
+        if (['purchaseDate', 'expirationDate', 'lastUsed'].includes(key) && value) {
           return new Date(value);
         }
         return value;
@@ -20,66 +19,81 @@ export default function AdminNetflixAccounts50k() {
       return [];
     }
   });
+
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('asc');
-  const PLAN_DAYS = 30;
 
   useEffect(() => {
+    // Lưu kèm chuyển Date -> ISO string
     localStorage.setItem('accounts50k', JSON.stringify(accounts));
   }, [accounts]);
 
   const handleImport = e => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = async evt => {
       const data = evt.target.result;
       let rows = [];
-      if (file.name.endsWith('.csv')) {
-        const text = data.trim();
+
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const text = new TextDecoder().decode(
+          data instanceof ArrayBuffer ? data : new TextEncoder().encode(String(data))
+        ).trim();
         rows = text.split(/\r?\n/).map(line => line.split('|'));
       } else {
         const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
-        const wb = XLSX.read(data, { type: 'binary' });
+        const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
         const sheet = wb.SheetNames[0];
         rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1 });
       }
+
       const imported = rows
         .filter(r => r[0] && r[1])
         .map(r => ({
-          username: r[0].trim(),
-          password: r[1].trim(),
-          cookies: r[2] ? r[2].trim() : '',
+          username: String(r[0]).trim(),
+          password: String(r[1]).trim(),
+          cookies: r[2] ? String(r[2]).trim() : '',
           phone: '',
           orderCode: '',
           purchaseDate: null,
           expirationDate: null,
           lastUsed: null,
         }));
-      setAccounts(prev => [...prev, ...imported]);
+
+      // Khử trùng lặp theo username
+      setAccounts(prev => {
+        const exist = new Set(prev.map(a => a.username));
+        const deduped = imported.filter(a => !exist.has(a.username));
+        return [...prev, ...deduped];
+      });
     };
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsBinaryString(file);
-    }
+
+    // Dùng ArrayBuffer để đọc ổn định cả csv/xlsx
+    reader.readAsArrayBuffer(file);
   };
 
   const remainingDays = acc => {
-    if (!acc.expirationDate) return '-';
-    return Math.ceil((acc.expirationDate - Date.now()) / (1000 * 60 * 60 * 24));
+    if (!acc?.expirationDate) return '-';
+    const end = acc.expirationDate instanceof Date ? acc.expirationDate : new Date(acc.expirationDate);
+    if (isNaN(end)) return '-';
+    return Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   };
 
   const handleSell = idx => {
     const phone = prompt('Nhập số điện thoại khách hàng:');
     if (!phone) return;
+
     const trimmedPhone = phone.trim();
+    if (!trimmedPhone) return;
+
     const soldCount = accounts.filter(a => a.orderCode).length;
     const purchaseDate = new Date();
     const expirationDate = new Date(purchaseDate);
     expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
+
     const orderCode = `GTK${soldCount + 1}`;
 
     const updated = [...accounts];
@@ -104,9 +118,36 @@ export default function AdminNetflixAccounts50k() {
     localStorage.setItem('orders50k', JSON.stringify(orders));
   };
 
+  const handleEditExpiration = idx => {
+    const current = accounts[idx].expirationDate;
+    const currentStr =
+      current instanceof Date && !isNaN(current) ? current.toISOString().slice(0, 10) : '';
+    const input = prompt('Nhập ngày hết hạn mới (YYYY-MM-DD):', currentStr);
+    if (!input) return;
+
+    const expirationDate = new Date(input);
+    if (isNaN(expirationDate)) {
+      alert('Ngày hết hạn không hợp lệ');
+      return;
+    }
+
+    const updated = [...accounts];
+    updated[idx] = { ...updated[idx], expirationDate };
+    setAccounts(updated);
+
+    if (updated[idx].orderCode) {
+      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      const orderIdx = orders.findIndex(o => o.orderCode === updated[idx].orderCode);
+      if (orderIdx !== -1) {
+        orders[orderIdx].expirationDate = expirationDate;
+        localStorage.setItem('orders50k', JSON.stringify(orders));
+      }
+    }
+  };
+
   const handleSort = field => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortOrder('asc');
@@ -114,17 +155,31 @@ export default function AdminNetflixAccounts50k() {
   };
 
   const filtered = accounts.filter(acc =>
-    (acc.orderCode || '').toLowerCase().includes(search.toLowerCase())
+    (acc?.orderCode || '').toLowerCase().includes(search.trim().toLowerCase())
   );
 
   const sorted = [...filtered].sort((a, b) => {
     const aOnline = a.phone ? 1 : 0;
     const bOnline = b.phone ? 1 : 0;
     if (aOnline !== bOnline) return bOnline - aOnline;
-    let aVal = a[sortField];
-    let bVal = b[sortField];
-    if (aVal === null || aVal === undefined) aVal = 0;
-    if (bVal === null || bVal === undefined) bVal = 0;
+
+    let aVal = a?.[sortField];
+    let bVal = b?.[sortField];
+
+    // Chuẩn hóa Date -> ms, null/undefined -> 0
+    const norm = v => {
+      if (v == null) return 0;
+      if (v instanceof Date) return v.getTime();
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+        const d = new Date(v);
+        return isNaN(d) ? v : d.getTime();
+      }
+      return v;
+    };
+
+    aVal = norm(aVal);
+    bVal = norm(bVal);
+
     if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
     if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
     return 0;
@@ -132,6 +187,12 @@ export default function AdminNetflixAccounts50k() {
 
   const handleDelete = idx => {
     setAccounts(accs => accs.filter((_, i) => i !== idx));
+  };
+
+  const fmtDay = v => {
+    if (!v) return '';
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d) ? '' : d.toLocaleDateString('vi-VN');
   };
 
   return (
@@ -181,7 +242,7 @@ export default function AdminNetflixAccounts50k() {
                 const remain = remainingDays(acc);
                 const status = acc.phone ? 'Online' : 'Offline';
                 return (
-                  <tr key={acc.username + idx}>
+                  <tr key={`${acc.username}-${idx}`}>
                     <td>{acc.username}</td>
                     <td>{acc.password}</td>
                     <td>
@@ -194,18 +255,10 @@ export default function AdminNetflixAccounts50k() {
                     </td>
                     <td>{acc.phone}</td>
                     <td>{acc.orderCode}</td>
-                    <td>
-                      {acc.purchaseDate
-                        ? new Date(acc.purchaseDate).toLocaleDateString('vi-VN')
-                        : ''}
-                    </td>
-                    <td>
-                      {acc.expirationDate
-                        ? new Date(acc.expirationDate).toLocaleDateString('vi-VN')
-                        : ''}
-                    </td>
+                    <td>{fmtDay(acc.purchaseDate)}</td>
+                    <td>{fmtDay(acc.expirationDate)}</td>
                     <td>{remain}</td>
-                    <td>{acc.lastUsed ? new Date(acc.lastUsed).toLocaleDateString('vi-VN') : ''}</td>
+                    <td>{fmtDay(acc.lastUsed)}</td>
                     <td>
                       <span className={`px-2 py-1 rounded text-white ${status === 'Online' ? 'bg-green-500' : 'bg-gray-400'}`}>
                         {status}
@@ -217,6 +270,12 @@ export default function AdminNetflixAccounts50k() {
                           Bán
                         </button>
                       )}
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => handleEditExpiration(idx)}
+                      >
+                        Sửa hạn
+                      </button>
                       <button className="btn btn-danger" onClick={() => handleDelete(idx)}>
                         Xóa
                       </button>
