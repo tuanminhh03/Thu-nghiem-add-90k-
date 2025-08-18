@@ -14,6 +14,8 @@ import {
   getNetflixAccounts,
   createNetflixAccount,
   updateNetflixAccount,
+  assignProfile,
+  updateProfile,
   deleteNetflixAccount,
   deleteProfile,
   transferProfile,
@@ -36,7 +38,9 @@ router.delete('/orders/:id', authenticateAdmin, deleteOrder);
 router.get('/netflix-accounts', authenticateAdmin, getNetflixAccounts);
 router.post('/netflix-accounts', authenticateAdmin, createNetflixAccount);
 router.put('/netflix-accounts/:id', authenticateAdmin, updateNetflixAccount);
+router.post('/netflix-accounts/:id/assign', authenticateAdmin, assignProfile);
 router.delete('/netflix-accounts/:id', authenticateAdmin, deleteNetflixAccount);
+router.put('/netflix-accounts/:accountId/profiles/:profileId', authenticateAdmin, updateProfile);
 router.delete('/netflix-accounts/:accountId/profiles/:profileId', authenticateAdmin, deleteProfile);
 router.post('/netflix-accounts/:accountId/profiles/:profileId/transfer', authenticateAdmin, transferProfile);
 router.get('/stats', authenticateAdmin, stats);
