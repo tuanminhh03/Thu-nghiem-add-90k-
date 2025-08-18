@@ -6,6 +6,7 @@ import {
   getCustomers,
   getCustomer,
   topupCustomer,
+  resetCustomerPin,
   deleteCustomer,
   getCustomerOrders,
   getOrders,
@@ -30,6 +31,7 @@ router.get('/orders/stream', ordersStream);
 router.get('/customers', authenticateAdmin, getCustomers);
 router.get('/customers/:id', authenticateAdmin, getCustomer);
 router.post('/customers/:id/topup', authenticateAdmin, authorizeRoles('superadmin'), topupCustomer);
+router.post('/customers/:id/reset-pin', authenticateAdmin, authorizeRoles('superadmin'), resetCustomerPin);
 router.delete('/customers/:id', authenticateAdmin, authorizeRoles('superadmin'), deleteCustomer);
 router.get('/customers/:id/orders', authenticateAdmin, getCustomerOrders);
 router.get('/orders', authenticateAdmin, getOrders);

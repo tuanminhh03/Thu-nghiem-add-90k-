@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import Customer from '../Models/Customer.js';
 import Order from '../Models/Order.js';
 import NetflixAccount from '../Models/NetflixAccount.js';
@@ -106,6 +107,31 @@ export async function topupCustomer(req, res) {
       target: customer._id.toString()
     });
     res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
+export async function resetCustomerPin(req, res) {
+  const { pin } = req.body;
+  if (!/^\d{6}$/.test(pin)) {
+    return res.status(400).json({ message: 'Mã PIN phải gồm 6 chữ số' });
+  }
+  try {
+    const hashed = await bcrypt.hash(pin, 10);
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { pin: hashed },
+      { new: true }
+    );
+    if (!customer) return res.status(404).json({ message: 'Không tìm thấy user' });
+    await AdminLog.create({
+      admin: req.admin?.username || 'unknown',
+      action: 'resetPin',
+      target: customer._id.toString()
+    });
+    res.json({ message: 'Đặt lại PIN thành công' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });

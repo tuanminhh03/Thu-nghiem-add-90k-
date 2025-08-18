@@ -16,8 +16,10 @@ export default function AdminDashboard() {
   const [pages, setPages] = useState(1);
   const [showTopup, setShowTopup] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const [selected, setSelected] = useState(null);
   const [amount, setAmount] = useState('');
+  const [pin, setPin] = useState('');
   const token = localStorage.getItem('adminToken');
   const navigate = useNavigate();
 
@@ -71,6 +73,12 @@ export default function AdminDashboard() {
     setShowTopup(true);
   };
 
+  const openReset = (c) => {
+    setSelected(c);
+    setPin('');
+    setShowReset(true);
+  };
+
   const submitTopup = async () => {
     const amt = parseInt(amount, 10);
     if (!amt || amt <= 0) return;
@@ -92,6 +100,33 @@ export default function AdminDashboard() {
       }
       setMsg({
         text: err.response?.data?.message || 'Lỗi nạp tiền',
+        type: 'error',
+      });
+    }
+  };
+
+  const submitReset = async () => {
+    if (!/^\d{6}$/.test(pin)) {
+      setMsg({ text: 'PIN phải gồm 6 chữ số', type: 'error' });
+      return;
+    }
+    try {
+      await axios.post(
+        `/api/admin/customers/${selected._id}/reset-pin`,
+        { pin },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMsg({ text: 'Đặt lại PIN thành công', type: 'success' });
+      setShowReset(false);
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+        return;
+      }
+      setMsg({
+        text: err.response?.data?.message || 'Lỗi đặt lại PIN',
         type: 'error',
       });
     }
@@ -190,6 +225,12 @@ export default function AdminDashboard() {
                   <td>{c.amount}</td>
                   <td className="text-center">
                     <button
+                      onClick={() => openReset(c)}
+                      className="btn btn-primary mr-2"
+                    >
+                      Đặt lại PIN
+                    </button>
+                    <button
                       onClick={() => openTopup(c)}
                       className="btn btn-primary mr-2"
                     >
@@ -234,6 +275,26 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+      {showReset && (
+        <Modal onClose={() => setShowReset(false)}>
+          <h2 className="text-lg mb-4">Đặt lại PIN cho {selected?.phone}</h2>
+          <input
+            type="password"
+            className="input mb-4"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            maxLength={6}
+          />
+          <div className="text-right">
+            <button className="btn btn-primary mr-2" onClick={submitReset}>
+              Xác nhận
+            </button>
+            <button className="btn" onClick={() => setShowReset(false)}>
+              Hủy
+            </button>
+          </div>
+        </Modal>
+      )}
       {showTopup && (
         <Modal onClose={() => setShowTopup(false)}>
           <h2 className="text-lg mb-4">Nạp tiền cho {selected?.phone}</h2>
