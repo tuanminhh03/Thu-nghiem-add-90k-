@@ -270,6 +270,60 @@ export async function deleteNetflixAccount(req, res) {
   }
 }
 
+export async function assignProfile(req, res) {
+  try {
+    const { phone, expirationDate } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: 'Thiếu SDT khách hàng' });
+    }
+
+    const acc = await NetflixAccount.findById(req.params.id);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    if (acc.plan !== 'Gói cao cấp') {
+      return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+    }
+
+    const profile = acc.profiles.find(p => p.status === 'empty');
+    if (!profile) {
+      return res.status(400).json({ message: 'Tài khoản không còn hồ sơ trống' });
+    }
+
+    profile.status = 'used';
+    profile.customerPhone = phone;
+    profile.purchaseDate = new Date();
+    profile.expirationDate = expirationDate ? new Date(expirationDate) : undefined;
+    await acc.save();
+
+    res.json({ message: 'Đã cấp hồ sơ', profileId: profile.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
+export async function updateProfile(req, res) {
+  try {
+    const acc = await NetflixAccount.findById(req.params.accountId);
+    if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    if (acc.plan !== 'Gói cao cấp') {
+      return res.status(400).json({ message: 'Chỉ áp dụng cho gói cao cấp' });
+    }
+
+    const profile = acc.profiles.find(p => p.id === req.params.profileId);
+    if (!profile) return res.status(404).json({ message: 'Không tìm thấy hồ sơ' });
+
+    const { name, pin } = req.body;
+    if (name !== undefined) profile.name = name;
+    if (pin !== undefined) profile.pin = pin;
+    await acc.save();
+
+    res.json({ message: 'Đã cập nhật hồ sơ', profile });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
 export async function deleteProfile(req, res) {
   try {
     const acc = await NetflixAccount.findById(req.params.accountId);
