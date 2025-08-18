@@ -75,35 +75,33 @@ export default function AdminNetflixAccounts50k() {
   const handleSell = idx => {
     const phone = prompt('Nhập số điện thoại khách hàng:');
     if (!phone) return;
-    setAccounts(accs => {
-      const soldCount = accs.filter(a => a.orderCode).length;
-      const purchaseDate = new Date();
-      const expirationDate = new Date(purchaseDate);
-      expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
-      const orderCode = `GTK${soldCount + 1}`;
+    const trimmedPhone = phone.trim();
+    const soldCount = accounts.filter(a => a.orderCode).length;
+    const purchaseDate = new Date();
+    const expirationDate = new Date(purchaseDate);
+    expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
+    const orderCode = `GTK${soldCount + 1}`;
 
-      const updated = [...accs];
-      updated[idx] = {
-        ...updated[idx],
-        phone: phone.trim(),
-        orderCode,
-        purchaseDate,
-        expirationDate,
-      };
+    const updated = [...accounts];
+    updated[idx] = {
+      ...updated[idx],
+      phone: trimmedPhone,
+      orderCode,
+      purchaseDate,
+      expirationDate,
+    };
+    setAccounts(updated);
 
-      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
-      orders.push({
-        orderCode,
-        phone: phone.trim(),
-        username: updated[idx].username,
-        password: updated[idx].password,
-        purchaseDate,
-        expirationDate,
-      });
-      localStorage.setItem('orders50k', JSON.stringify(orders));
-
-      return updated;
+    const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+    orders.push({
+      orderCode,
+      phone: trimmedPhone,
+      username: updated[idx].username,
+      password: updated[idx].password,
+      purchaseDate,
+      expirationDate,
     });
+    localStorage.setItem('orders50k', JSON.stringify(orders));
   };
 
   const handleSort = field => {
