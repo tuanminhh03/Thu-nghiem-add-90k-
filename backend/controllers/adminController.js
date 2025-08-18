@@ -327,6 +327,11 @@ export async function transferProfile(req, res) {
     await fromAcc.save();
     await toAcc.save();
 
+    const sameAccount = fromAcc._id.equals(toAcc._id);
+    const message = sameAccount
+      ? 'Chuyển sang hồ sơ khác'
+      : 'Đổi sang tài khoản khác';
+
     await Order.updateMany(
       { accountEmail: fromAcc.email, profileId: fromProfile.id },
       {
@@ -335,9 +340,11 @@ export async function transferProfile(req, res) {
         profileId: toProfile.id,
         profileName: toProfile.name,
         pin: toProfile.pin,
+
         $push: {
           history: { message: 'Đổi sang tài khoản khác', date: new Date() }
         }
+
       }
     );
 
