@@ -5,7 +5,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header            from './Header';
 import PlansOverview     from './PlansOverview';
 import PlanDetail        from './PlanDetail';
-import PhoneLogin        from './PhoneLogin';
+import Login             from './Login';
+import Register          from './Register';
 import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
@@ -46,7 +47,11 @@ export default function App() {
         />
         <Route
            path="/login"
-           element={<PhoneLogin />}
+           element={<Login />}
+        />
+        <Route
+           path="/register"
+           element={<Register />}
         />
         <Route
           path="/plan/:planKey"
