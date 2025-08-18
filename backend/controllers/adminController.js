@@ -340,7 +340,11 @@ export async function transferProfile(req, res) {
         profileId: toProfile.id,
         profileName: toProfile.name,
         pin: toProfile.pin,
-        $push: { history: { message, date: new Date() } }
+
+        $push: {
+          history: { message: 'Đổi sang tài khoản khác', date: new Date() }
+        }
+
       }
     );
 
