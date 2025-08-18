@@ -1,11 +1,12 @@
-// src/PhoneLogin.jsx
+// src/Login.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import styles from './PhoneLogin.module.css';
 
-export default function PhoneLogin() {
+export default function Login() {
   const [phone, setPhone] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -19,10 +20,14 @@ export default function PhoneLogin() {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
     }
+    if (!/^\d{6}$/.test(pin)) {
+      setError('Mã PIN phải gồm 6 chữ số.');
+      return;
+    }
 
     setLoading(true);
     try {
-      const { data } = await axios.post('/api/auth/login', { phone });
+      const { data } = await axios.post('/api/auth/login', { phone, pin });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       setShowSuccess(true);
@@ -39,13 +44,17 @@ export default function PhoneLogin() {
     navigate('/');
   };
 
+  const handleForgot = () => {
+    alert('Vui lòng liên hệ Admin tại góc trái màn hình để lấy lại mật khẩu');
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>📱</div>
-        <h2 className={styles.title}>Đăng nhập nhanh</h2>
+        <h2 className={styles.title}>Đăng nhập</h2>
         <p className={styles.subtitle}>
-          Không cần đăng ký, chỉ cần nhập số điện thoại để đăng nhập
+          Nhập số điện thoại và mã PIN (6 số)
         </p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label className={styles.label}>
@@ -57,6 +66,18 @@ export default function PhoneLogin() {
               value={phone}
               onChange={(e) => setPhone(e.target.value.trim())}
               disabled={loading}
+            />
+          </label>
+          <label className={styles.label}>
+            Mã PIN
+            <input
+              type="password"
+              className={styles.input}
+              placeholder="Nhập mã PIN 6 số"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.trim())}
+              disabled={loading}
+              maxLength={6}
             />
           </label>
           {error && <p className={styles.error}>{error}</p>}
@@ -71,9 +92,17 @@ export default function PhoneLogin() {
                 <span>Đang xử lý…</span>
               </span>
             ) : (
-              'Tiếp tục'
+              'Đăng nhập'
             )}
           </button>
+          <div className={styles.actions}>
+            <span className={styles.link} onClick={handleForgot}>
+              Quên mật khẩu?
+            </span>
+            <Link className={styles.link} to="/register">
+              Đăng ký
+            </Link>
+          </div>
         </form>
       </div>
 
@@ -89,5 +118,5 @@ export default function PhoneLogin() {
         </div>
       )}
     </div>
-);
+  );
 }
