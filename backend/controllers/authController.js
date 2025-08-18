@@ -1,24 +1,64 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import Customer from '../Models/Customer.js';
 import updates from '../services/eventService.js';
 
-export async function login(req, res) {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ message: 'Thiếu số điện thoại' });
+export async function register(req, res) {
+  const { name, phone, pin } = req.body;
+  if (!name || !phone || !pin) {
+    return res.status(400).json({ message: 'Thiếu thông tin' });
+  }
+  if (!/^\d{6}$/.test(pin)) {
+    return res.status(400).json({ message: 'Mã PIN phải gồm 6 chữ số' });
+  }
 
   try {
-    let user = await Customer.findOne({ phone });
+    const existing = await Customer.findOne({ phone });
+    if (existing) {
+      return res.status(400).json({ message: 'Số điện thoại đã được đăng ký' });
+    }
+
+    const hashed = await bcrypt.hash(pin, 10);
+    const user = await Customer.create({ name, phone, pin: hashed, amount: 0 });
+    const token = jwt.sign(
+      { id: user._id, phone: user.phone, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.status(201).json({
+      message: 'Đăng ký thành công',
+      token,
+      user: { id: user._id, name: user.name, phone: user.phone, amount: user.amount }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server lỗi' });
+  }
+}
+
+export async function login(req, res) {
+  const { phone, pin } = req.body;
+  if (!phone || !pin) {
+    return res.status(400).json({ message: 'Thiếu số điện thoại hoặc mã PIN' });
+  }
+
+  try {
+    const user = await Customer.findOne({ phone });
     if (!user) {
-      user = await Customer.create({ phone, amount: 0 });
+      return res.status(404).json({ message: 'Tài khoản không tồn tại' });
+    }
+    const ok = await bcrypt.compare(pin, user.pin);
+    if (!ok) {
+      return res.status(400).json({ message: 'Mã PIN không chính xác' });
     }
     const token = jwt.sign(
-      { id: user._id, phone: user.phone },
+      { id: user._id, phone: user.phone, name: user.name },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     res.json({
       token,
-      user: { id: user._id, phone: user.phone, amount: user.amount }
+      user: { id: user._id, name: user.name, phone: user.phone, amount: user.amount }
     });
   } catch (err) {
     console.error(err);
@@ -30,7 +70,7 @@ export async function me(req, res) {
   try {
     const user = await Customer.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json({ id: user._id, phone: user.phone, amount: user.amount });
+    res.json({ id: user._id, name: user.name, phone: user.phone, amount: user.amount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });
