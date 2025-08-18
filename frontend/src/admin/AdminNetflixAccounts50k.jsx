@@ -23,7 +23,6 @@ export default function AdminNetflixAccounts50k() {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('purchaseDate');
   const [sortOrder, setSortOrder] = useState('asc');
-  const PLAN_DAYS = 30;
 
   useEffect(() => {
     localStorage.setItem('accounts50k', JSON.stringify(accounts));
@@ -75,35 +74,64 @@ export default function AdminNetflixAccounts50k() {
   const handleSell = idx => {
     const phone = prompt('Nhập số điện thoại khách hàng:');
     if (!phone) return;
-    setAccounts(accs => {
-      const soldCount = accs.filter(a => a.orderCode).length;
-      const purchaseDate = new Date();
-      const expirationDate = new Date(purchaseDate);
-      expirationDate.setDate(expirationDate.getDate() + PLAN_DAYS);
-      const orderCode = `GTK${soldCount + 1}`;
+    const expirationInput = prompt('Nhập ngày hết hạn (YYYY-MM-DD):');
+    if (!expirationInput) return;
+    const expirationDate = new Date(expirationInput);
+    if (isNaN(expirationDate)) {
+      alert('Ngày hết hạn không hợp lệ');
+      return;
+    }
+    const trimmedPhone = phone.trim();
+    const soldCount = accounts.filter(a => a.orderCode).length;
+    const purchaseDate = new Date();
+    const orderCode = `GTK${soldCount + 1}`;
 
-      const updated = [...accs];
-      updated[idx] = {
-        ...updated[idx],
-        phone: phone.trim(),
-        orderCode,
-        purchaseDate,
-        expirationDate,
-      };
+    const updated = [...accounts];
+    updated[idx] = {
+      ...updated[idx],
+      phone: trimmedPhone,
+      orderCode,
+      purchaseDate,
+      expirationDate,
+    };
+    setAccounts(updated);
 
-      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
-      orders.push({
-        orderCode,
-        phone: phone.trim(),
-        username: updated[idx].username,
-        password: updated[idx].password,
-        purchaseDate,
-        expirationDate,
-      });
-      localStorage.setItem('orders50k', JSON.stringify(orders));
-
-      return updated;
+    const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+    orders.push({
+      orderCode,
+      phone: trimmedPhone,
+      username: updated[idx].username,
+      password: updated[idx].password,
+      purchaseDate,
+      expirationDate,
     });
+    localStorage.setItem('orders50k', JSON.stringify(orders));
+  };
+
+  const handleEditExpiration = idx => {
+    const current = accounts[idx].expirationDate;
+    const currentStr = current ? current.toISOString().slice(0, 10) : '';
+    const input = prompt('Nhập ngày hết hạn mới (YYYY-MM-DD):', currentStr);
+    if (!input) return;
+    const expirationDate = new Date(input);
+    if (isNaN(expirationDate)) {
+      alert('Ngày hết hạn không hợp lệ');
+      return;
+    }
+    const updated = [...accounts];
+    updated[idx] = { ...updated[idx], expirationDate };
+    setAccounts(updated);
+
+    if (updated[idx].orderCode) {
+      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
+      const orderIdx = orders.findIndex(
+        o => o.orderCode === updated[idx].orderCode
+      );
+      if (orderIdx !== -1) {
+        orders[orderIdx].expirationDate = expirationDate;
+        localStorage.setItem('orders50k', JSON.stringify(orders));
+      }
+    }
   };
 
   const handleSort = field => {
@@ -219,6 +247,12 @@ export default function AdminNetflixAccounts50k() {
                           Bán
                         </button>
                       )}
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => handleEditExpiration(idx)}
+                      >
+                        Sửa hạn
+                      </button>
                       <button className="btn btn-danger" onClick={() => handleDelete(idx)}>
                         Xóa
                       </button>

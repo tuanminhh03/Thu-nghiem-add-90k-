@@ -9,6 +9,17 @@ function formatDateTime(date) {
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatHistoryEntry(entry) {
+  if (!entry) return '-';
+  const date = new Date(entry.date);
+  const datePart = date.toLocaleDateString('vi-VN');
+  const timePart = date.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  return `${datePart} ${timePart} ${entry.message}`;
+}
+
 export default function CustomerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -220,6 +231,12 @@ export default function CustomerDashboard() {
                                   </p>
                                   <p>
                                     <strong>Mã PIN:</strong> {o.pin || '-'}
+                                  </p>
+                                  <p>
+                                    <strong>Ngày cập nhật:</strong>{' '}
+                                    {formatHistoryEntry(
+                                      o.history && o.history[o.history.length - 1]
+                                    )}
                                   </p>
                                 </>
                               )}

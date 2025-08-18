@@ -180,6 +180,17 @@ export async function getOrders(req, res) {
   }
 }
 
+export async function getOrderHistory(req, res) {
+  try {
+    const order = await Order.findById(req.params.id).select('history');
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    res.json({ history: order.history || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+}
+
 export async function deleteOrder(req, res) {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
@@ -316,6 +327,11 @@ export async function transferProfile(req, res) {
     await fromAcc.save();
     await toAcc.save();
 
+    const sameAccount = fromAcc._id.equals(toAcc._id);
+    const message = sameAccount
+      ? 'Chuyển sang hồ sơ khác'
+      : 'Đổi sang tài khoản khác';
+
     await Order.updateMany(
       { accountEmail: fromAcc.email, profileId: fromProfile.id },
       {
@@ -323,7 +339,8 @@ export async function transferProfile(req, res) {
         accountPassword: toAcc.password,
         profileId: toProfile.id,
         profileName: toProfile.name,
-        pin: toProfile.pin
+        pin: toProfile.pin,
+        $push: { history: { message, date: new Date() } }
       }
     );
 
