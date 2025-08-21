@@ -84,6 +84,15 @@ export default function PinLogin() {
 
   return (
     <div className="pin-page">
+      <button
+        type="button"
+        className="pin-back"
+        onClick={() => navigate('/login')}
+        disabled={loading}
+      >
+        Thoát
+      </button>
+
       <div className="pin-status">Vui lòng nhập mã PIN để đăng nhập</div>
 
       <form onSubmit={handleSubmit} className="pin-form">

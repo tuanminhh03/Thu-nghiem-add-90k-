@@ -1,3 +1,4 @@
+/* src/PinLogin.css */
 .pin-page {
   display: flex;
   flex-direction: column;
@@ -12,6 +13,8 @@
 .pin-status {
   position: absolute;
   top: 2rem;
+  width: 100%;
+  text-align: center;
   color: #aaa;
   font-size: 0.875rem;
 }
@@ -40,7 +43,7 @@
 
 .pin-error {
   margin-top: 1.5rem;
-  color: #ffeb3b;
+  color: #ffeb3b; /* vàng cảnh báo */
   font-size: 1.25rem;
   text-align: center;
 }
@@ -52,6 +55,20 @@
   color: #aaa;
 }
 
+.pin-back {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+}
+
+.pin-back:hover {
+  color: #fff;
+}
+
 .pin-footer a {
   color: #aaa;
   text-decoration: none;
@@ -61,3 +78,11 @@
   text-decoration: underline;
 }
 
+/* Tuỳ chọn: responsive nhỏ hơn */
+@media (max-width: 360px) {
+  .pin-input {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.25rem;
+  }
+}
