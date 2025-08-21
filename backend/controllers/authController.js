@@ -36,6 +36,24 @@ export async function register(req, res) {
   }
 }
 
+export async function checkPhone(req, res) {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ message: 'Thiếu số điện thoại' });
+  }
+
+  try {
+    const user = await Customer.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ message: 'Tài khoản không tồn tại' });
+    }
+    res.json({ message: 'OK' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server lỗi' });
+  }
+}
+
 export async function login(req, res) {
   const { phone, pin } = req.body;
   if (!phone || !pin) {
