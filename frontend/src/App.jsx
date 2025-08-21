@@ -23,6 +23,7 @@ import AdminStats            from './admin/AdminStats';
 import AdminExpiringOrders   from './admin/AdminExpiringOrders';
 import AdminOrders           from './admin/AdminOrders';
 import AdminLogs            from './admin/AdminLogs';
+import AdminResetPin        from './admin/AdminResetPin';
 import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
@@ -156,6 +157,15 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminCustomerOrders />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/customers/:id/reset-pin"
+          element={
+            <AdminRoute>
+              <AdminResetPin />
             </AdminRoute>
           }
         />
