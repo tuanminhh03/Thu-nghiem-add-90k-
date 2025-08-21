@@ -14,19 +14,18 @@ export default function PinLogin() {
   const { state } = useLocation();
   const phone = state?.phone;
 
-  // Nếu không có phone (người dùng vào thẳng URL), quay về trang login
+  // Không có phone -> quay lại login
   useEffect(() => {
     if (!phone) navigate('/login', { replace: true });
   }, [phone, navigate]);
 
-  // Tự focus ô đầu khi vào màn hình
+  // Tự focus ô đầu khi vào màn
   useEffect(() => {
     refs.current[0]?.focus();
   }, []);
 
   const submitPin = async (pin) => {
     if (!/^\d{6}$/.test(pin) || loading) return;
-
     setLoading(true);
     setError('');
     try {
@@ -48,8 +47,7 @@ export default function PinLogin() {
       const next = [...digits];
       next[idx] = val;
       setDigits(next);
-
-      // Tự chuyển ô khi gõ và auto-submit khi đủ 6 số
+      // chuyển ô & auto submit khi đủ 6 số
       if (val && idx < 5) refs.current[idx + 1]?.focus();
       if (next.every((d) => d)) submitPin(next.join(''));
     }
