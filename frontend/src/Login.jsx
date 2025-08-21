@@ -1,27 +1,51 @@
 // src/Login.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import styles from './PhoneLogin.module.css';
 
 export default function Login() {
   const [phone, setPhone] = useState('');
-  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinDigits, setPinDigits] = useState(Array(6).fill(''));
+  const [pinError, setPinError] = useState('');
+  const pinRefs = useRef([]);
   const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-
     if (!/^[0-9]{9,11}$/.test(phone)) {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
     }
+    setPinDigits(Array(6).fill(''));
+    setPinError('');
+    setShowPinModal(true);
+    setTimeout(() => pinRefs.current[0]?.focus(), 0);
+  };
+
+  const handlePinChange = (idx, val) => {
+    if (/^\d?$/.test(val)) {
+      const next = [...pinDigits];
+      next[idx] = val;
+      setPinDigits(next);
+      if (val && idx < 5) pinRefs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (idx, e) => {
+    if (e.key === 'Backspace' && !pinDigits[idx] && idx > 0) {
+      pinRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  const handlePinSubmit = async () => {
+    const pin = pinDigits.join('');
     if (!/^\d{6}$/.test(pin)) {
-      setError('Mã PIN phải gồm 6 chữ số.');
+      setPinError('Mã PIN phải gồm 6 chữ số.');
       return;
     }
 
@@ -30,10 +54,11 @@ export default function Login() {
       const { data } = await axios.post('/api/auth/login', { phone, pin });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      setShowPinModal(false);
       setShowSuccess(true);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Đăng nhập thất bại');
+      setPinError(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
@@ -54,7 +79,7 @@ export default function Login() {
         <div className={styles.logo}>📱</div>
         <h2 className={styles.title}>Đăng nhập</h2>
         <p className={styles.subtitle}>
-          Nhập số điện thoại và mã PIN (6 số)
+          Nhập số điện thoại để tiếp tục
         </p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label className={styles.label}>
@@ -66,18 +91,6 @@ export default function Login() {
               value={phone}
               onChange={(e) => setPhone(e.target.value.trim())}
               disabled={loading}
-            />
-          </label>
-          <label className={styles.label}>
-            Mã PIN
-            <input
-              type="password"
-              className={styles.input}
-              placeholder="Nhập mã PIN 6 số"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.trim())}
-              disabled={loading}
-              maxLength={6}
             />
           </label>
           {error && <p className={styles.error}>{error}</p>}
@@ -105,6 +118,42 @@ export default function Login() {
           </div>
         </form>
       </div>
+
+      {showPinModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h3>Nhập mã PIN</h3>
+            <div className={styles.pinContainer}>
+              {pinDigits.map((d, i) => (
+                <input
+                  key={i}
+                  type="text"
+                  inputMode="numeric"
+                  className={styles.pinInput}
+                  maxLength={1}
+                  value={d}
+                  onChange={(e) => handlePinChange(i, e.target.value)}
+                  onKeyDown={(e) => handlePinKeyDown(i, e)}
+                  ref={(el) => (pinRefs.current[i] = el)}
+                  disabled={loading}
+                />
+              ))}
+            </div>
+            {pinError && <p className={styles.error}>{pinError}</p>}
+            <button
+              className={styles.modalButton}
+              onClick={handlePinSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className={styles.spinner}></div>
+              ) : (
+                'Xác nhận'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSuccess && (
         <div className={styles.modalOverlay}>
