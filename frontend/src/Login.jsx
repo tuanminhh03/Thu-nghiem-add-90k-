@@ -1,5 +1,5 @@
 // src/Login.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import styles from './PhoneLogin.module.css';
@@ -7,24 +7,34 @@ import styles from './PhoneLogin.module.css';
 export default function Login() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);      // dùng chung cho submit/pin
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinDigits, setPinDigits] = useState(Array(6).fill(''));
   const [pinError, setPinError] = useState('');
+
   const pinRefs = useRef([]);
   const navigate = useNavigate();
+
+  // Tự focus ô PIN đầu tiên khi mở modal
+  useEffect(() => {
+    if (showPinModal) {
+      setTimeout(() => pinRefs.current[0]?.focus(), 0);
+    }
+  }, [showPinModal]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+
     if (!/^[0-9]{9,11}$/.test(phone)) {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
     }
+
     setPinDigits(Array(6).fill(''));
     setPinError('');
     setShowPinModal(true);
-    setTimeout(() => pinRefs.current[0]?.focus(), 0);
   };
 
   const handlePinChange = (idx, val) => {
@@ -39,6 +49,20 @@ export default function Login() {
   const handlePinKeyDown = (idx, e) => {
     if (e.key === 'Backspace' && !pinDigits[idx] && idx > 0) {
       pinRefs.current[idx - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && idx > 0) pinRefs.current[idx - 1]?.focus();
+    if (e.key === 'ArrowRight' && idx < 5) pinRefs.current[idx + 1]?.focus();
+  };
+
+  // Cho phép dán 6 chữ số một lần
+  const handlePinPaste = (e) => {
+    const text = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    if (text.length) {
+      e.preventDefault();
+      const next = Array(6).fill('');
+      for (let i = 0; i < text.length; i++) next[i] = text[i];
+      setPinDigits(next);
+      pinRefs.current[Math.min(text.length, 5)]?.focus();
     }
   };
 
@@ -78,27 +102,25 @@ export default function Login() {
       <div className={styles.card}>
         <div className={styles.logo}>📱</div>
         <h2 className={styles.title}>Đăng nhập</h2>
-        <p className={styles.subtitle}>
-          Nhập số điện thoại để tiếp tục
-        </p>
+        <p className={styles.subtitle}>Nhập số điện thoại để tiếp tục</p>
+
         <form onSubmit={handleSubmit} className={styles.form}>
           <label className={styles.label}>
             Số điện thoại
             <input
               type="text"
+              inputMode="numeric"
               className={styles.input}
               placeholder="Nhập số điện thoại của bạn"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.trim())}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
               disabled={loading}
             />
           </label>
+
           {error && <p className={styles.error}>{error}</p>}
-          <button
-            type="submit"
-            className={styles.button}
-            disabled={loading}
-          >
+
+          <button type="submit" className={styles.button} disabled={loading}>
             {loading ? (
               <span className={styles.buttonContent}>
                 <div className={styles.spinner}></div>
@@ -108,6 +130,7 @@ export default function Login() {
               'Đăng nhập'
             )}
           </button>
+
           <div className={styles.actions}>
             <span className={styles.link} onClick={handleForgot}>
               Quên mật khẩu?
@@ -123,11 +146,12 @@ export default function Login() {
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <h3>Nhập mã PIN</h3>
-            <div className={styles.pinContainer}>
+            <div className={styles.pinContainer} onPaste={handlePinPaste}>
               {pinDigits.map((d, i) => (
                 <input
                   key={i}
                   type="password"
+                  inputMode="numeric"
                   className={styles.pinInput}
                   maxLength={1}
                   value={d}
@@ -138,17 +162,11 @@ export default function Login() {
                 />
               ))}
             </div>
+
             {pinError && <p className={styles.error}>{pinError}</p>}
-            <button
-              className={styles.modalButton}
-              onClick={handlePinSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <div className={styles.spinner}></div>
-              ) : (
-                'Xác nhận'
-              )}
+
+            <button className={styles.modalButton} onClick={handlePinSubmit} disabled={loading}>
+              {loading ? <div className={styles.spinner}></div> : 'Xác nhận'}
             </button>
           </div>
         </div>
