@@ -6,6 +6,7 @@ import Header            from './Header';
 import PlansOverview     from './PlansOverview';
 import PlanDetail        from './PlanDetail';
 import Login             from './Login';
+import PinLogin          from './PinLogin';
 import Register          from './Register';
 import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
@@ -48,6 +49,10 @@ export default function App() {
         <Route
            path="/login"
            element={<Login />}
+        />
+        <Route
+           path="/pin-login"
+           element={<PinLogin />}
         />
         <Route
            path="/register"
