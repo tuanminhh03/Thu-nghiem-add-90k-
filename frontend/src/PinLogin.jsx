@@ -1,3 +1,4 @@
+// src/PinLogin.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -7,17 +8,20 @@ export default function PinLogin() {
   const [digits, setDigits] = useState(Array(6).fill(''));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const refs = useRef([]);
 
+  const refs = useRef([]);
   const navigate = useNavigate();
   const { state } = useLocation();
   const phone = state?.phone;
 
+  // Không có phone -> quay lại login
   useEffect(() => {
     if (!phone) navigate('/login', { replace: true });
   }, [phone, navigate]);
 
+  // Tự focus ô đầu khi vào màn & hỗ trợ phím Esc để thoát
   useEffect(() => {
+    refs.current[0]?.focus();
     const onEsc = (e) => {
       if (e.key === 'Escape') navigate('/login');
     };
@@ -28,13 +32,14 @@ export default function PinLogin() {
   const submitPin = async (pin) => {
     if (!/^\d{6}$/.test(pin) || loading) return;
     setLoading(true);
+    setError('');
     try {
       const { data } = await axios.post('/api/auth/login', { phone, pin });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại');
+      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       setDigits(Array(6).fill(''));
       refs.current[0]?.focus();
     } finally {
@@ -47,6 +52,7 @@ export default function PinLogin() {
       const next = [...digits];
       next[idx] = val;
       setDigits(next);
+      // Chuyển ô & auto submit khi đủ 6 số
       if (val && idx < 5) refs.current[idx + 1]?.focus();
       if (next.every((d) => d)) submitPin(next.join(''));
     }
@@ -58,10 +64,16 @@ export default function PinLogin() {
     }
     if (e.key === 'ArrowLeft' && idx > 0) refs.current[idx - 1]?.focus();
     if (e.key === 'ArrowRight' && idx < 5) refs.current[idx + 1]?.focus();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitPin(digits.join(''));
+    }
   };
 
   const handlePaste = (e) => {
-    const text = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    const text = (e.clipboardData.getData('text') || '')
+      .replace(/\D/g, '')
+      .slice(0, 6);
     if (text.length) {
       e.preventDefault();
       const next = Array(6).fill('');
@@ -87,7 +99,9 @@ export default function PinLogin() {
       >
         Thoát
       </button>
+
       <div className="pin-status">Vui lòng nhập mã PIN để đăng nhập</div>
+
       <form onSubmit={handleSubmit} className="pin-form">
         <div className="pin-container" onPaste={handlePaste}>
           {digits.map((d, i) => (
@@ -102,15 +116,17 @@ export default function PinLogin() {
               onKeyDown={(e) => handleKeyDown(i, e)}
               ref={(el) => (refs.current[i] = el)}
               disabled={loading}
+              aria-label={`PIN digit ${i + 1}`}
             />
           ))}
         </div>
+
         {error && <div className="pin-error">{error}</div>}
       </form>
+
       <div className="pin-footer">
-        <a href="#">Quên mã PIN</a>
+        <a href="#">Quên mã PIN?</a>
       </div>
     </div>
   );
 }
-
