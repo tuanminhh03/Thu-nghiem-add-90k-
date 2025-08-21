@@ -12,11 +12,13 @@ export default function Login() {
     e.preventDefault();
     setError('');
 
+    // Chỉ cho phép 9–11 chữ số
     if (!/^[0-9]{9,11}$/.test(phone)) {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
     }
 
+    // Điều hướng tới màn hình nhập PIN và truyền phone qua state
     navigate('/pin-login', { state: { phone } });
   };
 
