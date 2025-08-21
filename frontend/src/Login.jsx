@@ -1,7 +1,7 @@
 // src/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import axios from 'axios';                    // <— cần thiết nếu gọi API
 import styles from './PhoneLogin.module.css';
 
 export default function Login() {
@@ -13,17 +13,21 @@ export default function Login() {
     e.preventDefault();
     setError('');
 
+    // Chỉ cho phép 9–11 chữ số
     if (!/^[0-9]{9,11}$/.test(phone)) {
       setError('Số điện thoại phải gồm 9–11 chữ số.');
       return;
     }
 
+    // (Tuỳ chọn) Kiểm tra số điện thoại trước khi vào màn hình PIN
     try {
       await axios.post('/api/auth/check-phone', { phone });
       navigate('/pin-login', { state: { phone } });
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại');
     }
+    // Nếu không muốn gọi API check trước, chỉ cần:
+    // navigate('/pin-login', { state: { phone } });
   };
 
   const handleForgot = () => {
