@@ -19,10 +19,15 @@ export default function PinLogin() {
     if (!phone) navigate('/login', { replace: true });
   }, [phone, navigate]);
 
-  // Tự focus ô đầu khi vào màn
+  // Tự focus ô đầu khi vào màn & hỗ trợ phím Esc để thoát
   useEffect(() => {
     refs.current[0]?.focus();
-  }, []);
+    const onEsc = (e) => {
+      if (e.key === 'Escape') navigate('/login');
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [navigate]);
 
   const submitPin = async (pin) => {
     if (!/^\d{6}$/.test(pin) || loading) return;
@@ -47,7 +52,7 @@ export default function PinLogin() {
       const next = [...digits];
       next[idx] = val;
       setDigits(next);
-      // chuyển ô & auto submit khi đủ 6 số
+      // Chuyển ô & auto submit khi đủ 6 số
       if (val && idx < 5) refs.current[idx + 1]?.focus();
       if (next.every((d) => d)) submitPin(next.join(''));
     }
@@ -66,7 +71,9 @@ export default function PinLogin() {
   };
 
   const handlePaste = (e) => {
-    const text = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    const text = (e.clipboardData.getData('text') || '')
+      .replace(/\D/g, '')
+      .slice(0, 6);
     if (text.length) {
       e.preventDefault();
       const next = Array(6).fill('');
