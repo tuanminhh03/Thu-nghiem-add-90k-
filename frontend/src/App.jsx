@@ -13,6 +13,7 @@ import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import Account           from './Account';
 import TopUpPage         from './TopUpPage';
+import ResetPin         from './ResetPin';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
@@ -90,6 +91,16 @@ export default function App() {
           element={
             <HeaderWrapper>
               <TopUpPage />
+            </HeaderWrapper>
+          }
+        />
+        <Route
+          path="/reset-pin"
+          element={
+            <HeaderWrapper>
+              <PrivateRoute>
+                <ResetPin />
+              </PrivateRoute>
             </HeaderWrapper>
           }
         />

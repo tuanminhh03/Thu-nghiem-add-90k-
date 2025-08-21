@@ -1,12 +1,15 @@
+// src/AdminResetPin.jsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
 export default function AdminResetPin() {
   const { id } = useParams();
-  const PIN_LENGTH = 6; // ✅ 4 chữ số
+  const navigate = useNavigate();
+
+  const PIN_LENGTH = 6;
   const [digits, setDigits] = useState(() => Array(PIN_LENGTH).fill(''));
   const [msg, setMsg] = useState({ text: '', type: '' });
   const refs = useRef([]);
@@ -31,6 +34,10 @@ export default function AdminResetPin() {
     }
     if (e.key === 'ArrowLeft' && idx > 0) refs.current[idx - 1]?.focus();
     if (e.key === 'ArrowRight' && idx < PIN_LENGTH - 1) refs.current[idx + 1]?.focus();
+    if (e.key === 'Enter' && canSave) {
+      e.preventDefault();
+      savePin();
+    }
   };
 
   const handlePaste = (e) => {
@@ -67,7 +74,7 @@ export default function AdminResetPin() {
 
   const canSave = digits.every((d) => d);
 
-  // ✅ Styles khắc chế input { width:100% } toàn cục
+  // Styles nhỏ để chống ảnh hưởng CSS global
   const boxStyle = { width: 48, height: 48, flex: '0 0 48px' };
   const inputStyle = {
     width: '100%',
@@ -94,15 +101,11 @@ export default function AdminResetPin() {
           </p>
         )}
 
-        <div
-          className="flex justify-center items-center gap-3 mb-3"
-          onPaste={handlePaste}
-          // tránh zoom iOS khi focus input nhỏ
-        >
+        <div className="flex justify-center items-center gap-3 mb-3" onPaste={handlePaste}>
           {digits.map((d, i) => (
-            <div key={i} className="pin-box" style={boxStyle}>
+            <div key={i} style={boxStyle}>
               <input
-                type="tel"
+                type="password"
                 inputMode="numeric"
                 maxLength={1}
                 style={inputStyle}
@@ -133,13 +136,13 @@ export default function AdminResetPin() {
           >
             Lưu mã PIN
           </button>
-    `  <button
-        className="btn"
-        style={{ background: '#e5e7eb', color: '#374151' }}
-        onClick={() => (window.location.href = '/admin')}
-      >
-        Hủy
-      </button>`
+          <button
+            className="btn"
+            style={{ background: '#e5e7eb', color: '#374151' }}
+            onClick={() => navigate('/admin')}
+          >
+            Hủy
+          </button>
         </div>
       </div>
     </AdminLayout>

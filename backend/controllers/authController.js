@@ -126,3 +126,19 @@ export function stream(req, res) {
     clearInterval(keepAlive);
   });
 }
+
+export async function resetPin(req, res) {
+  const { pin } = req.body;
+  if (!/^\d{6}$/.test(pin || '')) {
+    return res.status(400).json({ message: 'Mã PIN phải gồm 6 chữ số' });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(pin, 10);
+    await Customer.findByIdAndUpdate(req.user.id, { pin: hashed });
+    res.json({ message: 'Đặt lại PIN thành công' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server lỗi' });
+  }
+}
