@@ -1,15 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+// src/AdminResetPin.jsx
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
 
 export default function AdminResetPin() {
   const { id } = useParams();
-  const [digits, setDigits] = useState(Array(6).fill(''));
+  const navigate = useNavigate();
+
+  const PIN_LENGTH = 6;
+  const [digits, setDigits] = useState(() => Array(PIN_LENGTH).fill(''));
   const [msg, setMsg] = useState({ text: '', type: '' });
   const refs = useRef([]);
-  const token = localStorage.getItem('adminToken');
+  const token = useMemo(() => localStorage.getItem('adminToken'), []);
 
   useEffect(() => {
     refs.current[0]?.focus();
@@ -20,7 +24,7 @@ export default function AdminResetPin() {
       const next = [...digits];
       next[idx] = val;
       setDigits(next);
-      if (val && idx < 5) refs.current[idx + 1]?.focus();
+      if (val && idx < PIN_LENGTH - 1) refs.current[idx + 1]?.focus();
     }
   };
 
@@ -29,25 +33,28 @@ export default function AdminResetPin() {
       refs.current[idx - 1]?.focus();
     }
     if (e.key === 'ArrowLeft' && idx > 0) refs.current[idx - 1]?.focus();
-    if (e.key === 'ArrowRight' && idx < 5) refs.current[idx + 1]?.focus();
+    if (e.key === 'ArrowRight' && idx < PIN_LENGTH - 1) refs.current[idx + 1]?.focus();
+    if (e.key === 'Enter' && canSave) {
+      e.preventDefault();
+      savePin();
+    }
   };
 
   const handlePaste = (e) => {
-    const text = (e.clipboardData.getData('text') || '')
-      .replace(/\D/g, '')
-      .slice(0, 6);
+    const text = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, PIN_LENGTH);
     if (text.length) {
       e.preventDefault();
-      const next = Array(6).fill('');
+      const next = Array(PIN_LENGTH).fill('');
       for (let i = 0; i < text.length; i++) next[i] = text[i];
       setDigits(next);
-      refs.current[Math.min(text.length, 5)]?.focus();
+      refs.current[Math.min(text.length, PIN_LENGTH - 1)]?.focus();
     }
   };
 
   const savePin = async () => {
     const pin = digits.join('');
-    if (!/^\d{6}$/.test(pin)) return;
+    if (!new RegExp(`^\\d{${PIN_LENGTH}}$`).test(pin)) return;
+
     try {
       await axios.post(
         `/api/admin/customers/${id}/reset-pin`,
@@ -55,7 +62,8 @@ export default function AdminResetPin() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMsg({ text: 'Đặt lại PIN thành công', type: 'success' });
-      setDigits(Array(6).fill(''));
+      setDigits(Array(PIN_LENGTH).fill(''));
+      refs.current[0]?.focus();
     } catch (err) {
       setMsg({
         text: err.response?.data?.message || 'Lỗi đặt lại PIN',
@@ -66,10 +74,23 @@ export default function AdminResetPin() {
 
   const canSave = digits.every((d) => d);
 
+  // Styles nhỏ để chống ảnh hưởng CSS global
+  const boxStyle = { width: 48, height: 48, flex: '0 0 48px' };
+  const inputStyle = {
+    width: '100%',
+    height: '100%',
+    textAlign: 'center',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontSize: 20,
+    outline: 'none',
+  };
+
   return (
     <AdminLayout>
-      <div className="card p-6 max-w-sm">
-        <h1 className="text-xl font-semibold mb-4">Đặt lại PIN</h1>
+      <div className="card p-6" style={{ maxWidth: 720 }}>
+        <h1 className="text-3xl font-bold text-center mb-6">Đặt lại PIN</h1>
+
         {msg.text && (
           <p
             className={`mb-4 text-center ${
@@ -79,31 +100,37 @@ export default function AdminResetPin() {
             {msg.text}
           </p>
         )}
-        <div
-          className="flex justify-center gap-2 mb-2"
-          onPaste={handlePaste}
-        >
+
+        <div className="flex justify-center items-center gap-3 mb-3" onPaste={handlePaste}>
           {digits.map((d, i) => (
-            <input
-              key={i}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              className="w-12 h-12 text-center border border-gray-300 rounded"
-              value={d}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              ref={(el) => (refs.current[i] = el)}
-            />
+            <div key={i} style={boxStyle}>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={1}
+                style={inputStyle}
+                value={d}
+                onChange={(e) => handleChange(i, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(i, e)}
+                ref={(el) => (refs.current[i] = el)}
+                aria-label={`PIN digit ${i + 1}`}
+              />
+            </div>
           ))}
         </div>
-        <p className="text-sm text-gray-600 mb-4">
+
+        <p className="text-sm text-gray-600 mb-5 text-center">
           Lưu ý: Mã PIN không cần thiết để thay đổi cài đặt hoặc xóa hồ sơ.
         </p>
-        <div className="text-right space-x-2">
+
+        <div className="flex justify-end gap-2">
           <button
             className="btn"
-            style={{ background: '#000', color: '#fff' }}
+            style={{
+              background: canSave ? '#000' : '#9ca3af',
+              color: '#fff',
+              cursor: canSave ? 'pointer' : 'not-allowed',
+            }}
             disabled={!canSave}
             onClick={savePin}
           >
@@ -112,7 +139,7 @@ export default function AdminResetPin() {
           <button
             className="btn"
             style={{ background: '#e5e7eb', color: '#374151' }}
-            onClick={() => window.close()}
+            onClick={() => navigate('/admin')}
           >
             Hủy
           </button>
@@ -121,4 +148,3 @@ export default function AdminResetPin() {
     </AdminLayout>
   );
 }
-
