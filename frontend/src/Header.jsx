@@ -142,6 +142,11 @@ export default function Header() {
                       </Link>
                     </li>
                     <li>
+                      <Link to="/reset-pin" onClick={() => setMenuOpen(false)}>
+                        Đặt lại PIN
+                      </Link>
+                    </li>
+                    <li>
                       <button onClick={handleLogout}>Đăng xuất</button>
                     </li>
                   </ul>

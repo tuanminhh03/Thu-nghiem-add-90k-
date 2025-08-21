@@ -13,6 +13,7 @@ import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import Account           from './Account';
 import TopUpPage         from './TopUpPage';
+import ResetPin         from './ResetPin';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
@@ -23,6 +24,7 @@ import AdminStats            from './admin/AdminStats';
 import AdminExpiringOrders   from './admin/AdminExpiringOrders';
 import AdminOrders           from './admin/AdminOrders';
 import AdminLogs            from './admin/AdminLogs';
+import AdminResetPin        from './admin/AdminResetPin';
 import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
@@ -92,6 +94,16 @@ export default function App() {
             </HeaderWrapper>
           }
         />
+        <Route
+          path="/reset-pin"
+          element={
+            <HeaderWrapper>
+              <PrivateRoute>
+                <ResetPin />
+              </PrivateRoute>
+            </HeaderWrapper>
+          }
+        />
 
         {/* ==== ADMIN ROUTES (không Header) ==== */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -156,6 +168,15 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminCustomerOrders />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/customers/:id/reset-pin"
+          element={
+            <AdminRoute>
+              <AdminResetPin />
             </AdminRoute>
           }
         />
