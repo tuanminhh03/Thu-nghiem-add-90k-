@@ -1,4 +1,16 @@
-import { chromium } from "playwright";
+let chromium;
+
+async function loadChromium() {
+  if (chromium) return chromium;
+
+  try {
+    ({ chromium } = await import("playwright"));
+  } catch (err) {
+    throw new Error(`Playwright is not installed: ${err.message}`);
+  }
+
+  return chromium;
+}
 
 /**
  * Parse cookies từ string JSON trong Mongo hoặc dạng "key=value"
@@ -59,9 +71,18 @@ function parseCookies(cookiesRaw) {
  * @returns true nếu pass, false nếu dead
  */
 export async function checkCookieSession(cookiesRaw, username, password, onProgress) {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  let browser;
+  let context;
   let result = false;
+
+  try {
+    const chromiumInstance = await loadChromium();
+    browser = await chromiumInstance.launch({ headless: true });
+    context = await browser.newContext();
+  } catch (err) {
+    console.error("[Warranty] Playwright load error:", err.message);
+    return result;
+  }
 
   try {
     const cookies = parseCookies(cookiesRaw);
@@ -144,8 +165,8 @@ export async function checkCookieSession(cookiesRaw, username, password, onProgr
     console.error("[Warranty] checkCookieSession error:", err.message);
     result = false;
   } finally {
-    await context.close();
-    await browser.close();
+    if (context) await context.close();
+    if (browser) await browser.close();
   }
 
   return result;
