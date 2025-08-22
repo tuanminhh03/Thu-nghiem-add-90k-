@@ -3,7 +3,7 @@ import { authenticate } from "../middleware/auth.js";
 import { createOrder, localSavings, getOrders, extendOrder } from "../controllers/orderController.js"; 
 // ❌ bỏ getOrders, extendOrder vì chưa có trong orderController
 import { checkCookieSession } from "../services/warrantyService.js";
-import Account50k from "../Models/Account50k.js";
+import Account50k from "../models/Account50k.js";
 import Order from '../models/Order.js';
 import { startWarranty } from '../controllers/account50kController.js';
 
