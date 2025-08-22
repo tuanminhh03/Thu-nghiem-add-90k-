@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import Customer from '../Models/Customer.js';
+import Customer from '../models/Customer.js';
 import updates from '../services/eventService.js';
 
 export async function register(req, res) {

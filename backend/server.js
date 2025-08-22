@@ -13,7 +13,7 @@ import miscRoutes from './routes/miscRoutes.js';
 import account50kRoutes from './routes/account50kRoutes.js'; 
 
 import Order from './models/Order.js';
-import NetflixAccount from './Models/NetflixAccount.js'; 
+import NetflixAccount from './models/NetflixAccount.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });

@@ -89,7 +89,6 @@ export default function PlansOverview() {
   //  Gói tiết kiệm
   if (selectedPlan === 'Gói tiết kiệm') {
     try {
-      const durationToDays = { '01 tháng': 30, '03 tháng': 90, '06 tháng': 180, '12 tháng': 365 };
       const planDays = durationToDays[selectedDuration] || 30;
 
       const res = await axios.post(
