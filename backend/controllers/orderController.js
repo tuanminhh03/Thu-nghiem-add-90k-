@@ -7,7 +7,7 @@ import Customer from "../models/Customer.js";
 // =============== Gói Tiết Kiệm (GTK) ==================
 export const localSavings = async (req, res) => {
   try {
-    const { productId, price } = req.body;
+    const { amount, duration = "1 tháng", plan = "Gói tiết kiệm" } = req.body;
     const userId = req.user.id;
 
     const customer = await Customer.findById(userId);
@@ -15,22 +15,21 @@ export const localSavings = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (customer.amount < price) {
+    if (customer.amount < amount) {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    // Trừ tiền trong DB
-    customer.amount -= price;
+    customer.amount -= amount;
     await customer.save();
 
-    // Tạo order GTK
-    const newOrder = new Order({
-      userId,
-      productId,
+    const newOrder = await Order.create({
+      user: userId,
+      plan,
       orderCode: `GTK${Date.now()}`,
-      type: "GTK",
+      duration,
+      amount,
+      status: "PAID",
     });
-    await newOrder.save();
 
     res.json({
       success: true,
@@ -47,10 +46,13 @@ export const localSavings = async (req, res) => {
 // =============== Gói Cao Cấp (GCC) ==================
 export const createOrder = async (req, res) => {
   try {
-    const { productId } = req.body;
+    const { plan, duration, amount } = req.body;
     const userId = req.user.id;
 
-    // Lấy 1 account khả dụng
+    if (!plan || !duration || !amount) {
+      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
+    }
+
     const account = await Account50k.findOne({
       $or: [
         { status: "available" },
@@ -63,18 +65,16 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
-    // Tạo order GCC
-    const newOrder = new Order({
-      userId,
-      productId,
+    const newOrder = await Order.create({
+      user: userId,
+      plan,
       orderCode: `GCC${Date.now()}`,
-      type: "GCC",
-      accountId: account._id,
+      duration,
+      amount,
       accountEmail: account.username,
+      accountPassword: account.password,
     });
-    await newOrder.save();
 
-    // Cập nhật account thành in_use
     account.status = "in_use";
     account.lastUsed = new Date();
     await account.save();
@@ -83,7 +83,10 @@ export const createOrder = async (req, res) => {
       success: true,
       message: "Mua gói cao cấp thành công",
       order: newOrder,
-      account: { username: account.username },
+      netflixAccount: {
+        email: account.username,
+        password: account.password,
+      },
     });
   } catch (err) {
     console.error("createOrder error:", err);
