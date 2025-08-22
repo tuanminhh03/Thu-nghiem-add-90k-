@@ -12,6 +12,8 @@ import {
   ArrowsPointingOutIcon,
 } from '@heroicons/react/24/outline';
 
+const API_BASE = "http://localhost:5000/api";
+
 export default function PlansOverview() {
   const plans = ['Gói tiết kiệm', 'Gói cao cấp'];
   const durations = ['01 tháng', '03 tháng', '06 tháng', '12 tháng'];
@@ -26,7 +28,7 @@ export default function PlansOverview() {
       'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
   };
 
-  // Giá hiển thị
+  // Giá hiển thị (tĩnh, để render)
   const priceMapDisplay = {
     'Gói tiết kiệm': {
       '01 tháng': '50.000₫',
@@ -47,110 +49,82 @@ export default function PlansOverview() {
     setSelectedDuration(durations[0]);
   };
 
+  // amount dựa trên priceMapValue (bạn có file priceMapValue)
   const amount = selectedPlan ? priceMapValue[selectedPlan][selectedDuration] : 0;
   const displayPrice = selectedPlan
     ? priceMapDisplay[selectedPlan][selectedDuration]
     : 'Giá từ 50.000₫ đến 1.000.000₫';
 
+  // token (JWT) từ localStorage
   const token = localStorage.getItem('token');
+
+  // map duration sang số ngày
+  const durationToDays = {
+    '01 tháng': 30,
+    '03 tháng': 90,
+    '06 tháng': 180,
+    '12 tháng': 365,
+  };
 
   const handlePayment = async () => {
     if (!selectedPlan) return;
 
     if (!window.confirm('Bạn có muốn thanh toán không?')) return;
 
-    // Nhánh "Gói tiết kiệm" dùng kho nội bộ
-    if (selectedPlan === 'Gói tiết kiệm') {
-      const stored = localStorage.getItem('user');
-      if (!stored) {
-        alert('Vui lòng đăng nhập để thanh toán');
-        navigate('/login');
-        return;
-      }
-      const user = JSON.parse(stored);
-      if (user.amount < amount) {
-        alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
-        navigate(`/top-up?phone=${encodeURIComponent(user.phone)}&amount=0`);
-        return;
-      }
-      const { phone } = user;
-
-      const accounts = JSON.parse(localStorage.getItem('accounts50k') || '[]');
-      const idx = accounts.findIndex((acc) => !acc.phone);
-      if (idx === -1) {
-        alert('Hiện đã hết tài khoản. Vui lòng liên hệ admin.');
-        return;
-      }
-
-      const soldCount = accounts.filter((a) => a.phone).length;
-      const purchaseDate = new Date();
-      const expirationDate = new Date(purchaseDate);
-      const months = parseInt(selectedDuration, 10) || 1;
-      expirationDate.setMonth(expirationDate.getMonth() + months);
-      const orderCode = `GTK${soldCount + 1}`;
-
-      const account = {
-        ...accounts[idx],
-        phone,
-        orderCode,
-        purchaseDate,
-        expirationDate,
-      };
-      accounts[idx] = account;
-      localStorage.setItem('accounts50k', JSON.stringify(accounts));
-
-      const orders = JSON.parse(localStorage.getItem('orders50k') || '[]');
-      orders.push({
-        orderCode,
-        phone,
-        username: account.username,
-        password: account.password,
-        purchaseDate,
-        expirationDate,
-      });
-      localStorage.setItem('orders50k', JSON.stringify(orders));
-
-      user.amount -= amount;
-      localStorage.setItem('user', JSON.stringify(user));
-
-      try {
-        await axios.post(
-          'http://localhost:5000/api/orders/local-savings',
-          { amount },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        console.error(err);
-      }
-
-      alert(
-        `Thanh toán thành công!\nMã đơn: ${orderCode}\nUsername: ${account.username}\nPassword: ${account.password}`
-      );
-      navigate('/my-orders');
-      return;
-    }
-
-    // Nhánh gói còn lại (gọi API)
+    // Kiểm tra user đăng nhập bằng localStorage.user (giữ logic hiện tại của bạn)
     const stored = localStorage.getItem('user');
     if (!stored) {
       alert('Vui lòng đăng nhập để thanh toán');
       navigate('/login');
       return;
     }
-
     const user = JSON.parse(stored);
+
     if (user.amount < amount) {
       alert('Tài khoản của bạn không đủ tiền, vui lòng nạp thêm');
       navigate(`/top-up?phone=${encodeURIComponent(user.phone)}&amount=0`);
       return;
     }
 
+  //  Gói tiết kiệm
+  if (selectedPlan === 'Gói tiết kiệm') {
+    try {
+      const durationToDays = { '01 tháng': 30, '03 tháng': 90, '06 tháng': 180, '12 tháng': 365 };
+      const planDays = durationToDays[selectedDuration] || 30;
+
+      const res = await axios.post(
+        'http://localhost:5000/api/account50k/buy',
+        { planDays, amount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!res.data || res.data.success !== true) {
+        throw new Error(res.data?.message || 'Mua thất bại');
+      }
+
+      const { order } = res.data.data;
+
+      alert(
+        `Thanh toán thành công!\nMã đơn: ${order.orderCode}\nUsername: ${order.accountEmail}\nPassword: ${order.accountPassword}`
+      );
+
+      navigate('/my-orders');
+    } catch (err) {
+      console.error('Lỗi mua Gói tiết kiệm:', err);
+      alert(err?.response?.data?.message || err.message || 'Mua thất bại');
+    }
+    return;
+  }
+
+    // ===== Nhánh Gói cao cấp (giữ nguyên logic cũ gọi /api/orders) =====
     try {
       const { data } = await axios.post(
         'http://localhost:5000/api/orders',
         { plan: selectedPlan, duration: selectedDuration, amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // trừ tiền local
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
 
@@ -165,8 +139,9 @@ export default function PlansOverview() {
 
       navigate('/my-orders');
     } catch (err) {
-      console.error(err);
-      alert('Thanh toán thất bại');
+      console.error('Lỗi mua Gói cao cấp:', err);
+      const serverMsg = err?.response?.data?.message || err?.message;
+      alert(`Thanh toán thất bại: ${serverMsg || 'Lỗi server'}`);
     }
   };
 
@@ -201,7 +176,7 @@ export default function PlansOverview() {
           </div>
         </div>
 
-        {/* RIGHT PANEL -> thêm 'mobile-card' để có style glass trên mobile */}
+        {/* RIGHT PANEL */}
         <div className="right-panel mobile-card">
           <h1 className="title">Mua Tài khoản Netflix Premium</h1>
           <p className="price">{displayPrice}</p>
@@ -235,7 +210,6 @@ export default function PlansOverview() {
             </>
           )}
 
-          {/* Nút pay cho desktop/tablet (mobile sẽ dùng sticky-cta) */}
           {selectedPlan && (
             <button className="btn-pay main-pay" onClick={handlePayment}>
               Thanh toán

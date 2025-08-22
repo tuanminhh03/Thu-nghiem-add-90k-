@@ -50,6 +50,7 @@ const orderSchema = new Schema({
   expiresAt: {
     type: Date,
   },
+  accountCookies: { type: String },
   history: [
     {
       message: String,

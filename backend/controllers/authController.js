@@ -38,31 +38,42 @@ export async function register(req, res) {
 
 export async function login(req, res) {
   const { phone, pin } = req.body;
+  console.log("Login input:", phone, pin);
+
   if (!phone || !pin) {
-    return res.status(400).json({ message: 'Thiếu số điện thoại hoặc mã PIN' });
+    return res.status(400).json({ message: "Thiếu số điện thoại hoặc mã PIN" });
   }
 
   try {
     const user = await Customer.findOne({ phone });
+    console.log("User from DB:", user);
+
     if (!user) {
-      return res.status(404).json({ message: 'Tài khoản không tồn tại' });
+      return res.status(404).json({ message: "Tài khoản không tồn tại" });
     }
+
+    if (!user.pin || typeof user.pin !== "string") {
+      return res.status(500).json({ message: "Tài khoản không có PIN hợp lệ trong DB" });
+    }
+
     const ok = await bcrypt.compare(pin, user.pin);
     if (!ok) {
-      return res.status(400).json({ message: 'Mã PIN không chính xác' });
+      return res.status(400).json({ message: "Mã PIN không chính xác" });
     }
+
     const token = jwt.sign(
       { id: user._id, phone: user.phone, name: user.name },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: "7d" }
     );
-    res.json({
+
+    return res.json({
       token,
-      user: { id: user._id, name: user.name, phone: user.phone, amount: user.amount }
+      user: { id: user._id, name: user.name, phone: user.phone, amount: user.amount },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server lỗi' });
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Lỗi server" });
   }
 }
 

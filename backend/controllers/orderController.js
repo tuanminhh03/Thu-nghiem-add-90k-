@@ -1,140 +1,240 @@
-import Customer from '../Models/Customer.js';
-import Order from '../Models/Order.js';
-import NetflixAccount from '../Models/NetflixAccount.js';
-import updates from '../services/eventService.js';
+// controllers/orderController.js
 
-export async function createOrder(req, res) {
-  const { plan, duration, amount } = req.body;
-  if (!plan || !duration || !amount) {
-    return res.status(400).json({ message: 'Thiếu dữ liệu đơn hàng' });
-  }
+import Order from '../models/Order.js';
+import Account50k from "../Models/Account50k.js";   // ⚠️ nhớ models viết thường
+import Customer from "../Models/Customer.js";
 
+// =============== Gói Tiết Kiệm (GTK) ==================
+export const localSavings = async (req, res) => {
   try {
-    const acc = await NetflixAccount.findOne({ plan, 'profiles.status': 'empty' });
-    if (!acc) {
-      return res.status(400).json({ message: 'Hết tài khoản khả dụng' });
+    const { productId, price } = req.body;
+    const userId = req.user.id;
+
+    const customer = await Customer.findById(userId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const profile = acc.profiles.find(p => p.status === 'empty');
-    const purchaseDate = new Date();
-    const monthsInt = parseInt(duration, 10) || 0;
-    const expiresAt = new Date(purchaseDate);
-    expiresAt.setMonth(expiresAt.getMonth() + monthsInt);
-
-    profile.status = 'used';
-    profile.customerPhone = req.user.phone;
-    profile.purchaseDate = purchaseDate;
-    profile.expirationDate = expiresAt;
-    await acc.save();
-
-    const prefix = plan === 'Gói cao cấp' ? 'GCC' : 'GTK';
-    const count = await Order.countDocuments({ plan });
-
-    const order = await Order.create({
-      user: req.user.id,
-      plan,
-      orderCode: `${prefix}${count + 1}`,
-      duration,
-      amount,
-      status: 'PAID',
-      accountEmail: acc.email,
-      accountPassword: acc.password,
-      profileId: profile.id,
-      profileName: profile.name,
-      pin: profile.pin,
-      purchaseDate,
-      expiresAt
-    });
-
-    await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
-
-    const full = await Order.findById(order._id).populate('user', 'phone');
-    updates.emit('new-order', full);
-
-    res.status(201).json({
-      order,
-      netflixAccount: {
-        email: acc.email,
-        password: acc.password,
-        profileId: profile.id,
-        profileName: profile.name,
-        pin: profile.pin
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi tạo đơn hàng' });
-  }
-}
-
-export async function getOrders(req, res) {
-  try {
-    const orders = await Order
-      .find({ user: req.user.id })
-      .sort({ purchaseDate: 1 });
-    res.json(orders);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-}
-
-export async function extendOrder(req, res) {
-  const { months, amount } = req.body;
-  const monthsInt = parseInt(months, 10);
-  if (![1, 3, 6, 12].includes(monthsInt) || !amount) {
-    return res.status(400).json({ message: 'Dữ liệu gia hạn không hợp lệ' });
-  }
-  try {
-    const order = await Order.findOne({ _id: req.params.id, user: req.user.id });
-    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
-
-    const customer = await Customer.findById(req.user.id);
-    if (!customer || customer.amount < amount) {
-      return res.status(400).json({ message: 'Số dư không đủ' });
+    if (customer.amount < price) {
+      return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    const current = parseInt(order.duration, 10) || 0;
-    order.duration = `${(current + monthsInt).toString().padStart(2, '0')} tháng`;
-    order.amount += amount;
-
-    const purchaseDate = order.purchaseDate || new Date();
-    const expiresAt = new Date(purchaseDate);
-    expiresAt.setMonth(expiresAt.getMonth() + (current + monthsInt));
-    order.expiresAt = expiresAt;
-    await order.save();
-
-    customer.amount -= amount;
+    // Trừ tiền trong DB
+    customer.amount -= price;
     await customer.save();
 
-    if (order.profileId) {
-      await NetflixAccount.updateOne(
-        { 'profiles.id': order.profileId },
-        { $set: { 'profiles.$.expirationDate': expiresAt } }
-      );
+    // Tạo order GTK
+    const newOrder = new Order({
+      userId,
+      productId,
+      orderCode: `GTK${Date.now()}`,
+      type: "GTK",
+    });
+    await newOrder.save();
+
+    res.json({
+      success: true,
+      message: "Mua gói tiết kiệm thành công",
+      order: newOrder,
+      balance: customer.amount,
+    });
+  } catch (err) {
+    console.error("localSavings error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =============== Gói Cao Cấp (GCC) ==================
+export const createOrder = async (req, res) => {
+  try {
+    const { productId } = req.body;
+    const userId = req.user.id;
+
+    // Lấy 1 account khả dụng
+    const account = await Account50k.findOne({
+      $or: [
+        { status: "available" },
+        { status: { $exists: false } },
+        { status: null },
+      ],
+    });
+
+    if (!account) {
+      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
-    const full = await Order.findById(order._id).populate('user', 'phone');
-    updates.emit('new-order', full);
+    // Tạo order GCC
+    const newOrder = new Order({
+      userId,
+      productId,
+      orderCode: `GCC${Date.now()}`,
+      type: "GCC",
+      accountId: account._id,
+      accountEmail: account.username,
+    });
+    await newOrder.save();
 
-    res.json(order);
+    // Cập nhật account thành in_use
+    account.status = "in_use";
+    account.lastUsed = new Date();
+    await account.save();
+
+    res.json({
+      success: true,
+      message: "Mua gói cao cấp thành công",
+      order: newOrder,
+      account: { username: account.username },
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error("createOrder error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
-export async function localSavings(req, res) {
-  let { amount } = req.body; amount = parseInt(amount, 10);
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ message: 'Số tiền không hợp lệ' });
-  }
+// =============== Lấy đơn sắp hết hạn ==================
+export const getExpiringOrders = async (req, res) => {
   try {
-    await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amount } });
-    const user = await Customer.findById(req.user.id, 'phone amount');
-    res.json(user);
+    const now = new Date();
+    const threeDays = new Date(now);
+    threeDays.setDate(now.getDate() + 3);
+
+    const expiringOrders = await Order.find({
+      expirationDate: { $lte: threeDays }
+    }).lean();
+
+    res.json({ success: true, data: expiringOrders });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error("getExpiringOrders error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// =============== Lấy tất cả tài khoản ==================
+export const getAllAccounts = async (req, res) => {
+  try {
+    const accounts = await Account50k.find().lean();
+    res.json({ success: true, data: accounts });
+  } catch (err) {
+    console.error("getAllAccounts error:", err);
+    res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách accounts" });
+  }
+};
+
+// =============== Bán account cho khách ==================
+export const sellAccount = async (req, res) => {
+  try {
+    const { customerId } = req.body;
+
+    // Lấy 1 account khả dụng
+    const account = await Account50k.findOne({ status: "available" });
+    if (!account) {
+      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
+    }
+
+    // Gắn account vào order mới
+    const newOrder = new Order({
+      userId: customerId,
+      productId: account._id,
+      orderCode: `ACC${Date.now()}`,
+      type: "SELL",
+      accountId: account._id,
+      accountEmail: account.username,
+    });
+    await newOrder.save();
+
+    account.status = "in_use";
+    account.lastUsed = new Date();
+    await account.save();
+
+    res.json({
+      success: true,
+      message: "Bán account thành công",
+      order: newOrder,
+      account: {
+        username: account.username,
+        password: account.password, // ⚠️ chỉ trả password nếu cần
+      },
+    });
+  } catch (err) {
+    console.error("sellAccount error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+export const getOrders = async (req, res) => {
+  try {
+    // Tự bảo hiểm: tìm orders theo field user hoặc userId (tùy model)
+    const userId = req.user.id;
+    const orders = await Order.find({
+      $or: [{ user: userId }, { userId: userId }]
+    }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error("getOrders error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export async function extendOrder(req, res) {
+  try {
+    const { months, amount } = req.body;
+    const identifier = req.params.id || req.params.orderCode;
+    const monthsInt = parseInt(months, 10);
+    const amountNum = Number(amount);
+
+    if (![1,3,6,12].includes(monthsInt) || !amountNum || amountNum <= 0) {
+      return res.status(400).json({ message: 'Dữ liệu gia hạn không hợp lệ' });
+    }
+
+    // tìm order theo id hoặc orderCode
+    const isObjectId = typeof identifier === 'string' && /^[0-9a-fA-F]{24}$/.test(identifier);
+    const filter = isObjectId ? { _id: identifier } : { orderCode: identifier };
+
+    const order = await Order.findOne(filter);
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+
+    // quyền sở hữu (nếu có req.user)
+    if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Bạn không sở hữu đơn hàng này' });
+    }
+
+    // compute new total months
+    const currentMonths = parseInt(order.duration, 10) || 0;
+    const newTotalMonths = currentMonths + monthsInt;
+
+    // base date: nếu expiresAt còn hiệu lực thì cộng từ đó, nếu expired thì từ now
+    const now = new Date();
+    let base = order.expiresAt ? new Date(order.expiresAt) : (order.purchaseDate ? new Date(order.purchaseDate) : now);
+    if (isNaN(base.getTime()) || base < now) base = now;
+
+    const newExpiresAt = new Date(base);
+    newExpiresAt.setMonth(newExpiresAt.getMonth() + monthsInt); // cộng thêm monthsInt
+
+    // NOTE: push history và set duration/expiresAt/amount
+    const update = {
+      $set: {
+        duration: `${newTotalMonths.toString().padStart(2,'0')} tháng`,
+        expiresAt: newExpiresAt
+      },
+      $inc: { amount: amountNum },
+      $push: { history: { date: new Date(), message: `Gia hạn thêm ${monthsInt} tháng (${amountNum}đ)` } }
+    };
+
+    const updatedOrder = await Order.findOneAndUpdate(filter, update, { new: true }).lean();
+    if (!updatedOrder) return res.status(500).json({ message: 'Không thể cập nhật đơn hàng' });
+
+    // log để kiểm tra
+    console.log('extendOrder updatedOrder:', updatedOrder);
+
+    // cập nhật tiền khách (nếu dùng Customer)
+    if (req.user) {
+      await Customer.findByIdAndUpdate(req.user.id, { $inc: { amount: -amountNum } });
+    }
+
+    // trả về order đã cập nhật (raw)
+    return res.json(updatedOrder);
+  } catch (err) {
+    console.error('extendOrder error:', err);
+    return res.status(500).json({ message: 'Lỗi server khi gia hạn' });
   }
 }
