@@ -69,20 +69,24 @@ export const checkPasswordSession = async (page, cookies, password) => {
 
 export const startWarranty = async (req, res) => {
   try {
-    const { orderId } = req.body;
-    if (!orderId) return res.status(400).json({ success: false, message: "Thiếu orderId" });
+    const { orderId } = req.query;  
+    if (!orderId)
+      return res.status(400).json({ success: false, message: "Thiếu orderId" });
 
     const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy order" });
-
-    const sendStep = (msg) => {
-      console.log(`[Warranty] ${msg}`);
-      res.write(`event: progress\ndata: ${JSON.stringify({ message: msg })}\n\n`);
-    };
+    if (!order)
+      return res.status(404).json({ success: false, message: "Không tìm thấy order" });
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    if (res.flushHeaders) res.flushHeaders(); // 🔑 đảm bảo header gửi ngay
+
+    const sendStep = (msg) => {
+      console.log(`[Warranty] ${msg}`);
+      res.write(`event: progress\ndata: ${JSON.stringify({ message: msg })}\n\n`);
+      if (res.flush) res.flush();
+    };
 
     const browser = await launchBrowser();
     const page = await browser.newPage();
@@ -94,6 +98,8 @@ export const startWarranty = async (req, res) => {
     if (isAlive) {
       sendStep("✅ Account vẫn hoạt động");
       res.write(`event: done\ndata: ${JSON.stringify({ message: "OK" })}\n\n`);
+      if (res.flush) res.flush();
+      res.end(); // 🔑 đóng SSE stream
       await browser.close();
       return;
     }
@@ -103,10 +109,16 @@ export const startWarranty = async (req, res) => {
 
     while (true) {
       const acc = await Account50k.findOne({ status: "available" });
-      if (!acc) break;
+      if (!acc) {
+        sendStep("⚠️ Hết account trong kho, dừng bảo hành");
+        break;
+      }
+
+      sendStep(`👉 Đang thử account ${acc.username}...`);
 
       const okCookie = await checkCookieSession(page, acc.cookies);
       if (!okCookie) {
+        sendStep("❌ Cookie chết, bỏ qua account này");
         await Account50k.findByIdAndDelete(acc._id);
         continue;
       }
@@ -115,16 +127,20 @@ export const startWarranty = async (req, res) => {
       const okPass = await checkPasswordSession(page, acc.cookies, acc.password);
 
       if (okPass) {
+        sendStep("✅ Tìm thấy account hợp lệ");
         newAcc = acc;
         await Account50k.findByIdAndDelete(acc._id);
         break;
       } else {
+        sendStep("❌ Mật khẩu sai, bỏ qua account này");
         await Account50k.findByIdAndDelete(acc._id);
       }
     }
 
     if (!newAcc) {
       res.write(`event: done\ndata: ${JSON.stringify({ message: "Không còn account khả dụng ❌" })}\n\n`);
+      if (res.flush) res.flush();
+      res.end();
       await browser.close();
       return;
     }
@@ -138,10 +154,14 @@ export const startWarranty = async (req, res) => {
 
     sendStep("✅ Bảo hành thành công");
     res.write(`event: done\ndata: ${JSON.stringify({ message: "Bảo hành thành công" })}\n\n`);
+    if (res.flush) res.flush();
+    res.end();
     await browser.close();
   } catch (err) {
     console.error("warrantyAccount error:", err);
     res.write(`event: done\ndata: ${JSON.stringify({ message: "Lỗi bảo hành ❌" })}\n\n`);
+    if (res.flush) res.flush();
+    res.end();
   }
 };
 

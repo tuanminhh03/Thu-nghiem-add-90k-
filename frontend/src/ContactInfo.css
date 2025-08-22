@@ -1,43 +1,52 @@
+/* vị trí nổi */
 .contact-info {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  right: 12px;          /* nhỏ lại */
+  bottom: 12px;         /* nhỏ lại */
   display: flex;
-  flex-direction: column-reverse;
-  gap: 0.5rem;
-  align-items: flex-end;
-  z-index: 999;
-  font-family: 'Poppins', sans-serif;
+  flex-direction: column;
+  gap: 8px;             /* giảm khoảng cách */
+  z-index: 9999;
 }
 
+/* pill gọn hơn */
 .contact-item {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  gap: 6px;                           /* giảm gap chữ–icon */
+  padding: 6px 10px;                  /* giảm padding */
+  border-radius: 999px;
+  background: #fff;
   color: #111;
-  border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  transition: transform .15s ease, box-shadow .15s ease;
+  font-size: 12px;                    /* thu chữ */
+  line-height: 1.1;
 }
 
+.contact-item:hover { transform: translateY(-1px) scale(1.02); }
+
+/* icon nhỏ hơn */
 .contact-icon {
-  width: 24px;
-  height: 24px;
-  margin-right: 0.4rem;
+  width: 28px;                        /* was 40–48 */
+  height: 28px;
+  display: block;
 }
 
-.contact-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
+/* text gọn */
+.contact-text { display: flex; flex-direction: column; }
+.contact-name  { font-weight: 600; font-size: 12px; }
+.contact-hours { font-size: 10px; color: #6b7280; }
+
+/* tablet/ màn hình hẹp: ẩn giờ để ngắn hơn */
+@media (max-width: 1024px) {
+  .contact-hours { display: none; }
 }
 
-.contact-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.contact-hours {
-  font-size: 0.75rem;
-  color: #555;
+/* mobile: chỉ icon (như bạn muốn), vẫn đủ to để bấm */
+@media (max-width: 480px) {
+  .contact-item { padding: 8px; }
+  .contact-text { display: none; }
+  .contact-icon { width: 42px; height: 42px; }
 }

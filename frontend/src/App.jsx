@@ -6,12 +6,14 @@ import Header            from './Header';
 import PlansOverview     from './PlansOverview';
 import PlanDetail        from './PlanDetail';
 import Login             from './Login';
+import PinLogin          from './PinLogin';
 import Register          from './Register';
 import Dashboard         from './Dashboard';
 import PrivateRoute      from './PrivateRoute';
 import CustomerDashboard from './CustomerDashboard';
 import Account           from './Account';
 import TopUpPage         from './TopUpPage';
+import ResetPin         from './ResetPin';
 import AdminLogin            from './admin/AdminLogin';
 import AdminDashboard        from './admin/AdminDashboard';
 import AdminNetflixAccounts  from './admin/AdminNetflixAccounts';
@@ -22,6 +24,7 @@ import AdminStats            from './admin/AdminStats';
 import AdminExpiringOrders   from './admin/AdminExpiringOrders';
 import AdminOrders           from './admin/AdminOrders';
 import AdminLogs            from './admin/AdminLogs';
+import AdminResetPin        from './admin/AdminResetPin';
 import axios from 'axios';
 import ContactInfo       from './ContactInfo';
 
@@ -48,6 +51,10 @@ export default function App() {
         <Route
            path="/login"
            element={<Login />}
+        />
+        <Route
+           path="/pin-login"
+           element={<PinLogin />}
         />
         <Route
            path="/register"
@@ -84,6 +91,16 @@ export default function App() {
           element={
             <HeaderWrapper>
               <TopUpPage />
+            </HeaderWrapper>
+          }
+        />
+        <Route
+          path="/reset-pin"
+          element={
+            <HeaderWrapper>
+              <PrivateRoute>
+                <ResetPin />
+              </PrivateRoute>
             </HeaderWrapper>
           }
         />
@@ -151,6 +168,15 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminCustomerOrders />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/customers/:id/reset-pin"
+          element={
+            <AdminRoute>
+              <AdminResetPin />
             </AdminRoute>
           }
         />

@@ -100,59 +100,59 @@ export default function CustomerDashboard() {
     }
     handleExtend(order, months);
   };
-
-  const handleWarrantyClick = async (orderId) => {
+  const handleWarrantyClick = (orderId) => {
     setWarrantyProcessingId(orderId);
     setWarrantyStep("Bắt đầu bảo hành...");
     setDotCount(1);
 
     try {
-      // gọi backend để khởi tạo task
-      const { data } = await axios.post(
-        "http://localhost:5000/api/account50k/warranty",
-        { orderId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const evtSource = new EventSource(
+        `http://localhost:5000/api/account50k/warranty?orderId=${orderId}&token=${token}`
       );
 
-      if (!data.success) {
-        setWarrantyStep("Không thể bắt đầu bảo hành ❌");
-        return;
-      }
-
-      const taskId = data.taskId;
-      const evtSource = new EventSource(`http://localhost:5000/api/account50k/warranty/stream/${taskId}`);
-
-      evtSource.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-        if (payload.step) {
-          setWarrantyStep(payload.message);
-        }
-      };
-
+      // Lắng nghe progress
       evtSource.addEventListener("progress", (event) => {
         const payload = JSON.parse(event.data);
+        console.log("[Warranty progress]", payload.message);
         setWarrantyStep(payload.message);
       });
 
+      // Lắng nghe done
       evtSource.addEventListener("done", async (event) => {
         const payload = JSON.parse(event.data);
-        setWarrantyStep(payload.message);
+        console.log("[Warranty done]", payload.message);
+
+        // Ngừng lắng nghe lỗi SSE để không báo giả
+        evtSource.onerror = null;
         evtSource.close();
-        await fetchOrders();
+
+        // Hiển thị thông báo cuối
+        setWarrantyStep(payload.message || "✅ Bảo hành thành công");
+
+        // Refresh dữ liệu orders ngay lập tức
+        try {
+          await fetchOrders();
+        } catch (err) {
+          console.error("Lỗi fetch lại orders sau bảo hành:", err);
+        }
+
+        // Reset state hiển thị step và animation dot sau 3 giây
         setTimeout(() => {
           setWarrantyProcessingId(null);
           setWarrantyStep("");
         }, 3000);
       });
 
+      // Bắt lỗi SSE thật sự (khác đóng stream bình thường)
       evtSource.onerror = (err) => {
+        if (evtSource.readyState === EventSource.CLOSED) return; // bình thường
         console.error("Warranty SSE error:", err);
         setWarrantyStep("Lỗi kết nối SSE ❌");
         evtSource.close();
       };
     } catch (err) {
       console.error("Warranty error:", err);
-      setWarrantyStep("Lỗi khi bảo hành");
+      setWarrantyStep("Lỗi khi bảo hành ❌");
     }
   };
 

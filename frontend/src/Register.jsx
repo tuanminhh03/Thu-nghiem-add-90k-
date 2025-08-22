@@ -59,7 +59,7 @@ export default function Register() {
       <div className={styles.card}>
         <div className={styles.logo}>📝</div>
         <h2 className={styles.title}>Đăng ký tài khoản</h2>
-        <p className={styles.subtitle}>Tạo tài khoản mới để sử dụng hệ thống</p>
+        <p className={styles.subtitle}>Lưu ý : Xin quý khách hãy nhập đúng SDT để CSKH của dailywithminh liên hệ với quý khách.</p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label className={styles.label}>
             Tên khách hàng

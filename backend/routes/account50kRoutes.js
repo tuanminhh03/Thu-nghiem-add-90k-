@@ -14,6 +14,8 @@ import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// router.post("/warranty", authenticate, startWarranty);
+router.get("/warranty", authenticate, startWarranty);
 router.post("/bulk", importAccounts);
 router.get("/", getAccounts);
 router.post("/", createAccount);
@@ -22,7 +24,6 @@ router.delete("/:id", deleteAccount);
 
 router.put("/:id/sell", sellAccount);
 
-router.post("/warranty", authenticate, startWarranty);
 router.post("/buy", authenticate, buyAccountGTK);
 
 router.get("/:id", getAccountById);
