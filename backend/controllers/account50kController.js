@@ -1,6 +1,6 @@
-import Account50k from "../Models/Account50k.js";
+import Account50k from "../models/Account50k.js";
 import Order from "../models/Order.js";
-import Customer from '../Models/Customer.js';
+import Customer from '../models/Customer.js';
 import { launchBrowser } from "../utils/puppeteerLauncher.js";
 import { sleep } from "../utils/sleep.js";
 

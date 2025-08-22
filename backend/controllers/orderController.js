@@ -1,8 +1,8 @@
 // controllers/orderController.js
 
 import Order from '../models/Order.js';
-import Account50k from "../Models/Account50k.js";   // ⚠️ nhớ models viết thường
-import Customer from "../Models/Customer.js";
+import Account50k from "../models/Account50k.js";
+import Customer from "../models/Customer.js";
 
 // =============== Gói Tiết Kiệm (GTK) ==================
 export const localSavings = async (req, res) => {

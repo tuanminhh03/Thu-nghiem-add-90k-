@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import Customer from '../Models/Customer.js';
+import Customer from '../models/Customer.js';
 import Order from '../models/Order.js';
-import NetflixAccount from '../Models/NetflixAccount.js';
-import PageView from '../Models/PageView.js';
-import AdminLog from '../Models/AdminLog.js';
+import NetflixAccount from '../models/NetflixAccount.js';
+import PageView from '../models/PageView.js';
+import AdminLog from '../models/AdminLog.js';
 import updates from '../services/eventService.js';
 
 export function ordersStream(req, res) {

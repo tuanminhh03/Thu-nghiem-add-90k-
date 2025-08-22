@@ -1,4 +1,4 @@
-import PageView from '../Models/PageView.js';
+import PageView from '../models/PageView.js';
 
 export async function recordVisit(req, res) {
   try {
