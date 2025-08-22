@@ -1,6 +1,15 @@
-import puppeteer from "puppeteer";
+let puppeteerModule;
 
 export async function launchBrowser() {
+  if (!puppeteerModule) {
+    try {
+      puppeteerModule = await import("puppeteer");
+    } catch (err) {
+      throw new Error(`Puppeteer is not installed: ${err.message}`);
+    }
+  }
+
+  const puppeteer = puppeteerModule.default;
   const path = puppeteer.executablePath();
   console.log("Launching Chromium:", path);
 
