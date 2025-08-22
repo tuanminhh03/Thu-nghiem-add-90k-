@@ -7,7 +7,7 @@ import Customer from "../models/Customer.js";
 // =============== Gói Tiết Kiệm (GTK) ==================
 export const localSavings = async (req, res) => {
   try {
-    const { productId, price } = req.body;
+    const { amount, duration = "1 tháng", plan = "Gói tiết kiệm" } = req.body;
     const userId = req.user.id;
 
     const customer = await Customer.findById(userId);
@@ -15,22 +15,21 @@ export const localSavings = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (customer.amount < price) {
+    if (customer.amount < amount) {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    // Trừ tiền trong DB
-    customer.amount -= price;
+    customer.amount -= amount;
     await customer.save();
 
-    // Tạo order GTK
-    const newOrder = new Order({
-      userId,
-      productId,
+    const newOrder = await Order.create({
+      user: userId,
+      plan,
       orderCode: `GTK${Date.now()}`,
-      type: "GTK",
+      duration,
+      amount,
+      status: "PAID",
     });
-    await newOrder.save();
 
     res.json({
       success: true,
@@ -47,43 +46,46 @@ export const localSavings = async (req, res) => {
 // =============== Gói Cao Cấp (GCC) ==================
 export const createOrder = async (req, res) => {
   try {
-    const { productId } = req.body;
+    const { plan, duration, amount } = req.body;
     const userId = req.user.id;
 
-    // Lấy 1 account khả dụng
-    const account = await Account50k.findOne({
-      $or: [
-        { status: "available" },
-        { status: { $exists: false } },
-        { status: null },
-      ],
-    });
-
-    if (!account) {
-      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
+    if (!plan || !duration || !amount) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
     }
 
-    // Tạo order GCC
-    const newOrder = new Order({
-      userId,
-      productId,
-      orderCode: `GCC${Date.now()}`,
-      type: "GCC",
-      accountId: account._id,
-      accountEmail: account.username,
-    });
-    await newOrder.save();
+    // Lấy thông tin khách hàng để trừ tiền
+    const customer = await Customer.findById(userId);
+    if (!customer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
 
-    // Cập nhật account thành in_use
-    account.status = "in_use";
-    account.lastUsed = new Date();
-    await account.save();
+    if (customer.amount < amount) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Số dư không đủ" });
+    }
+
+    customer.amount -= amount;
+    await customer.save();
+
+    const newOrder = await Order.create({
+      user: userId,
+      plan,
+      orderCode: `GCC${Date.now()}`,
+      duration,
+      amount,
+      status: "PAID",
+    });
 
     res.json({
       success: true,
       message: "Mua gói cao cấp thành công",
       order: newOrder,
-      account: { username: account.username },
+      balance: customer.amount,
     });
   } catch (err) {
     console.error("createOrder error:", err);
