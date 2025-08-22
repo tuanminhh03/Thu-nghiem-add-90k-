@@ -5,11 +5,11 @@ async function loadChromium() {
 
   try {
     ({ chromium } = await import("playwright"));
+    return chromium;
   } catch (err) {
-    throw new Error(`Playwright is not installed: ${err.message}`);
+    console.error("[Warranty] Playwright is not installed:", err.message);
+    return null;
   }
-
-  return chromium;
 }
 
 /**
@@ -77,6 +77,8 @@ export async function checkCookieSession(cookiesRaw, username, password, onProgr
 
   try {
     const chromiumInstance = await loadChromium();
+    if (!chromiumInstance) return result;
+
     browser = await chromiumInstance.launch({ headless: true });
     context = await browser.newContext();
   } catch (err) {
