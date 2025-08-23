@@ -103,6 +103,30 @@ export default function CustomerDashboard() {
     }
     handleExtend(order, months);
   };
+
+  const handleTvLogin = async (order) => {
+    const orderId = order._id || order.orderCode;
+    if (!orderId) {
+      alert("Không tìm thấy ID đơn hàng");
+      return;
+    }
+
+    const tvCode = prompt("Nhập mã TV Code:");
+    if (!tvCode) return;
+
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/account50k/${orderId}/tv-login`,
+        { tvCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(res.data.message || "TV Login thành công");
+    } catch (err) {
+      console.error("tvLogin error:", err);
+      alert(err.response?.data?.message || "Lỗi tv-login");
+    }
+  };
+
   const handleWarrantyClick = (orderId) => {
     setWarrantyProcessingId(orderId);
     setWarrantyStep("Bắt đầu bảo hành...");
@@ -247,21 +271,38 @@ export default function CustomerDashboard() {
                                 </>
                               )}
 
+                              {/* ✅ Thêm nút TV Login ở đây */}
+                              {!isExpired && (
+                                <button
+                                  type="button"
+                                  className="tvlogin-button"
+                                  onClick={() => handleTvLogin(o)}   // truyền cả order object
+                                >
+                                  TV Login
+                                </button>
+                              )}
+
                               {o.plan === 'Gói tiết kiệm' && !isExpired && (
                                 warrantyProcessingId === rowId ? (
                                   <div className="warranty-processing">
                                     <p>{warrantyStep}</p>
-                                    <button type="button" className="warranty-progress-button" disabled>{'.'.repeat(dotCount)}</button>
+                                    <button type="button" className="warranty-progress-button" disabled>
+                                      {'.'.repeat(dotCount)}
+                                    </button>
                                   </div>
                                 ) : (
-                                  <button type="button" className="warranty-button" onClick={() => handleWarrantyClick(rowId)}>
+                                  <button
+                                    type="button"
+                                    className="warranty-button"
+                                    onClick={() => handleWarrantyClick(rowId)}
+                                  >
                                     Bảo hành
                                   </button>
                                 )
                               )}
                             </div>
                           </td>
-                        </tr>
+                        </tr> 
                       )}
                     </React.Fragment>
                   );

@@ -11,6 +11,7 @@ import {
   startWarranty
 } from "../controllers/account50kController.js";
 import { authenticate } from "../middleware/auth.js";
+import { tvLogin } from "../controllers/account50kController.js";
 
 const router = express.Router();
 
@@ -27,5 +28,6 @@ router.put("/:id/sell", sellAccount);
 router.post("/buy", authenticate, buyAccountGTK);
 
 router.get("/:id", getAccountById);
+router.post("/:orderId/tv-login", authenticate, tvLogin);
 
 export default router;

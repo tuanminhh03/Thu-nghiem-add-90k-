@@ -405,4 +405,71 @@ function priceForDays(days) {
   return 50000;
 }
 
+export const tvLogin = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { tvCode } = req.body;
+
+    if (!orderId || !tvCode) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu orderId hoặc mã TV" });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy đơn hàng" });
+    }
+
+    const browser = await launchBrowser();
+    const page = await browser.newPage();
+
+    try {
+      // Gán cookies từ DB vào trình duyệt
+      const parsedCookies = JSON.parse(order.accountCookies)?.cookies || [];
+      if (parsedCookies.length > 0) {
+        await page.setCookie(...parsedCookies);
+      }
+
+      await page.goto("https://www.netflix.com/tv8", {
+        waitUntil: "networkidle2",
+        timeout: 30000,
+      });
+
+      // đợi trang load xong
+      await new Promise(r => setTimeout(r, 2000));
+
+      // tìm 8 ô input
+      const inputs = await page.$$("input.pin-number-input");
+      if (!inputs || inputs.length !== 8) {
+        throw new Error("Không tìm thấy đủ 8 ô nhập mã TV");
+      }
+
+      // nhập từng ký tự của mã
+      for (let i = 0; i < 8; i++) {
+        await inputs[i].click();
+        await inputs[i].type(tvCode[i]);
+      }
+
+      // nhấn Enter sau khi nhập xong
+      await page.keyboard.press("Enter");
+      await new Promise(r => setTimeout(r, 4000));
+
+      const url = page.url();
+      if (url.includes("browse")) {
+        res.json({ success: true, message: "✅ TV login thành công" });
+      } else {
+        res.status(400).json({ success: false, message: "❌ TV login thất bại" });
+      }
+    } finally {
+      await browser.close();
+    }
+  } catch (err) {
+    console.error("tvLogin error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server khi TV login" });
+  }
+};
+
 export { getAccounts as getAllAccounts };
