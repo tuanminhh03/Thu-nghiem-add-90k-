@@ -35,11 +35,14 @@ export default function CustomerDashboard() {
     if (!token) return;
     setLoading(true);
     try {
-      const { data } = await axios.get('http://localhost:5000/api/orders', {
+      const res = await axios.get('http://localhost:5000/api/orders', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const sorted = Array.isArray(data)
-        ? data.sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate))
+      const ordersData = Array.isArray(res.data)
+        ? res.data
+        : res.data?.data;
+      const sorted = Array.isArray(ordersData)
+        ? ordersData.sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate))
         : [];
       setOrders(sorted);
     } catch (err) {

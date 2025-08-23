@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
+import NetflixAccount from "../models/NetflixAccount.js";
 import Customer from "../models/Customer.js";
 
 /** Determine whether the current MongoDB topology supports transactions. */
@@ -126,13 +127,10 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    // Lấy 1 account khả dụng (giả định GCC cần Account50k)
-    const accountQuery = Account50k.findOne({
-      $or: [
-        { status: "available" },
-        { status: { $exists: false } },
-        { status: null },
-      ],
+    // Tìm tài khoản Netflix có hồ sơ trống
+    const accountQuery = NetflixAccount.findOne({
+      plan: "Gói cao cấp",
+      "profiles.status": "empty",
     });
     const account = hasTransaction
       ? await accountQuery.session(session)
@@ -140,14 +138,41 @@ export const createOrder = async (req, res) => {
     if (!account) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Không còn tài khoản khả dụng" });
+    }
+
+    const profile = account.profiles.find((p) => p.status === "empty");
+    if (!profile) {
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(400)
+        .json({ success: false, message: "Không còn hồ sơ trống" });
+    }
+
+    // Tính ngày hết hạn
+    const purchaseDate = new Date();
+    const monthsMatch = String(duration).match(/\d+/);
+    const months = monthsMatch ? parseInt(monthsMatch[0], 10) : 0;
+    const expiresAt = new Date(purchaseDate);
+    if (months > 0) {
+      expiresAt.setMonth(expiresAt.getMonth() + months);
     }
 
     // Trừ tiền
     customer.amount -= amountNum;
     await customer.save(sessionOpts);
 
-    // Tạo đơn hàng & gán account
+    // Đánh dấu hồ sơ đã dùng
+    profile.status = "used";
+    profile.customerPhone = customer.phone;
+    profile.purchaseDate = purchaseDate;
+    profile.expirationDate = expiresAt;
+    await account.save(sessionOpts);
+
+    // Tạo đơn hàng & gán hồ sơ
     const created = await Order.create(
       [
         {
@@ -157,20 +182,19 @@ export const createOrder = async (req, res) => {
           duration,
           amount: amountNum,
           status: "PAID",
-          accountId: account._id,
-          accountEmail: account.username,
+          accountEmail: account.email,
           accountPassword: account.password,
-          purchaseDate: new Date(),
+          profileId: profile.id,
+          profileName: profile.name,
+          pin: profile.pin,
+          purchaseDate,
+          expiresAt,
+          history: [{ message: "Tạo đơn hàng", date: purchaseDate }],
         },
       ],
       sessionOpts
     );
     const newOrder = created[0];
-
-    // Cập nhật account
-    account.status = "in_use";
-    account.lastUsed = new Date();
-    await account.save(sessionOpts);
 
     if (hasTransaction) await session.commitTransaction();
     session.endSession();
@@ -181,8 +205,10 @@ export const createOrder = async (req, res) => {
       order: newOrder,
       balance: customer.amount,
       netflixAccount: {
-        email: account.username,
-        password: account.password, // ⚠️ cân nhắc không trả mật khẩu ở production
+        email: account.email,
+        password: account.password,
+        profileName: profile.name,
+        pin: profile.pin,
       },
     });
   } catch (err) {
