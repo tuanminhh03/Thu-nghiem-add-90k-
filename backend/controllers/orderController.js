@@ -14,7 +14,8 @@ export const localSavings = async (req, res) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
-    if (!amount || amount <= 0) {
+    const amountNum = Number(amount);
+    if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
@@ -23,11 +24,11 @@ export const localSavings = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (customer.amount < amount) {
+    if (customer.amount < amountNum) {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    customer.amount -= amount;
+    customer.amount -= amountNum;
     await customer.save();
 
     const newOrder = await Order.create({
@@ -35,8 +36,9 @@ export const localSavings = async (req, res) => {
       plan,
       orderCode: `GTK${Date.now()}`,
       duration,
-      amount,
+      amount: amountNum,
       status: "PAID",
+      purchaseDate: new Date(),
     });
 
     return res.json({
@@ -65,7 +67,7 @@ export const createOrder = async (req, res) => {
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
 
-    if (!plan || !duration || !amount) {
+    if (!plan || !duration || amount === undefined) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
@@ -92,7 +94,7 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
-    // Lấy 1 account khả dụng (nếu gói yêu cầu account 50k; ở đây coi GCC luôn cần)
+    // Lấy 1 account khả dụng (giả định GCC cần Account50k)
     const account = await Account50k.findOne({
       $or: [
         { status: "available" },
@@ -112,7 +114,7 @@ export const createOrder = async (req, res) => {
     await customer.save({ session });
 
     // Tạo đơn hàng & gán account
-    const newOrder = await Order.create(
+    const created = await Order.create(
       [
         {
           user: userId,
@@ -129,6 +131,7 @@ export const createOrder = async (req, res) => {
       ],
       { session }
     );
+    const newOrder = created[0];
 
     // Cập nhật trạng thái account
     account.status = "in_use";
@@ -141,11 +144,11 @@ export const createOrder = async (req, res) => {
     return res.json({
       success: true,
       message: "Mua gói cao cấp thành công",
-      order: newOrder[0],
+      order: newOrder,
       balance: customer.amount,
       netflixAccount: {
         email: account.username,
-        password: account.password, // ⚠️ Cân nhắc ẩn trong môi trường production
+        password: account.password, // ⚠️ Cân nhắc ẩn trong production
       },
     });
   } catch (err) {
@@ -163,7 +166,7 @@ export const getExpiringOrders = async (req, res) => {
     const threeDays = new Date(now);
     threeDays.setDate(now.getDate() + 3);
 
-    // Thống nhất field là expiresAt (trong extendOrder cũng dùng expiresAt)
+    // Đồng bộ field hết hạn với extendOrder (dùng expiresAt)
     const expiringOrders = await Order.find({
       expiresAt: { $lte: threeDays },
     })
@@ -220,7 +223,7 @@ export const sellAccount = async (req, res) => {
     }
 
     // Gắn account vào order mới
-    const newOrder = await Order.create(
+    const created = await Order.create(
       [
         {
           userId: customerId,
@@ -236,6 +239,7 @@ export const sellAccount = async (req, res) => {
       ],
       { session }
     );
+    const newOrder = created[0];
 
     account.status = "in_use";
     account.lastUsed = new Date();
@@ -247,7 +251,7 @@ export const sellAccount = async (req, res) => {
     return res.json({
       success: true,
       message: "Bán account thành công",
-      order: newOrder[0],
+      order: newOrder,
       account: {
         username: account.username,
         password: account.password, // ⚠️ Chỉ trả nếu thật sự cần
@@ -266,7 +270,7 @@ export const getOrders = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ message: "Chưa đăng nhập" });
+      return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
     const orders = await Order.find({
       $or: [{ user: userId }, { userId: userId }],
@@ -277,7 +281,7 @@ export const getOrders = async (req, res) => {
     return res.json({ success: true, data: orders });
   } catch (err) {
     console.error("getOrders error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -317,7 +321,7 @@ export async function extendOrder(req, res) {
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
     }
 
-    // Kiểm tra số dư trước khi trừ
+    // Kiểm tra & trừ số dư khách
     if (req.user) {
       const customer = await Customer.findById(req.user.id).session(session);
       if (!customer) {
@@ -335,7 +339,6 @@ export async function extendOrder(req, res) {
     }
 
     // Tính toán thời hạn mới
-    // order.duration có thể là "1 tháng" -> parseInt vẫn cho ra 1
     const currentMonths = parseInt(order.duration, 10) || 0;
     const newTotalMonths = currentMonths + monthsInt;
 
