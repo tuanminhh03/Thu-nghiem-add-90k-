@@ -5,42 +5,33 @@ import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
 import Customer from "../models/Customer.js";
 
-// Determine whether the current MongoDB topology supports transactions
+/** Determine whether the current MongoDB topology supports transactions. */
 function supportsTransactions() {
-  const client = mongoose.connection.getClient
-    ? mongoose.connection.getClient()
-    : mongoose.connection.client;
-  const type = client?.topology?.description?.type;
-  // Only specific topologies provide transaction support
-  return [
-    "ReplicaSetWithPrimary",
-    "ReplicaSetNoPrimary",
-    "Sharded",
-    "LoadBalanced",
-  ].includes(type);
+  try {
+    const client = mongoose.connection.getClient
+      ? mongoose.connection.getClient()
+      : mongoose.connection.client;
+    const type = client?.topology?.description?.type;
+    // Transactions: ReplicaSetWithPrimary, ReplicaSetNoPrimary, Sharded, LoadBalanced
+    return ["ReplicaSetWithPrimary", "ReplicaSetNoPrimary", "Sharded", "LoadBalanced"].includes(type);
+  } catch {
+    return false;
+  }
 }
 
-// Utility to start a session and transaction if the MongoDB server supports it.
+/** Start a session and (if supported) a transaction. */
 async function startTransactionSession() {
   const session = await mongoose.startSession();
   let hasTransaction = false;
   if (supportsTransactions()) {
     try {
       session.startTransaction();
-      // Run a lightweight command inside the transaction to verify support
-      await mongoose.connection.db.admin().command({ ping: 1 }, { session });
       hasTransaction = true;
     } catch (err) {
-      console.warn(
-        "Transactions not supported, continuing without transaction:",
-        err.message
-      );
-      if (session.inTransaction()) {
-        try {
-          await session.abortTransaction();
-        } catch (_) {
-          /* ignore */
-        }
+      console.warn("Transactions not supported, continuing without transaction:", err.message);
+      // best-effort abort if startTransaction partially succeeded
+      if (session.inTransaction?.()) {
+        try { await session.abortTransaction(); } catch {}
       }
     }
   }
@@ -65,7 +56,6 @@ export const localSavings = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
     if (customer.amount < amountNum) {
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
@@ -108,7 +98,6 @@ export const createOrder = async (req, res) => {
       session.endSession();
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
-
     if (!plan || !duration || amount === undefined) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
@@ -131,7 +120,6 @@ export const createOrder = async (req, res) => {
       session.endSession();
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
     if (customer.amount < amountNum) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
@@ -149,14 +137,13 @@ export const createOrder = async (req, res) => {
     const account = hasTransaction
       ? await accountQuery.session(session)
       : await accountQuery;
-
     if (!account) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
-    // Trừ tiền trước
+    // Trừ tiền
     customer.amount -= amountNum;
     await customer.save(sessionOpts);
 
@@ -180,7 +167,7 @@ export const createOrder = async (req, res) => {
     );
     const newOrder = created[0];
 
-    // Cập nhật trạng thái account
+    // Cập nhật account
     account.status = "in_use";
     account.lastUsed = new Date();
     await account.save(sessionOpts);
@@ -213,7 +200,6 @@ export const getExpiringOrders = async (req, res) => {
     const threeDays = new Date(now);
     threeDays.setDate(now.getDate() + 3);
 
-    // Đồng bộ field hết hạn với extendOrder (dùng expiresAt)
     const expiringOrders = await Order.find({
       expiresAt: { $lte: threeDays },
     })
@@ -236,7 +222,7 @@ export const getAllAccounts = async (req, res) => {
     console.error("getAllAccounts error:", err);
     return res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách accounts" });
   }
-}; 
+};
 
 // =============== Bán account cho khách (không qua số dư) ==================
 export const sellAccount = async (req, res) => {
@@ -244,13 +230,13 @@ export const sellAccount = async (req, res) => {
   try {
     const sessionOpts = hasTransaction ? { session } : {};
     const { customerId } = req.body;
+
     if (!customerId) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu customerId" });
     }
 
-    // Lấy 1 account khả dụng
     const accountQuery = Account50k.findOne({
       $or: [
         { status: "available" },
@@ -261,14 +247,12 @@ export const sellAccount = async (req, res) => {
     const account = hasTransaction
       ? await accountQuery.session(session)
       : await accountQuery;
-
     if (!account) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
-    // Gắn account vào order mới
     const created = await Order.create(
       [
         {
@@ -348,33 +332,33 @@ export async function extendOrder(req, res) {
       return res.status(400).json({ message: "Dữ liệu gia hạn không hợp lệ" });
     }
 
-    // tìm order theo id hoặc orderCode
     const isObjectId =
       typeof identifier === "string" && /^[0-9a-fA-F]{24}$/.test(identifier);
     const filter = isObjectId ? { _id: identifier } : { orderCode: identifier };
+
     const orderQuery = Order.findOne(filter);
     const order = hasTransaction
       ? await orderQuery.session(session)
       : await orderQuery;
+
     if (!order) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
-    // quyền sở hữu (nếu có req.user)
     if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
     }
 
-    // Kiểm tra & trừ số dư khách
     if (req.user) {
       const customerQuery = Customer.findById(req.user.id);
       const customer = hasTransaction
         ? await customerQuery.session(session)
         : await customerQuery;
+
       if (!customer) {
         if (hasTransaction) await session.abortTransaction();
         session.endSession();
@@ -389,7 +373,6 @@ export async function extendOrder(req, res) {
       await customer.save(sessionOpts);
     }
 
-    // Tính toán thời hạn mới
     const currentMonths = parseInt(order.duration, 10) || 0;
     const newTotalMonths = currentMonths + monthsInt;
 
@@ -404,7 +387,6 @@ export async function extendOrder(req, res) {
     const newExpiresAt = new Date(base);
     newExpiresAt.setMonth(newExpiresAt.getMonth() + monthsInt);
 
-    // Cập nhật đơn
     order.duration = `${String(newTotalMonths).padStart(2, "0")} tháng`;
     order.expiresAt = newExpiresAt;
     order.amount = Number(order.amount || 0) + amountNum;
