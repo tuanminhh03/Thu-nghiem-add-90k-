@@ -5,31 +5,35 @@ import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
 import Customer from "../models/Customer.js";
 
-// Kiểm tra topology để biết có hỗ trợ transaction không
+/** Determine whether the current MongoDB topology supports transactions. */
 function supportsTransactions() {
   try {
     const client = mongoose.connection.getClient
       ? mongoose.connection.getClient()
       : mongoose.connection.client;
     const type = client?.topology?.description?.type;
-    // Transactions chỉ có trên ReplicaSet, Sharded, hoặc LoadBalanced
-    return !!type && type !== "Single";
+    // Transactions: ReplicaSetWithPrimary, ReplicaSetNoPrimary, Sharded, LoadBalanced
+    return ["ReplicaSetWithPrimary", "ReplicaSetNoPrimary", "Sharded", "LoadBalanced"].includes(type);
   } catch {
     return false;
   }
 }
 
-// Mở session + transaction nếu được
+/** Start a session and (if supported) a transaction. */
 async function startTransactionSession() {
   const session = await mongoose.startSession();
   let hasTransaction = false;
-  try {
-    if (supportsTransactions()) {
+  if (supportsTransactions()) {
+    try {
       session.startTransaction();
       hasTransaction = true;
+    } catch (err) {
+      console.warn("Transactions not supported, continuing without transaction:", err.message);
+      // best-effort abort if startTransaction partially succeeded
+      if (session.inTransaction?.()) {
+        try { await session.abortTransaction(); } catch {}
+      }
     }
-  } catch (err) {
-    console.warn("Transactions not supported, continuing without:", err.message);
   }
   return { session, hasTransaction };
 }
@@ -111,7 +115,6 @@ export const createOrder = async (req, res) => {
     const customer = hasTransaction
       ? await Customer.findById(userId).session(session)
       : await Customer.findById(userId);
-
     if (!customer) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
@@ -134,7 +137,6 @@ export const createOrder = async (req, res) => {
     const account = hasTransaction
       ? await accountQuery.session(session)
       : await accountQuery;
-
     if (!account) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
@@ -245,7 +247,6 @@ export const sellAccount = async (req, res) => {
     const account = hasTransaction
       ? await accountQuery.session(session)
       : await accountQuery;
-
     if (!account) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
