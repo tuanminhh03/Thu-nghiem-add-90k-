@@ -62,35 +62,30 @@ export const createOrder = async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
 
     if (!plan || !duration || amount === undefined) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
     }
 
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
     // Lấy thông tin khách hàng để trừ tiền
     const customer = await Customer.findById(userId).session(session);
     if (!customer) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
     if (customer.amount < amountNum) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
@@ -104,8 +99,7 @@ export const createOrder = async (req, res) => {
     }).session(session);
 
     if (!account) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
@@ -148,13 +142,12 @@ export const createOrder = async (req, res) => {
       balance: customer.amount,
       netflixAccount: {
         email: account.username,
-        password: account.password, // ⚠️ Cân nhắc ẩn trong production
+        password: account.password, // ⚠️ cân nhắc không trả mật khẩu ở production
       },
     });
   } catch (err) {
     console.error("createOrder error:", err);
-    await session.abortTransaction();
-    session.endSession();
+    await session.abortTransaction(); session.endSession();
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -187,9 +180,7 @@ export const getAllAccounts = async (req, res) => {
     return res.json({ success: true, data: accounts });
   } catch (err) {
     console.error("getAllAccounts error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi khi lấy danh sách accounts" });
+    return res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách accounts" });
   }
 };
 
@@ -200,8 +191,7 @@ export const sellAccount = async (req, res) => {
   try {
     const { customerId } = req.body;
     if (!customerId) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu customerId" });
     }
 
@@ -215,11 +205,8 @@ export const sellAccount = async (req, res) => {
     }).session(session);
 
     if (!account) {
-      await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, message: "Không còn tài khoản khả dụng" });
+      await session.abortTransaction(); session.endSession();
+      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
     // Gắn account vào order mới
@@ -254,13 +241,12 @@ export const sellAccount = async (req, res) => {
       order: newOrder,
       account: {
         username: account.username,
-        password: account.password, // ⚠️ Chỉ trả nếu thật sự cần
+        password: account.password, // ⚠️ chỉ trả nếu thực sự cần
       },
     });
   } catch (err) {
     console.error("sellAccount error:", err);
-    await session.abortTransaction();
-    session.endSession();
+    await session.abortTransaction(); session.endSession();
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
@@ -297,8 +283,7 @@ export async function extendOrder(req, res) {
     const amountNum = Number(amount);
 
     if (![1, 3, 6, 12].includes(monthsInt) || !amountNum || amountNum <= 0) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(400).json({ message: "Dữ liệu gia hạn không hợp lệ" });
     }
 
@@ -309,15 +294,13 @@ export async function extendOrder(req, res) {
 
     const order = await Order.findOne(filter).session(session);
     if (!order) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
     // quyền sở hữu (nếu có req.user)
     if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); session.endSession();
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
     }
 
@@ -325,13 +308,11 @@ export async function extendOrder(req, res) {
     if (req.user) {
       const customer = await Customer.findById(req.user.id).session(session);
       if (!customer) {
-        await session.abortTransaction();
-        session.endSession();
+        await session.abortTransaction(); session.endSession();
         return res.status(404).json({ message: "Không tìm thấy khách hàng" });
       }
       if (customer.amount < amountNum) {
-        await session.abortTransaction();
-        session.endSession();
+        await session.abortTransaction(); session.endSession();
         return res.status(400).json({ message: "Số dư không đủ để gia hạn" });
       }
       customer.amount -= amountNum;
@@ -371,8 +352,7 @@ export async function extendOrder(req, res) {
     return res.json({ success: true, data: updatedOrder });
   } catch (err) {
     console.error("extendOrder error:", err);
-    await session.abortTransaction();
-    session.endSession();
+    await session.abortTransaction(); session.endSession();
     return res.status(500).json({ message: "Lỗi server khi gia hạn" });
   }
 }
