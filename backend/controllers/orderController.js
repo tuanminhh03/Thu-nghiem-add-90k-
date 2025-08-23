@@ -5,6 +5,34 @@ import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
 import Customer from "../models/Customer.js";
 
+// Determine whether the current MongoDB topology supports transactions
+function supportsTransactions() {
+  const client = mongoose.connection.getClient
+    ? mongoose.connection.getClient()
+    : mongoose.connection.client;
+  const type = client?.topology?.description?.type;
+  // Transactions are only supported on replica sets, sharded clusters or load-balanced clusters
+  return type && type !== "Single";
+}
+
+// Utility to start a session and transaction if the MongoDB server supports it.
+async function startTransactionSession() {
+  const session = await mongoose.startSession();
+  let hasTransaction = false;
+  if (supportsTransactions()) {
+    try {
+      session.startTransaction();
+      hasTransaction = true;
+    } catch (err) {
+      console.warn(
+        "Could not start transaction, continuing without transaction:",
+        err.message
+      );
+    }
+  }
+  return { session, hasTransaction };
+}
+
 // =============== Gói Tiết Kiệm (GTK) ==================
 export const localSavings = async (req, res) => {
   try {
@@ -55,57 +83,68 @@ export const localSavings = async (req, res) => {
 
 // =============== Gói Cao Cấp (GCC) ==================
 export const createOrder = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { session, hasTransaction } = await startTransactionSession();
   try {
+    const sessionOpts = hasTransaction ? { session } : {};
     const { plan, duration, amount } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
 
     if (!plan || !duration || amount === undefined) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
     }
 
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
     // Lấy thông tin khách hàng để trừ tiền
-    const customer = await Customer.findById(userId).session(session);
+    const customer = hasTransaction
+      ? await Customer.findById(userId).session(session)
+      : await Customer.findById(userId);
     if (!customer) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
     if (customer.amount < amountNum) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
     // Lấy 1 account khả dụng (giả định GCC cần Account50k)
-    const account = await Account50k.findOne({
+    const accountQuery = Account50k.findOne({
       $or: [
         { status: "available" },
         { status: { $exists: false } },
         { status: null },
       ],
-    }).session(session);
+    });
+    const account = hasTransaction
+      ? await accountQuery.session(session)
+      : await accountQuery;
 
     if (!account) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
     // Trừ tiền trước
     customer.amount -= amountNum;
-    await customer.save({ session });
+    await customer.save(sessionOpts);
 
     // Tạo đơn hàng & gán account
     const created = await Order.create(
@@ -123,16 +162,16 @@ export const createOrder = async (req, res) => {
           purchaseDate: new Date(),
         },
       ],
-      { session }
+      sessionOpts
     );
     const newOrder = created[0];
 
     // Cập nhật trạng thái account
     account.status = "in_use";
     account.lastUsed = new Date();
-    await account.save({ session });
+    await account.save(sessionOpts);
 
-    await session.commitTransaction();
+    if (hasTransaction) await session.commitTransaction();
     session.endSession();
 
     return res.json({
@@ -147,7 +186,8 @@ export const createOrder = async (req, res) => {
     });
   } catch (err) {
     console.error("createOrder error:", err);
-    await session.abortTransaction(); session.endSession();
+    if (hasTransaction) await session.abortTransaction();
+    session.endSession();
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -182,30 +222,35 @@ export const getAllAccounts = async (req, res) => {
     console.error("getAllAccounts error:", err);
     return res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách accounts" });
   }
-};
+}; 
 
 // =============== Bán account cho khách (không qua số dư) ==================
 export const sellAccount = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { session, hasTransaction } = await startTransactionSession();
   try {
+    const sessionOpts = hasTransaction ? { session } : {};
     const { customerId } = req.body;
     if (!customerId) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Thiếu customerId" });
     }
 
     // Lấy 1 account khả dụng
-    const account = await Account50k.findOne({
+    const accountQuery = Account50k.findOne({
       $or: [
         { status: "available" },
         { status: { $exists: false } },
         { status: null },
       ],
-    }).session(session);
+    });
+    const account = hasTransaction
+      ? await accountQuery.session(session)
+      : await accountQuery;
 
     if (!account) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
@@ -224,15 +269,15 @@ export const sellAccount = async (req, res) => {
           purchaseDate: new Date(),
         },
       ],
-      { session }
+      sessionOpts
     );
     const newOrder = created[0];
 
     account.status = "in_use";
     account.lastUsed = new Date();
-    await account.save({ session });
+    await account.save(sessionOpts);
 
-    await session.commitTransaction();
+    if (hasTransaction) await session.commitTransaction();
     session.endSession();
 
     return res.json({
@@ -246,7 +291,8 @@ export const sellAccount = async (req, res) => {
     });
   } catch (err) {
     console.error("sellAccount error:", err);
-    await session.abortTransaction(); session.endSession();
+    if (hasTransaction) await session.abortTransaction();
+    session.endSession();
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
@@ -273,9 +319,9 @@ export const getOrders = async (req, res) => {
 
 // =============== Gia hạn đơn hàng ==================
 export async function extendOrder(req, res) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { session, hasTransaction } = await startTransactionSession();
   try {
+    const sessionOpts = hasTransaction ? { session } : {};
     const { months, amount } = req.body;
     const identifier = req.params.id || req.params.orderCode;
 
@@ -283,7 +329,8 @@ export async function extendOrder(req, res) {
     const amountNum = Number(amount);
 
     if (![1, 3, 6, 12].includes(monthsInt) || !amountNum || amountNum <= 0) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: "Dữ liệu gia hạn không hợp lệ" });
     }
 
@@ -291,32 +338,41 @@ export async function extendOrder(req, res) {
     const isObjectId =
       typeof identifier === "string" && /^[0-9a-fA-F]{24}$/.test(identifier);
     const filter = isObjectId ? { _id: identifier } : { orderCode: identifier };
-
-    const order = await Order.findOne(filter).session(session);
+    const orderQuery = Order.findOne(filter);
+    const order = hasTransaction
+      ? await orderQuery.session(session)
+      : await orderQuery;
     if (!order) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
     // quyền sở hữu (nếu có req.user)
     if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
-      await session.abortTransaction(); session.endSession();
+      if (hasTransaction) await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
     }
 
     // Kiểm tra & trừ số dư khách
     if (req.user) {
-      const customer = await Customer.findById(req.user.id).session(session);
+      const customerQuery = Customer.findById(req.user.id);
+      const customer = hasTransaction
+        ? await customerQuery.session(session)
+        : await customerQuery;
       if (!customer) {
-        await session.abortTransaction(); session.endSession();
+        if (hasTransaction) await session.abortTransaction();
+        session.endSession();
         return res.status(404).json({ message: "Không tìm thấy khách hàng" });
       }
       if (customer.amount < amountNum) {
-        await session.abortTransaction(); session.endSession();
+        if (hasTransaction) await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: "Số dư không đủ để gia hạn" });
       }
       customer.amount -= amountNum;
-      await customer.save({ session });
+      await customer.save(sessionOpts);
     }
 
     // Tính toán thời hạn mới
@@ -344,15 +400,16 @@ export async function extendOrder(req, res) {
       message: `Gia hạn thêm ${monthsInt} tháng (${amountNum}đ)`,
     });
 
-    const updatedOrder = await order.save({ session });
+    const updatedOrder = await order.save(sessionOpts);
 
-    await session.commitTransaction();
+    if (hasTransaction) await session.commitTransaction();
     session.endSession();
 
     return res.json({ success: true, data: updatedOrder });
   } catch (err) {
     console.error("extendOrder error:", err);
-    await session.abortTransaction(); session.endSession();
+    if (hasTransaction) await session.abortTransaction();
+    session.endSession();
     return res.status(500).json({ message: "Lỗi server khi gia hạn" });
   }
 }
