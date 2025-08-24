@@ -67,6 +67,56 @@ export const checkPasswordSession = async (page, cookies, password) => {
   }
 };
 
+export const switchAccount = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    const browser = await launchBrowser();
+    const page = await browser.newPage();
+
+    let newAcc = null;
+
+    // Duyệt qua các acc khả dụng trong kho
+    const candidates = await Account50k.find({ status: "available" });
+    for (const acc of candidates) {
+      const okCookie = await checkCookieSession(page, acc.cookies);
+      if (!okCookie) {
+        await Account50k.findByIdAndDelete(acc._id);
+        continue;
+      }
+
+      const okPass = await checkPasswordSession(page, acc.cookies, acc.password);
+      if (okPass) {
+        newAcc = acc;
+        await Account50k.findByIdAndDelete(acc._id);
+        break;
+      } else {
+        await Account50k.findByIdAndDelete(acc._id);
+      }
+    }
+
+    await browser.close();
+
+    if (!newAcc) {
+      return res.status(400).json({ success: false, message: "Không còn account khả dụng để chuyển" });
+    }
+
+    // Cập nhật Order với acc mới
+    order.accountEmail = newAcc.username;
+    order.accountPassword = newAcc.password;
+    order.accountCookies = newAcc.cookies;
+    order.history.push({ message: "Được cấp tài khoản mới qua chức năng chuyển", date: new Date() });
+    await order.save();
+
+    res.json({ success: true, message: "Đã chuyển thành công", data: order });
+  } catch (err) {
+    console.error("switchAccount error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server khi chuyển account" });
+  }
+};
+
 export const startWarranty = async (req, res) => {
   try {
     const { orderId } = req.query;  
@@ -221,15 +271,29 @@ export const importAccounts = async (req, res) => {
 /**
  * Lấy danh sách accounts
  */
-export const getAccounts = async (req, res) => {
+export const Accountsget = async (req, res) => {
   try {
-    const accounts = await Account50k.find().select("-__v");
+    const accounts = await Account50k.find({ status: "available" }).sort({ createdAt: -1 });
     res.json({ success: true, data: accounts });
   } catch (err) {
     console.error("getAccounts error:", err);
-    res.status(500).json({ success: false, message: "Lỗi server" });
-  }
+    res.status(500).json({ success: false, message: "Lỗi server khi lấy accounts" });
+  } 
 };
+
+export const getOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name phone") // nếu cần thêm info khách
+      .sort({ purchaseDate: -1 });
+
+    res.json({ success: true, data: orders });
+  } catch (err) {
+    console.error("getOrders error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server khi lấy orders" });
+  }
+};;
+
 
 /**
  * Lấy account theo id
@@ -472,4 +536,24 @@ export const tvLogin = async (req, res) => {
   }
 };
 
-export { getAccounts as getAllAccounts };
+// Thêm vào cuối file account50kController.js
+export const updateOrderExpiration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { expirationDate } = req.body;
+
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { expiresAt: new Date(expirationDate) },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy order" });
+    res.json({ success: true, data: order });
+  } catch (err) {
+    console.error("updateOrderExpiration error:", err);
+    res.status(500).json({ success: false, message: "Lỗi server khi cập nhật hạn order" });
+  }
+};
+
+export { Accountsget as getAllAccounts };
