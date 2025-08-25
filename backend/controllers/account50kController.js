@@ -1,6 +1,7 @@
 import Account50k from "../models/Account50k.js";
 import Order from "../models/Order.js";
 import Customer from '../models/Customer.js';
+import bcrypt from 'bcrypt';
 import { launchBrowser } from "../utils/puppeteerLauncher.js";
 import { sleep } from "../utils/sleep.js";
 
@@ -358,6 +359,13 @@ export const sellAccount = async (req, res) => {
     const account = await Account50k.findById(id);
     if (!account) {
       return res.status(404).json({ success: false, message: "Không tìm thấy account" });
+    }
+
+    // Tạo khách hàng mới nếu số điện thoại chưa đăng ký
+    let customer = await Customer.findOne({ phone });
+    if (!customer) {
+      const hashed = await bcrypt.hash('000000', 10);
+      customer = await Customer.create({ name: 'Khách mới', phone, pin: hashed });
     }
 
     const now = new Date();

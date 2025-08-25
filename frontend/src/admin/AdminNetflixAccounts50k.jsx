@@ -101,15 +101,21 @@ export default function AdminNetflixAccounts50k() {
     if (!phone) return;
 
     try {
-      await fetch(`http://localhost:5000/api/account50k/${acc._id}/sell`, {
+      const res = await fetch(`http://localhost:5000/api/account50k/${acc._id}/sell`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, planDays: PLAN_DAYS }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.message || "Bán thất bại!");
+        return;
+      }
       fetchAccounts();
       alert("Đã bán thành công!");
     } catch (err) {
       console.error("Lỗi khi bán account:", err);
+      alert("Bán thất bại!");
     }
   };
 
