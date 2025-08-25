@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
@@ -15,7 +15,7 @@ export default function AdminNetflixAccounts() {
   const [selected, setSelected] = useState(null);
   const [profileEdits, setProfileEdits] = useState({});
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/netflix-accounts', {
         headers: { Authorization: `Bearer ${token}` }
@@ -26,11 +26,11 @@ export default function AdminNetflixAccounts() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) fetchAccounts();
-  }, [token]);
+  }, [token, fetchAccounts]);
 
   const handleSubmit = async e => {
     e.preventDefault();

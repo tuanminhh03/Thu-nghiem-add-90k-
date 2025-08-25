@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
@@ -9,7 +9,7 @@ export default function AdminLogs() {
   const [pages, setPages] = useState(1);
   const token = localStorage.getItem('adminToken');
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/logs', {
         headers: { Authorization: `Bearer ${token}` },
@@ -21,11 +21,11 @@ export default function AdminLogs() {
       console.error(err);
       setLogs([]);
     }
-  };
+  }, [token, page]);
 
   useEffect(() => {
     if (token) fetchLogs();
-  }, [token, page]);
+  }, [token, fetchLogs]);
 
   return (
     <AdminLayout>
