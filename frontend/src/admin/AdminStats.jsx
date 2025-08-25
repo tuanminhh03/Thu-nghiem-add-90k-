@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import {
   UsersIcon,
@@ -43,16 +43,18 @@ export default function AdminStats() {
   const token = localStorage.getItem('adminToken');
 
   // Fetch stats & orders
-  const fetchStats = () =>
+  const fetchStats = useCallback(() => {
     axios
       .get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setStats(r.data))
       .catch(console.error);
-  const fetchOrders = () =>
+  }, [token]);
+  const fetchOrders = useCallback(() => {
     axios
       .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setOrders(Array.isArray(r.data.data) ? r.data.data : []))
       .catch(console.error);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -68,7 +70,7 @@ export default function AdminStats() {
       setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
     };
     return () => es.close();
-  }, [token]);
+  }, [token, fetchStats, fetchOrders]);
 
   if (!stats)
     return (

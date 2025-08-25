@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   // ========================
   // 2. Fetch dữ liệu
   // ========================
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/customers', {
         headers: { Authorization: `Bearer ${token}` },
@@ -50,11 +50,11 @@ export default function AdminDashboard() {
         type: 'error',
       });
     }
-  };
+  }, [token, search, page, navigate]);
 
   useEffect(() => {
     if (token) fetchCustomers();
-  }, [token, page]);
+  }, [token, fetchCustomers]);
 
   // ========================
   // 3. Handlers

@@ -1,5 +1,5 @@
 // src/AdminOrders.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import Modal from './Modal';
@@ -19,37 +19,40 @@ export default function AdminOrders() {
   const [historyOrder, setHistoryOrder] = useState(null);
   const token = localStorage.getItem('adminToken');
 
-  const fetchOrders = async () => {
-    if (!token) return;
-    const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
-      _id: o.orderCode,
-      orderCode: o.orderCode,
-      plan: 'Gói tiết kiệm',
-      purchaseDate: o.purchaseDate,
-      expiresAt: o.expirationDate,
-      user: { phone: o.phone },
-    }));
-    try {
-      const { data } = await axios.get('/api/admin/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, phone: phone || undefined }
-      });
-      setOrders([...data.data, ...localOrders]);
-      setPages(data.pages);
-    } catch (err) {
-      console.error(err);
-      setOrders(localOrders);
-    }
-  };
+  const fetchOrders = useCallback(
+    async (pageParam, phoneParam) => {
+      if (!token) return;
+      const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
+        _id: o.orderCode,
+        orderCode: o.orderCode,
+        plan: 'Gói tiết kiệm',
+        purchaseDate: o.purchaseDate,
+        expiresAt: o.expirationDate,
+        user: { phone: o.phone },
+      }));
+      try {
+        const { data } = await axios.get('/api/admin/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { page: pageParam, phone: phoneParam || undefined }
+        });
+        setOrders([...data.data, ...localOrders]);
+        setPages(data.pages);
+      } catch (err) {
+        console.error(err);
+        setOrders(localOrders);
+      }
+    },
+    [token]
+  );
 
   useEffect(() => {
-    fetchOrders();
-  }, [token, page]);
+    fetchOrders(page, phone);
+  }, [token, page, phone, fetchOrders]);
 
   const handleSearch = e => {
     e.preventDefault();
     setPage(1);
-    fetchOrders();
+    fetchOrders(1, phone);
   };
 
   const handleSort = field => {
