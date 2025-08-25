@@ -124,8 +124,17 @@ export default function AdminOrders() {
   const sorted = [...orders].sort((a, b) => {
     let aVal, bVal;
     if (sortField === 'orderCode') {
-      aVal = (a.orderCode || a.code || '').toString();
-      bVal = (b.orderCode || b.code || '').toString();
+      const aCode = a.orderCode || a.code || '';
+      const bCode = b.orderCode || b.code || '';
+      const aNum = Number(aCode);
+      const bNum = Number(bCode);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        aVal = aNum;
+        bVal = bNum;
+      } else {
+        aVal = aCode.toString();
+        bVal = bCode.toString();
+      }
     } else if (sortField === 'purchaseDate') {
       aVal = new Date(a.purchaseDate);
       bVal = new Date(b.purchaseDate);
