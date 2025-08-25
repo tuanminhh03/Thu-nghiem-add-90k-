@@ -1,6 +1,7 @@
 import Account50k from "../models/Account50k.js";
 import Order from "../models/Order.js";
 import Customer from '../models/Customer.js';
+import bcrypt from 'bcrypt';
 import { launchBrowser } from "../utils/puppeteerLauncher.js";
 import { sleep } from "../utils/sleep.js";
 
@@ -360,6 +361,13 @@ export const sellAccount = async (req, res) => {
       return res.status(404).json({ success: false, message: "Không tìm thấy account" });
     }
 
+    // Tạo khách hàng mới nếu số điện thoại chưa đăng ký
+    let customer = await Customer.findOne({ phone });
+    if (!customer) {
+      const hashed = await bcrypt.hash('000000', 10);
+      customer = await Customer.create({ name: 'Khách mới', phone, pin: hashed });
+    }
+
     const now = new Date();
     const expirationDate = new Date();
     expirationDate.setDate(now.getDate() + (planDays || 30));
@@ -369,6 +377,29 @@ export const sellAccount = async (req, res) => {
     account.expirationDate = expirationDate;
     account.status = "in_use";
     await account.save();
+
+    const months = Math.floor((planDays || 30) / 30);
+    const amount = months * 50000;
+
+    await Order.create({
+      user: customer._id,
+      plan: "Gói tiết kiệm",
+      orderCode: `ADGTK${Math.floor(Math.random() * 10000)}`,
+      duration: `${months} tháng`,
+      amount,
+      accountEmail: account.username,
+      accountPassword: account.password,
+      accountCookies: account.cookies,
+      status: "PAID",
+      purchaseDate: now,
+      expiresAt: expirationDate,
+      history: [
+        {
+          message: `Bán trực tiếp ${months} tháng (${amount}đ)`,
+          date: now,
+        },
+      ],
+    });
 
     res.json({ success: true, message: "Bán account thành công", data: account });
   } catch (err) {
