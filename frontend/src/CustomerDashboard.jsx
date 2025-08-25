@@ -271,12 +271,12 @@ export default function CustomerDashboard() {
                                 </>
                               )}
 
-                              {/* ✅ Thêm nút TV Login ở đây */}
-                              {!isExpired && (
+                              {/* ✅ TV Login chỉ áp dụng cho gói tiết kiệm */}
+                              {o.plan === 'Gói tiết kiệm' && !isExpired && (
                                 <button
                                   type="button"
                                   className="tvlogin-button"
-                                  onClick={() => handleTvLogin(o)}   // truyền cả order object
+                                  onClick={() => handleTvLogin(o)} // truyền cả order object
                                 >
                                   TV Login
                                 </button>
