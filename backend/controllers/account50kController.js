@@ -378,6 +378,29 @@ export const sellAccount = async (req, res) => {
     account.status = "in_use";
     await account.save();
 
+    const months = Math.floor((planDays || 30) / 30);
+    const amount = months * 50000;
+
+    await Order.create({
+      user: customer._id,
+      plan: "Gói tiết kiệm",
+      orderCode: `ADGTK${Math.floor(Math.random() * 10000)}`,
+      duration: `${months} tháng`,
+      amount,
+      accountEmail: account.username,
+      accountPassword: account.password,
+      accountCookies: account.cookies,
+      status: "PAID",
+      purchaseDate: now,
+      expiresAt: expirationDate,
+      history: [
+        {
+          message: `Bán trực tiếp ${months} tháng (${amount}đ)`,
+          date: now,
+        },
+      ],
+    });
+
     res.json({ success: true, message: "Bán account thành công", data: account });
   } catch (err) {
     console.error("sellAccount error:", err);
