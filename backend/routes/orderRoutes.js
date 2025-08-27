@@ -1,11 +1,15 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
-import { createOrder, localSavings, getOrders, extendOrder, sellAccount } from "../controllers/orderController.js";
-// ❌ bỏ getOrders, extendOrder vì chưa có trong orderController
+import {
+  createOrder,
+  localSavings,
+  getOrders,
+  extendOrder,
+  sellAccount
+} from "../controllers/orderController.js";
 import { checkCookieSession } from "../services/warrantyService.js";
 import Account50k from "../models/Account50k.js";
-import Order from '../models/Order.js';
-import { startWarranty } from '../controllers/account50kController.js';
+import Order from "../models/Order.js";
 
 const router = Router();
 
@@ -23,6 +27,11 @@ router.post("/", authenticate, createOrder);
  */
 router.post("/local-savings", authenticate, localSavings);
 
+/**
+ * ==============================
+ * Bán trực tiếp account
+ * ==============================
+ */
 router.post("/sell", sellAccount);
 
 /**
@@ -30,9 +39,8 @@ router.post("/sell", sellAccount);
  * Orders chung
  * ==============================
  */
-// router.get("/", authenticate, getOrders);
-// router.post("/:id/extend", authenticate, extendOrder);
-// 👆 comment tạm vì orderController.js chưa có getOrders & extendOrder
+router.get("/", authenticate, getOrders);
+router.post("/:id/extend", authenticate, extendOrder);
 
 /**
  * ==============================
@@ -70,11 +78,7 @@ router.post("/:id/warranty", async (req, res) => {
       await account.save();
 
       const newAccount = await Account50k.findOne({
-        $or: [
-          { status: "available" },
-          { status: { $exists: false } },
-          { status: null }
-        ]
+        $or: [{ status: "available" }, { status: { $exists: false } }, { status: null }]
       });
 
       if (newAccount) {
@@ -116,7 +120,4 @@ router.post("/:id/warranty", async (req, res) => {
   }
 });
 
-router.get("/", authenticate, getOrders);
-router.post("/:id/extend", authenticate, extendOrder);
-router.post("/:id/warranty", authenticate, startWarranty); 
 export default router;
