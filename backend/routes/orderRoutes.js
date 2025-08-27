@@ -1,11 +1,9 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
-import { createOrder, localSavings, getOrders, extendOrder } from "../controllers/orderController.js"; 
-// ❌ bỏ getOrders, extendOrder vì chưa có trong orderController
+import { createOrder, localSavings, getOrders, extendOrder } from "../controllers/orderController.js";
 import { checkCookieSession } from "../services/warrantyService.js";
 import Account50k from "../models/Account50k.js";
 import Order from '../models/Order.js';
-import { startWarranty } from '../controllers/account50kController.js';
 
 const router = Router();
 
@@ -28,9 +26,8 @@ router.post("/local-savings", authenticate, localSavings);
  * Orders chung
  * ==============================
  */
-// router.get("/", authenticate, getOrders);
-// router.post("/:id/extend", authenticate, extendOrder);
-// 👆 comment tạm vì orderController.js chưa có getOrders & extendOrder
+router.get("/", authenticate, getOrders);
+router.post("/:id/extend", authenticate, extendOrder);
 
 /**
  * ==============================
@@ -113,8 +110,4 @@ router.post("/:id/warranty", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-router.get("/", authenticate, getOrders);
-router.post("/:id/extend", authenticate, extendOrder);
-router.post("/:id/warranty", authenticate, startWarranty); 
 export default router;
