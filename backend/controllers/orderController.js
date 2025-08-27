@@ -12,7 +12,9 @@ function supportsTransactions() {
     const client = mongoose.connection.getClient
       ? mongoose.connection.getClient()
       : mongoose.connection.client;
-    const type = client?.topology?.description?.type;
+    const type =
+      client?.topology?.description?.type ||
+      client?.topology?.s?.description?.type; // fallback for some driver versions
     // Transactions: ReplicaSetWithPrimary, ReplicaSetNoPrimary, Sharded, LoadBalanced
     return ["ReplicaSetWithPrimary", "ReplicaSetNoPrimary", "Sharded", "LoadBalanced"].includes(type);
   } catch {
@@ -30,13 +32,26 @@ async function startTransactionSession() {
       hasTransaction = true;
     } catch (err) {
       console.warn("Transactions not supported, continuing without transaction:", err.message);
-      // best-effort abort if startTransaction partially succeeded
       if (session.inTransaction?.()) {
-        try { await session.abortTransaction(); } catch {}
+        try {
+          await session.abortTransaction();
+        } catch {}
       }
     }
   }
   return { session, hasTransaction };
+}
+
+/** Helper: end session safely */
+async function endSessionSafe(session, hasTransaction, action = "commit") {
+  try {
+    if (hasTransaction) {
+      if (action === "commit") await session.commitTransaction();
+      else if (action === "abort") await session.abortTransaction();
+    }
+  } finally {
+    session.endSession();
+  }
 }
 
 // =============== Gói Tiết Kiệm (GTK) ==================
@@ -95,20 +110,17 @@ export const createOrder = async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
     if (!plan || !duration || amount === undefined) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
     }
 
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
@@ -117,13 +129,11 @@ export const createOrder = async (req, res) => {
       ? await Customer.findById(userId).session(session)
       : await Customer.findById(userId);
     if (!customer) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(404).json({ success: false, message: "User not found" });
     }
     if (customer.amount < amountNum) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Số dư không đủ" });
     }
 
@@ -132,24 +142,16 @@ export const createOrder = async (req, res) => {
       plan: "Gói cao cấp",
       "profiles.status": "empty",
     });
-    const account = hasTransaction
-      ? await accountQuery.session(session)
-      : await accountQuery;
+    const account = hasTransaction ? await accountQuery.session(session) : await accountQuery;
     if (!account) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, message: "Không còn tài khoản khả dụng" });
+      await endSessionSafe(session, hasTransaction, "abort");
+      return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
     const profile = account.profiles.find((p) => p.status === "empty");
     if (!profile) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, message: "Không còn hồ sơ trống" });
+      await endSessionSafe(session, hasTransaction, "abort");
+      return res.status(400).json({ success: false, message: "Không còn hồ sơ trống" });
     }
 
     // Tính ngày hết hạn
@@ -196,8 +198,7 @@ export const createOrder = async (req, res) => {
     );
     const newOrder = created[0];
 
-    if (hasTransaction) await session.commitTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "commit");
 
     return res.json({
       success: true,
@@ -213,8 +214,7 @@ export const createOrder = async (req, res) => {
     });
   } catch (err) {
     console.error("createOrder error:", err);
-    if (hasTransaction) await session.abortTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "abort");
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -258,32 +258,27 @@ export const sellAccount = async (req, res) => {
     const { customerId } = req.body;
 
     if (!customerId) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Thiếu customerId" });
     }
 
     const accountQuery = Account50k.findOne({
-      $or: [
-        { status: "available" },
-        { status: { $exists: false } },
-        { status: null },
-      ],
+      $or: [{ status: "available" }, { status: { $exists: false } }, { status: null }],
     });
-    const account = hasTransaction
-      ? await accountQuery.session(session)
-      : await accountQuery;
+    const account = hasTransaction ? await accountQuery.session(session) : await accountQuery;
     if (!account) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Không còn tài khoản khả dụng" });
     }
 
+    // Tạo đơn hàng: đã xoá conflict markers và chuẩn hoá các field
     const created = await Order.create(
       [
         {
           user: customerId,
           plan: "Direct Sell",
+          // Nếu Order schema có trường productId thì giữ lại, nếu không có sẽ bị bỏ qua do strict
+          productId: account._id,
           orderCode: `ACC${Date.now()}`,
           duration: "N/A",
           amount: 0,
@@ -301,8 +296,7 @@ export const sellAccount = async (req, res) => {
     account.lastUsed = new Date();
     await account.save(sessionOpts);
 
-    if (hasTransaction) await session.commitTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "commit");
 
     return res.json({
       success: true,
@@ -315,8 +309,7 @@ export const sellAccount = async (req, res) => {
     });
   } catch (err) {
     console.error("sellAccount error:", err);
-    if (hasTransaction) await session.abortTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "abort");
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
@@ -328,11 +321,7 @@ export const getOrders = async (req, res) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
-    const orders = await Order.find({
-      $or: [{ user: userId }, { userId: userId }],
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).lean();
 
     return res.json({ success: true, data: orders });
   } catch (err) {
@@ -353,8 +342,7 @@ export async function extendOrder(req, res) {
     const amountNum = Number(amount);
 
     if (![1, 3, 6, 12].includes(monthsInt) || !amountNum || amountNum <= 0) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ message: "Dữ liệu gia hạn không hợp lệ" });
     }
 
@@ -363,19 +351,15 @@ export async function extendOrder(req, res) {
     const filter = isObjectId ? { _id: identifier } : { orderCode: identifier };
 
     const orderQuery = Order.findOne(filter);
-    const order = hasTransaction
-      ? await orderQuery.session(session)
-      : await orderQuery;
+    const order = hasTransaction ? await orderQuery.session(session) : await orderQuery;
 
     if (!order) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
-    if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
-      if (hasTransaction) await session.abortTransaction();
-      session.endSession();
+    if (req.user && String(order.user) !== String(req.user.id)) {
+      await endSessionSafe(session, hasTransaction, "abort");
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
     }
 
@@ -386,13 +370,11 @@ export async function extendOrder(req, res) {
         : await customerQuery;
 
       if (!customer) {
-        if (hasTransaction) await session.abortTransaction();
-        session.endSession();
+        await endSessionSafe(session, hasTransaction, "abort");
         return res.status(404).json({ message: "Không tìm thấy khách hàng" });
       }
       if (customer.amount < amountNum) {
-        if (hasTransaction) await session.abortTransaction();
-        session.endSession();
+        await endSessionSafe(session, hasTransaction, "abort");
         return res.status(400).json({ message: "Số dư không đủ để gia hạn" });
       }
       customer.amount -= amountNum;
@@ -424,14 +406,12 @@ export async function extendOrder(req, res) {
 
     const updatedOrder = await order.save(sessionOpts);
 
-    if (hasTransaction) await session.commitTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "commit");
 
     return res.json({ success: true, data: updatedOrder });
   } catch (err) {
     console.error("extendOrder error:", err);
-    if (hasTransaction) await session.abortTransaction();
-    session.endSession();
+    await endSessionSafe(session, hasTransaction, "abort");
     return res.status(500).json({ message: "Lỗi server khi gia hạn" });
   }
 }
