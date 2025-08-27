@@ -28,9 +28,12 @@ export default function CustomerDashboard() {
   const [warrantyStep, setWarrantyStep] = useState("");
   const [dotCount, setDotCount] = useState(1);
 
-  const token = localStorage.getItem('token'); // chỉ giữ token để auth
+  // ✅ thông báo bảo hành theo từng order
+  const [persistentMessages, setPersistentMessages] = useState({});
 
-  // fetch orders từ backend
+  const token = localStorage.getItem('token');
+
+  // fetch orders
   const fetchOrders = async () => {
     if (!token) return;
     setLoading(true);
@@ -137,42 +140,41 @@ export default function CustomerDashboard() {
         `http://localhost:5000/api/account50k/warranty?orderId=${orderId}&token=${token}`
       );
 
-      // Lắng nghe progress
       evtSource.addEventListener("progress", (event) => {
         const payload = JSON.parse(event.data);
         console.log("[Warranty progress]", payload.message);
         setWarrantyStep(payload.message);
       });
 
-      // Lắng nghe done
       evtSource.addEventListener("done", async (event) => {
         const payload = JSON.parse(event.data);
         console.log("[Warranty done]", payload.message);
 
-        // Ngừng lắng nghe lỗi SSE để không báo giả
         evtSource.onerror = null;
         evtSource.close();
 
-        // Hiển thị thông báo cuối
-        setWarrantyStep(payload.message || "✅ Bảo hành thành công");
+        const finalMsg = payload.message || "✅ Bảo hành thành công";
 
-        // Refresh dữ liệu orders ngay lập tức
+        // ✅ lưu message cho đúng order
+        setPersistentMessages(prev => ({
+          ...prev,
+          [orderId]: finalMsg,
+        }));
+
         try {
           await fetchOrders();
         } catch (err) {
           console.error("Lỗi fetch lại orders sau bảo hành:", err);
         }
 
-        // Reset state hiển thị step và animation dot sau 3 giây
         setTimeout(() => {
           setWarrantyProcessingId(null);
           setWarrantyStep("");
         }, 3000);
       });
 
-      // Bắt lỗi SSE thật sự (khác đóng stream bình thường)
       evtSource.onerror = (err) => {
-        if (evtSource.readyState === EventSource.CLOSED) return; // bình thường
+        if (evtSource.readyState === EventSource.CLOSED) return;
         console.error("Warranty SSE error:", err);
         setWarrantyStep("Lỗi kết nối SSE ❌");
         evtSource.close();
@@ -270,39 +272,50 @@ export default function CustomerDashboard() {
                                   <p><strong>Ngày cập nhật:</strong> {formatHistoryEntry(o.history?.[o.history.length - 1])}</p>
                                 </>
                               )}
-
-                              {/* ✅ TV Login chỉ áp dụng cho gói tiết kiệm */}
                               {o.plan === 'Gói tiết kiệm' && !isExpired && (
-                                <button
-                                  type="button"
-                                  className="tvlogin-button"
-                                  onClick={() => handleTvLogin(o)} // truyền cả order object
-                                >
-                                  TV Login
-                                </button>
-                              )}
+                                <>
+                                  <div className="warranty-row">
+                                    {/* ✅ Thông báo bảo hành (luôn hiển thị nếu có) */}
+                                    {persistentMessages[rowId] && (
+                                      <div className="warranty-message">
+                                        {persistentMessages[rowId]}
+                                      </div>
+                                    )}
 
-                              {o.plan === 'Gói tiết kiệm' && !isExpired && (
-                                warrantyProcessingId === rowId ? (
-                                  <div className="warranty-processing">
-                                    <p>{warrantyStep}</p>
-                                    <button type="button" className="warranty-progress-button" disabled>
-                                      {'.'.repeat(dotCount)}
-                                    </button>
+                                    {/* ✅ Chỉ ẩn select khi đang bảo hành */}
+                                    {warrantyProcessingId !== rowId && (
+                                      <div className="action-select">
+                                        <select
+                                          defaultValue=""
+                                          onChange={(e) => {
+                                            if (e.target.value === "tv") handleTvLogin(o);
+                                            if (e.target.value === "warranty") handleWarrantyClick(rowId);
+                                            e.target.value = "";
+                                          }}
+                                        >
+                                          <option value="" disabled>-- Chọn chức năng --</option>
+                                          <option value="tv">TV Login</option>
+                                          <option value="warranty">Bảo hành</option>
+                                        </select>
+                                      </div>
+                                    )}
                                   </div>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="warranty-button"
-                                    onClick={() => handleWarrantyClick(rowId)}
-                                  >
-                                    Bảo hành
-                                  </button>
-                                )
+
+                                  {/* ✅ Đang chạy bảo hành */}
+                                  {warrantyProcessingId === rowId && (
+                                    <div className="warranty-processing">
+                                      <p>{warrantyStep}</p>
+                                      <button type="button" className="warranty-progress-button" disabled>
+                                        {'.'.repeat(dotCount)}
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
                               )}
+
                             </div>
                           </td>
-                        </tr> 
+                        </tr>
                       )}
                     </React.Fragment>
                   );

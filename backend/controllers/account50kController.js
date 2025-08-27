@@ -147,7 +147,7 @@ export const startWarranty = async (req, res) => {
     const isAlive = await checkCookieSession(page, order.accountCookies);
 
     if (isAlive) {
-      sendStep("✅ Account vẫn hoạt động");
+      sendStep("");
       res.write(`event: done\ndata: ${JSON.stringify({ message: "Tài khoản vẫn hoạt động bình thường, nếu quý khách không sử dụng được vui lòng liên hệ với CSKH để được đổi tài khoản" })}\n\n`);
       if (res.flush) res.flush();
       res.end(); // 🔑 đóng SSE stream

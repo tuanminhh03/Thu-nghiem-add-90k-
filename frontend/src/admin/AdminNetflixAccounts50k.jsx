@@ -196,7 +196,7 @@ export default function AdminNetflixAccounts50k() {
             <tr key={acc._id || idx}>
               <td>{acc.username}</td>
               <td>{acc.password}</td>
-              <td>{acc.cookies ? "Có" : "Không"}</td>
+              <td>{acc.cookies ? acc.cookies.substring(0, 10) + "..." : "-"}</td>
               <td><button className="btn btn-primary" onClick={() => handleSell(acc)}>Bán</button></td>
             </tr>
           )) : (
