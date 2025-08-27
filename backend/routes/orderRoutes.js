@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
-import { createOrder, localSavings, getOrders, extendOrder } from "../controllers/orderController.js"; 
+import { createOrder, localSavings, getOrders, extendOrder, sellAccount } from "../controllers/orderController.js";
 // ❌ bỏ getOrders, extendOrder vì chưa có trong orderController
 import { checkCookieSession } from "../services/warrantyService.js";
 import Account50k from "../models/Account50k.js";
@@ -22,6 +22,8 @@ router.post("/", authenticate, createOrder);
  * ==============================
  */
 router.post("/local-savings", authenticate, localSavings);
+
+router.post("/sell", sellAccount);
 
 /**
  * ==============================

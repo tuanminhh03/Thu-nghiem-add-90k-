@@ -282,11 +282,11 @@ export const sellAccount = async (req, res) => {
     const created = await Order.create(
       [
         {
-          userId: customerId,
-          productId: account._id,
+          user: customerId,
+          plan: "Direct Sell",
           orderCode: `ACC${Date.now()}`,
-          type: "SELL",
-          accountId: account._id,
+          duration: "N/A",
+          amount: 0,
           accountEmail: account.username,
           accountPassword: account.password,
           status: "PAID",
