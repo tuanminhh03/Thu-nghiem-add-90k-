@@ -282,7 +282,7 @@ export const sellAccount = async (req, res) => {
     const created = await Order.create(
       [
         {
-          userId: customerId,
+          user: customerId,
           productId: account._id,
           orderCode: `ACC${Date.now()}`,
           type: "SELL",
@@ -329,7 +329,7 @@ export const getOrders = async (req, res) => {
       return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
     const orders = await Order.find({
-      $or: [{ user: userId }, { userId: userId }],
+      user: userId,
     })
       .sort({ createdAt: -1 })
       .lean();
@@ -373,7 +373,7 @@ export async function extendOrder(req, res) {
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
-    if (req.user && String(order.user || order.userId) !== String(req.user.id)) {
+    if (req.user && String(order.user) !== String(req.user.id)) {
       if (hasTransaction) await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ message: "Bạn không sở hữu đơn hàng này" });
