@@ -144,18 +144,32 @@ export const startWarranty = async (req, res) => {
 
     // ========== BẮT ĐẦU ==========
     sendStep("🔄 Đang kiểm tra tài khoản cũ ...");
-    const isAlive = await checkCookieSession(page, order.accountCookies);
 
-    if (isAlive) {
-      sendStep("");
-      res.write(`event: done\ndata: ${JSON.stringify({ message: "Tài khoản vẫn hoạt động bình thường, nếu quý khách không sử dụng được vui lòng liên hệ với CSKH để được đổi tài khoản" })}\n\n`);
-      if (res.flush) res.flush();
-      res.end(); // 🔑 đóng SSE stream
-      await browser.close();
-      return;
+    // 1) Kiểm tra cookie tài khoản cũ
+    const okCookie = await checkCookieSession(page, order.accountCookies);
+
+    if (okCookie) {
+      // 2) Nếu cookie sống thì kiểm tra thêm mật khẩu
+      sendStep("🔑 Đang kiểm tra mật khẩu tài khoản cũ...");
+      const okPass = await checkPasswordSession(page, order.accountCookies, order.accountPassword);
+
+      if (okPass) {
+        // ✅ Cookie + Pass đúng → tài khoản đang sống → return ngay
+        sendStep("✅ Tài khoản hiện tại hợp lệ (cookie + password)");
+        res.write(`event: done\ndata: ${JSON.stringify({ 
+          message: "Tài khoản vẫn hoạt động bình thường, nếu quý khách không sử dụng được vui lòng liên hệ CSKH để được hỗ trợ"
+        })}\n\n`);
+        if (res.flush) res.flush();
+        res.end();
+        await browser.close();
+        return;
+      } else {
+        sendStep("❌ Mật khẩu sai/không vào được trang PIN → cần tìm account thay thế...");
+      }
+    } else {
+      sendStep("❌ Cookies chết → bắt đầu tìm account thay thế...");
     }
 
-    sendStep("❌ Cookies chết, bắt đầu tìm account thay thế...");
     let newAcc = null;
 
     while (true) {
@@ -167,17 +181,17 @@ export const startWarranty = async (req, res) => {
 
       sendStep(`👉 Đang thử account ${acc.username}...`);
 
-      const okCookie = await checkCookieSession(page, acc.cookies);
-      if (!okCookie) {
+      const okCookie2 = await checkCookieSession(page, acc.cookies);
+      if (!okCookie2) {
         sendStep("❌ Cookie chết, bỏ qua account này");
         await Account50k.findByIdAndDelete(acc._id);
         continue;
       }
 
       sendStep("🔑 Đang kiểm tra mật khẩu...");
-      const okPass = await checkPasswordSession(page, acc.cookies, acc.password);
+      const okPass2 = await checkPasswordSession(page, acc.cookies, acc.password);
 
-      if (okPass) {
+      if (okPass2) {
         sendStep("✅ Tìm thấy account hợp lệ");
         newAcc = acc;
         await Account50k.findByIdAndDelete(acc._id);
@@ -196,7 +210,7 @@ export const startWarranty = async (req, res) => {
       return;
     }
 
-    // cập nhật order
+    // 4) Cập nhật order với acc mới
     order.accountEmail = newAcc.username;
     order.accountPassword = newAcc.password;
     order.accountCookies = newAcc.cookies;
