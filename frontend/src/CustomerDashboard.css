@@ -96,37 +96,140 @@
 
 /* Nút Bảo hành */
 .warranty-button {
-  background-color: #3b82f6;
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #3b82f6, #2563eb); /* xanh dương gradient */
+  color: #fff;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 .warranty-button:hover {
-  background-color: #2563eb;
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.45);
+}
+.warranty-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
 /* Trạng thái đang xử lý bảo hành */
 .warranty-processing {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
 }
-
 .warranty-progress-button {
-  background-color: #3b82f6;
-  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 1px;
   cursor: default;
+  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.3);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Select chức năng */
+.action-select {
+  position: relative;
+  display: inline-block;
+}
+.action-select select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  padding: 0.6rem 2.5rem 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .05s ease;
+}
+.action-select select:hover {
+  border-color: #2563eb;
+  box-shadow: 0 6px 14px rgba(37,99,235,0.10);
+}
+.action-select select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.20);
+}
+.action-select select:active {
+  transform: translateY(1px);
+}
+.action-select::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%232563eb'><path d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.06l3.71-2.83a.75.75 0 1 1 .92 1.18l-4.25 3.25a.75.75 0 0 1-.91 0L5.21 8.41a.75.75 0 0 1 .02-1.2z'/></svg>");
+
+}
+.action-select select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Thông báo bảo hành */
+.warranty-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.warranty-message {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Nút Copy */
+.copy-button {
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f7f7f7;
+  transition: background 0.2s;
+}
+.copy-button:hover {
+  background: #e0e0e0;
 }
 
 /* Mobile */

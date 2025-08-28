@@ -262,8 +262,28 @@ export default function CustomerDashboard() {
                         <tr className="order-details-row">
                           <td colSpan={7}>
                             <div className="order-details">
-                              <p><strong>Email:</strong> {isExpired ? '-' : o.accountEmail || '-'}</p>
-                              <p><strong>Password:</strong> {isExpired ? '-' : o.accountPassword || '-'}</p>
+                              <p>
+                                <strong>Email:</strong> {isExpired ? '-' : o.accountEmail || '-'}
+                                {!isExpired && o.accountEmail && (
+                                  <button
+                                    className="copy-button"
+                                    onClick={() => navigator.clipboard.writeText(o.accountEmail)}
+                                  >
+                                    📋 Copy
+                                  </button>
+                                )}
+                              </p>
+                              <p>
+                                <strong>Password:</strong> {isExpired ? '-' : o.accountPassword || '-'}
+                                {!isExpired && o.accountPassword && (
+                                  <button
+                                    className="copy-button"
+                                    onClick={() => navigator.clipboard.writeText(o.accountPassword)}
+                                  >
+                                    📋 Copy
+                                  </button>
+                                )}
+                              </p>
 
                               {o.plan === 'Gói cao cấp' && (
                                 <>
