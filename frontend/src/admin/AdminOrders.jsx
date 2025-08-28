@@ -1,5 +1,5 @@
 // src/AdminOrders.jsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import AdminLayout from './AdminLayout';
 import Modal from './Modal';
@@ -121,31 +121,33 @@ export default function AdminOrders() {
     setShowDelete(false);
   };
 
-  const sorted = [...orders].sort((a, b) => {
-    let aVal, bVal;
-    if (sortField === 'orderCode') {
-      const aCode = a.orderCode || a.code || '';
-      const bCode = b.orderCode || b.code || '';
-      const aNum = Number(aCode);
-      const bNum = Number(bCode);
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        aVal = aNum;
-        bVal = bNum;
-      } else {
-        aVal = aCode.toString();
-        bVal = bCode.toString();
+  const sorted = useMemo(() => {
+    const getValue = o => {
+      if (sortField === 'orderCode') {
+        const code = o.orderCode || o.code || '';
+        const num = Number(code);
+        return isNaN(num) ? code.toString() : num;
       }
-    } else if (sortField === 'purchaseDate') {
-      aVal = new Date(a.purchaseDate);
-      bVal = new Date(b.purchaseDate);
-    } else if (sortField === 'expiresAt') {
-      aVal = getExpiry(a);
-      bVal = getExpiry(b);
-    }
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
+      if (sortField === 'purchaseDate') {
+        return new Date(o.purchaseDate).getTime();
+      }
+      if (sortField === 'expiresAt') {
+        return getExpiry(o).getTime();
+      }
+      return 0;
+    };
+
+    return [...orders].sort((a, b) => {
+      const aVal = getValue(a);
+      const bVal = getValue(b);
+      if (typeof aVal === 'string' || typeof bVal === 'string') {
+        return sortOrder === 'asc'
+          ? String(aVal).localeCompare(String(bVal))
+          : String(bVal).localeCompare(String(aVal));
+      }
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  }, [orders, sortField, sortOrder]);
 
   return (
     <AdminLayout>
