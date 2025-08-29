@@ -59,9 +59,23 @@ export const checkPasswordSession = async (page, cookies, password) => {
 
       await passInput.type(password);
       await page.keyboard.press("Enter");
-      await sleep(3000);
+
+      // 🔎 Chờ Netflix xử lý login
+      await page.waitForTimeout(4000);
+
+      const currentUrl = page.url();
+      console.log("🔎 URL sau khi nhập pass:", currentUrl);
+
+      // ✅ Chỉ return true nếu redirect về pinentry
+      if (currentUrl.includes("/settings/lock/pinentry/")) {
+        return true;
+      } else {
+        console.log("❌ Mật khẩu sai hoặc không redirect về pinentry");
+        return false;
+      }
     }
-    return true;
+
+    return false;
   } catch (err) {
     console.error("checkPasswordSession error:", err);
     return false;
@@ -78,8 +92,6 @@ export const switchAccount = async (req, res) => {
     const page = await browser.newPage();
 
     let newAcc = null;
-
-    // Duyệt qua các acc khả dụng trong kho
     const candidates = await Account50k.find({ status: "available" });
     for (const acc of candidates) {
       const okCookie = await checkCookieSession(page, acc.cookies);
@@ -104,7 +116,6 @@ export const switchAccount = async (req, res) => {
       return res.status(400).json({ success: false, message: "Không còn account khả dụng để chuyển" });
     }
 
-    // Cập nhật Order với acc mới
     order.accountEmail = newAcc.username;
     order.accountPassword = newAcc.password;
     order.accountCookies = newAcc.cookies;
@@ -131,7 +142,7 @@ export const startWarranty = async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    if (res.flushHeaders) res.flushHeaders(); // 🔑 đảm bảo header gửi ngay
+    if (res.flushHeaders) res.flushHeaders();
 
     const sendStep = (msg) => {
       console.log(`[Warranty] ${msg}`);
@@ -145,16 +156,13 @@ export const startWarranty = async (req, res) => {
     // ========== BẮT ĐẦU ==========
     sendStep("🔄 Đang kiểm tra tài khoản cũ ...");
 
-    // 1) Kiểm tra cookie tài khoản cũ
     const okCookie = await checkCookieSession(page, order.accountCookies);
-
     if (okCookie) {
-      // 2) Nếu cookie sống thì kiểm tra thêm mật khẩu
       sendStep("🔑 Đang kiểm tra mật khẩu tài khoản cũ...");
       const okPass = await checkPasswordSession(page, order.accountCookies, order.accountPassword);
 
       if (okPass) {
-        // ✅ Cookie + Pass đúng → tài khoản đang sống → return ngay
+        // ✅ Cookie + Pass đúng
         sendStep("✅ Tài khoản hiện tại hợp lệ (cookie + password)");
         res.write(`event: done\ndata: ${JSON.stringify({ 
           message: "Tài khoản vẫn hoạt động bình thường, nếu quý khách không sử dụng được vui lòng liên hệ CSKH để được hỗ trợ"
@@ -164,14 +172,14 @@ export const startWarranty = async (req, res) => {
         await browser.close();
         return;
       } else {
-        sendStep("❌ Mật khẩu sai/không vào được trang PIN → cần tìm account thay thế...");
+        sendStep("❌ Mật khẩu sai → cần tìm account thay thế...");
       }
     } else {
       sendStep("❌ Cookies chết → bắt đầu tìm account thay thế...");
     }
 
+    // === Tìm account thay thế ===
     let newAcc = null;
-
     while (true) {
       const acc = await Account50k.findOne({ status: "available" });
       if (!acc) {

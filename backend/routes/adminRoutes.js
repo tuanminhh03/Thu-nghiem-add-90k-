@@ -23,8 +23,6 @@ import {
   stats,
   getAdminLogs
 } from '../controllers/adminController.js';
-
-// 👇 thêm controller mới
 import { getExpiringOrders } from '../controllers/orderController.js';
 
 const router = Router();
@@ -39,7 +37,6 @@ router.delete('/customers/:id', authenticateAdmin, authorizeRoles('superadmin'),
 router.get('/customers/:id/orders', authenticateAdmin, getCustomerOrders);
 router.get('/orders', authenticateAdmin, getOrders);
 
-// 👇 thêm API mới lấy đơn sắp hết hạn
 router.get('/orders/expiring', authenticateAdmin, getExpiringOrders);
 
 router.get('/orders/:id/history', authenticateAdmin, getOrderHistory);
