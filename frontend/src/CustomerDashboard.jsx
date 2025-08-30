@@ -295,15 +295,12 @@ export default function CustomerDashboard() {
                               {o.plan === 'Gói tiết kiệm' && !isExpired && (
                                 <>
                                   <div className="warranty-row">
-                                    {/* ✅ Thông báo bảo hành (luôn hiển thị nếu có) */}
                                     {persistentMessages[rowId] && (
-                                      <div className="warranty-message">
-                                        {persistentMessages[rowId]}
-                                      </div>
+                                      <div className="warranty-message">{persistentMessages[rowId]}</div>
                                     )}
 
-                                    {/* ✅ Chỉ ẩn select khi đang bảo hành */}
-                                    {warrantyProcessingId !== rowId && (
+                                    {/* ✅ Chỉ cho GTK mới có select chức năng */}
+                                    {(o.orderCode || "").startsWith("GTK") && warrantyProcessingId !== rowId && (
                                       <div className="action-select">
                                         <select
                                           defaultValue=""
@@ -321,7 +318,6 @@ export default function CustomerDashboard() {
                                     )}
                                   </div>
 
-                                  {/* ✅ Đang chạy bảo hành */}
                                   {warrantyProcessingId === rowId && (
                                     <div className="warranty-processing">
                                       <p>{warrantyStep}</p>
