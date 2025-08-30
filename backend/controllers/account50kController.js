@@ -30,7 +30,6 @@ export const checkCookieSession = async (page, cookies) => {
     return false;
   }
 };
-
 export const checkPasswordSession = async (page, cookies, password) => {
   try {
     await resetCookies(page);
@@ -39,48 +38,47 @@ export const checkPasswordSession = async (page, cookies, password) => {
 
     console.log("👉 Đi tới /settings/lock...");
     await page.goto("https://www.netflix.com/settings/lock", { waitUntil: "networkidle2" });
-    await sleep(2000);
 
+    // click nút Create hoặc Edit
     const btnCreate = await page.$('[data-uia="profile-lock-off+add-button"]');
     const btnEdit = await page.$('[data-uia="profile-lock-page+edit-button"]');
     if (btnCreate) await btnCreate.click();
     else if (btnEdit) await btnEdit.click();
     else throw new Error("❌ Không tìm thấy nút Create/Edit PIN");
 
-    await sleep(1000);
+    // chờ nút confirm hiện ra
+    const confirmBtn = await page.waitForSelector(
+      '[data-uia="account-mfa-button-PASSWORD+PressableListItem"]',
+      { timeout: 10000 }
+    );
+    await confirmBtn.click();
 
-    const confirmBtn = await page.$('[data-uia="account-mfa-button-PASSWORD+PressableListItem"]');
-    if (confirmBtn) {
-      await confirmBtn.click();
-      await sleep(1000);
+    // chờ ô nhập mật khẩu
+    const passInput = await page.waitForSelector(
+      '[data-uia="collect-password-input-modal-entry"]',
+      { timeout: 10000 }
+    );
+    await passInput.type(password);
+    await page.keyboard.press("Enter");
 
-      const passInput = await page.$('[data-uia="collect-password-input-modal-entry"]');
-      if (!passInput) throw new Error("❌ Không thấy ô nhập mật khẩu");
-
-      await passInput.type(password);
-      await page.keyboard.press("Enter");
-
-      // 🔎 Chờ Netflix xử lý login
-      await page.waitForTimeout(4000);
-
-      const currentUrl = page.url();
-      console.log("🔎 URL sau khi nhập pass:", currentUrl);
-
-      // ✅ Chỉ return true nếu redirect về pinentry
-      if (currentUrl.includes("/settings/lock/pinentry/")) {
-        return true;
-      } else {
-        console.log("❌ Mật khẩu sai hoặc không redirect về pinentry");
-        return false;
-      }
+    // chờ redirect về pinentry (bất kể hoa/thường)
+    try {
+      await page.waitForFunction(
+        () => /\/settings\/lock\/pinentry/i.test(window.location.href),
+        { timeout: 15000 }
+      );
+      console.log("✅ Pass đúng, redirect về pinentry");
+      return true;
+    } catch {
+      console.log("❌ Không redirect → pass sai");
+      return false;
     }
-
-    return false;
   } catch (err) {
     console.error("checkPasswordSession error:", err);
     return false;
   }
 };
+
 
 export const switchAccount = async (req, res) => {
   try {
@@ -92,6 +90,8 @@ export const switchAccount = async (req, res) => {
     const page = await browser.newPage();
 
     let newAcc = null;
+
+    // Duyệt qua các acc khả dụng trong kho
     const candidates = await Account50k.find({ status: "available" });
     for (const acc of candidates) {
       const okCookie = await checkCookieSession(page, acc.cookies);
@@ -116,6 +116,7 @@ export const switchAccount = async (req, res) => {
       return res.status(400).json({ success: false, message: "Không còn account khả dụng để chuyển" });
     }
 
+    // Cập nhật Order với acc mới
     order.accountEmail = newAcc.username;
     order.accountPassword = newAcc.password;
     order.accountCookies = newAcc.cookies;
@@ -142,7 +143,7 @@ export const startWarranty = async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    if (res.flushHeaders) res.flushHeaders();
+    if (res.flushHeaders) res.flushHeaders(); // 🔑 đảm bảo header gửi ngay
 
     const sendStep = (msg) => {
       console.log(`[Warranty] ${msg}`);
@@ -156,13 +157,16 @@ export const startWarranty = async (req, res) => {
     // ========== BẮT ĐẦU ==========
     sendStep("🔄 Đang kiểm tra tài khoản cũ ...");
 
+    // 1) Kiểm tra cookie tài khoản cũ
     const okCookie = await checkCookieSession(page, order.accountCookies);
+
     if (okCookie) {
+      // 2) Nếu cookie sống thì kiểm tra thêm mật khẩu
       sendStep("🔑 Đang kiểm tra mật khẩu tài khoản cũ...");
       const okPass = await checkPasswordSession(page, order.accountCookies, order.accountPassword);
 
       if (okPass) {
-        // ✅ Cookie + Pass đúng
+        // ✅ Cookie + Pass đúng → tài khoản đang sống → return ngay
         sendStep("✅ Tài khoản hiện tại hợp lệ (cookie + password)");
         res.write(`event: done\ndata: ${JSON.stringify({ 
           message: "Tài khoản vẫn hoạt động bình thường, nếu quý khách không sử dụng được vui lòng liên hệ CSKH để được hỗ trợ"
@@ -172,14 +176,14 @@ export const startWarranty = async (req, res) => {
         await browser.close();
         return;
       } else {
-        sendStep("❌ Mật khẩu sai → cần tìm account thay thế...");
+        sendStep("❌ Mật khẩu sai/không vào được trang PIN → cần tìm account thay thế...");
       }
     } else {
       sendStep("❌ Cookies chết → bắt đầu tìm account thay thế...");
     }
 
-    // === Tìm account thay thế ===
     let newAcc = null;
+
     while (true) {
       const acc = await Account50k.findOne({ status: "available" });
       if (!acc) {
