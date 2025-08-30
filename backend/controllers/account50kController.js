@@ -31,54 +31,152 @@ export const checkCookieSession = async (page, cookies) => {
   }
 };
 export const checkPasswordSession = async (page, cookies, password) => {
-  try {
-    await resetCookies(page);
-    const parsedCookies = JSON.parse(cookies)?.cookies || [];
-    await page.setCookie(...parsedCookies);
+  // config
+  const LOCK_URL = "https://www.netflix.com/settings/lock";
+  const CREATE_SEL = '[data-uia="profile-lock-off+add-button"]';
+  const EDIT_SEL = '[data-uia="profile-lock-page+edit-button"]';
+  const CONFIRM_SEL = '[data-uia="account-mfa-button-PASSWORD+PressableListItem"]';
+  const PASS_INPUT_SEL = '[data-uia="collect-password-input-modal-entry"]';
+  const SUCCESS_RE = /\/settings\/lock\/pinentry/i; // case-insensitive
+  const TIMEOUTS = { goto: 30000, first: 12000, input: 12000, final: 20000, grace: 7000 };
 
-    console.log("👉 Đi tới /settings/lock...");
-    await page.goto("https://www.netflix.com/settings/lock", { waitUntil: "networkidle2" });
-
-    // click nút Create hoặc Edit
-    const btnCreate = await page.$('[data-uia="profile-lock-off+add-button"]');
-    const btnEdit = await page.$('[data-uia="profile-lock-page+edit-button"]');
-    if (btnCreate) await btnCreate.click();
-    else if (btnEdit) await btnEdit.click();
-    else throw new Error("❌ Không tìm thấy nút Create/Edit PIN");
-
-    // chờ nút confirm hiện ra
-    const confirmBtn = await page.waitForSelector(
-      '[data-uia="account-mfa-button-PASSWORD+PressableListItem"]',
-      { timeout: 10000 }
-    );
-    await confirmBtn.click();
-
-    // chờ ô nhập mật khẩu
-    const passInput = await page.waitForSelector(
-      '[data-uia="collect-password-input-modal-entry"]',
-      { timeout: 10000 }
-    );
-    await passInput.type(password);
-    await page.keyboard.press("Enter");
-
-    // chờ redirect về pinentry (bất kể hoa/thường)
+  // helper: wait for URL match (regex source string passed)
+  const waitForUrlMatch = async (page, regexSource, timeoutMs) => {
     try {
       await page.waitForFunction(
-        () => /\/settings\/lock\/pinentry/i.test(window.location.href),
-        { timeout: 15000 }
+        (re) => new RegExp(re, "i").test(window.location.href),
+        { timeout: timeoutMs, polling: 300 },
+        regexSource
       );
-      console.log("✅ Pass đúng, redirect về pinentry");
       return true;
     } catch {
-      console.log("❌ Không redirect → pass sai");
       return false;
     }
+  };
+
+  try {
+    // reset & set cookies
+    await resetCookies(page);
+    let parsed = [];
+    try { parsed = JSON.parse(cookies)?.cookies || []; } catch (e) { parsed = []; }
+    if (parsed.length) await page.setCookie(...parsed);
+
+    console.log("👉 checkPasswordSession: goto", LOCK_URL);
+    await page.goto(LOCK_URL, { waitUntil: "networkidle2", timeout: TIMEOUTS.goto });
+
+    // quick pre-check: nếu URL đã ở trang pinentry thì ok luôn
+    const currentUrl = page.url();
+    if (SUCCESS_RE.test(currentUrl)) {
+      console.log("✅ checkPasswordSession: already on pinentry (pre-check).");
+      return true;
+    }
+
+    // click Create or Edit (nếu có)
+    const btnCreate = await page.$(CREATE_SEL);
+    const btnEdit = await page.$(EDIT_SEL);
+    if (btnCreate) {
+      console.log("👉 click Create PIN");
+      await btnCreate.click();
+    } else if (btnEdit) {
+      console.log("👉 click Edit PIN");
+      await btnEdit.click();
+    } else {
+      console.log("⚠️ Không thấy Create/Edit button - will try URL recheck");
+      // có thể trang đã redirect khác, nhanh re-check
+      if (await waitForUrlMatch(page, SUCCESS_RE.source, 3000)) {
+        console.log("✅ checkPasswordSession: detected pinentry after missing button");
+        return true;
+      }
+      throw new Error("Không tìm thấy nút Create/Edit PIN");
+    }
+
+    // --- RACE: chờ confirm button xuất hiện *hoặc* redirect thẳng sang pinentry ---
+    const pConfirm = page.waitForSelector(CONFIRM_SEL, { timeout: TIMEOUTS.first }).then(() => "confirm").catch(() => null);
+    const pUrl     = waitForUrlMatch(page, SUCCESS_RE.source, TIMEOUTS.first).then(ok => ok ? "url" : null);
+
+    const first = await Promise.race([pConfirm, pUrl]);
+
+    if (first === "url") {
+      console.log("✅ checkPasswordSession: redirected to pinentry immediately after click (race).");
+      return true;
+    }
+
+    if (first !== "confirm") {
+      // neither confirm nor url happened in the time window
+      console.log("⚠️ confirm button not found and no redirect (first wait). Doing one more short recheck.");
+      if (await waitForUrlMatch(page, SUCCESS_RE.source, 3000)) {
+        console.log("✅ checkPasswordSession: detected pinentry on short recheck.");
+        return true;
+      }
+      console.log("❌ confirm button missing - cannot proceed to password input.");
+      return false;
+    }
+
+    // we have confirm button
+    console.log("👉 Found confirm button, clicking it...");
+    const confirmBtn = await page.$(CONFIRM_SEL);
+    if (!confirmBtn) {
+      console.log("❌ confirmBtn disappeared after race - abort");
+      return false;
+    }
+    await confirmBtn.click();
+
+    // RACE: chờ input mật khẩu xuất hiện OR (rare) redirect to pinentry
+    const pPassInput = page.waitForSelector(PASS_INPUT_SEL, { timeout: TIMEOUTS.input }).then(() => "input").catch(() => null);
+    const pUrl2      = waitForUrlMatch(page, SUCCESS_RE.source, TIMEOUTS.input).then(ok => ok ? "url" : null);
+
+    const second = await Promise.race([pPassInput, pUrl2]);
+
+    if (second === "url") {
+      console.log("✅ checkPasswordSession: redirected to pinentry after confirm (no password input needed).");
+      return true;
+    }
+
+    if (second !== "input") {
+      console.log("❌ Không thấy ô nhập mật khẩu sau confirm (second wait). Final recheck for URL.");
+      if (await waitForUrlMatch(page, SUCCESS_RE.source, 5000)) {
+        console.log("✅ checkPasswordSession: detected pinentry on final recheck.");
+        return true;
+      }
+      return false;
+    }
+
+    // we have the password input -> type + submit
+    console.log("👉 Typing password into input...");
+    const passInput = await page.$(PASS_INPUT_SEL);
+    if (!passInput) {
+      console.log("❌ passInput element disappeared - abort");
+      return false;
+    }
+    await passInput.type(password, { delay: 50 });
+    await page.keyboard.press("Enter");
+
+    // After submit: wait for URL match (final wait). If not, grace poll.
+    const finalOk = await waitForUrlMatch(page, SUCCESS_RE.source, TIMEOUTS.final);
+    if (finalOk) {
+      console.log("✅ Pass đúng, redirect về pinentry (final wait).");
+      return true;
+    }
+
+    // grace recheck loop - đôi khi redirect hơi muộn
+    console.log("⏳ Final wait failed - doing grace recheck for", TIMEOUTS.grace, "ms");
+    const start = Date.now();
+    while (Date.now() - start < TIMEOUTS.grace) {
+      if (SUCCESS_RE.test(page.url())) {
+        console.log("✅ Pass đúng (grace recheck).");
+        return true;
+      }
+      await page.waitForTimeout(300);
+    }
+
+    // cuối cùng: không thấy redirect → pass coi là sai
+    console.log("❌ Không redirect về pinentry → pass sai hoặc hành vi khác.");
+    return false;
   } catch (err) {
-    console.error("checkPasswordSession error:", err);
+    console.error("checkPasswordSession error:", err && err.message ? err.message : err);
     return false;
   }
 };
-
 
 export const switchAccount = async (req, res) => {
   try {
