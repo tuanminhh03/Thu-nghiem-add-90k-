@@ -180,7 +180,7 @@ export const createOrder = async (req, res) => {
         {
           user: userId,
           plan,
-          orderCode: `GCC${Date.now()}`,
+          orderCode: `GCC${Math.floor(Math.random() * 99000) + 1000}`,
           duration,
           amount: amountNum,
           status: "PAID",
