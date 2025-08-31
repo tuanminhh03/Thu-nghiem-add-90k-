@@ -12,6 +12,7 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [phone, setPhone] = useState('');
+  const [planFilter, setPlanFilter] = useState('all');
   const [showDelete, setShowDelete] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -137,7 +138,10 @@ export default function AdminOrders() {
       return 0;
     };
 
-    return [...orders].sort((a, b) => {
+    const filtered =
+      planFilter === 'all' ? orders : orders.filter(o => o.plan === planFilter);
+
+    return [...filtered].sort((a, b) => {
       const aVal = getValue(a);
       const bVal = getValue(b);
       if (typeof aVal === 'string' || typeof bVal === 'string') {
@@ -147,7 +151,7 @@ export default function AdminOrders() {
       }
       return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
-  }, [orders, sortField, sortOrder]);
+  }, [orders, sortField, sortOrder, planFilter]);
 
   return (
     <AdminLayout>
@@ -163,6 +167,18 @@ export default function AdminOrders() {
             onChange={e => setPhone(e.target.value)}
             className="input"
           />
+          <select
+            value={planFilter}
+            onChange={e => {
+              setPlanFilter(e.target.value);
+              setPage(1);
+            }}
+            className="input"
+          >
+            <option value="all">Tất cả gói</option>
+            <option value="Gói cao cấp">Gói cao cấp</option>
+            <option value="Gói tiết kiệm">Gói tiết kiệm</option>
+          </select>
           <button type="submit" className="btn btn-primary">
             Tìm kiếm
           </button>

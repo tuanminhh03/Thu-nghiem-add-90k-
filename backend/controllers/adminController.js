@@ -203,9 +203,13 @@ export async function getOrderHistory(req, res) {
 
 export async function deleteOrder(req, res) {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
-    res.json({ message: 'Đã xóa' });
+
+    order.status = 'EXPIRED';
+    await order.save();
+
+    res.json({ message: 'Đã chuyển sang hết hạn' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });

@@ -300,7 +300,7 @@ export default function CustomerDashboard() {
                                     )}
 
                                     {/* ✅ Chỉ cho GTK mới có select chức năng */}
-                                    {(o.orderCode || "").startsWith("GTK") && warrantyProcessingId !== rowId && (
+                                    {((o.orderCode || "").startsWith("GTK") && !(o.orderCode || "").startsWith("ADGTK")) && warrantyProcessingId !== rowId && (
                                       <div className="action-select">
                                         <select
                                           defaultValue=""
