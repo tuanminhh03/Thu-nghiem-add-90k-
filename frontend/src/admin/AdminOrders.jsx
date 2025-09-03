@@ -11,7 +11,9 @@ export default function AdminOrders() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('');
+  const [searchPhone, setSearchPhone] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
   const [showDelete, setShowDelete] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
@@ -23,6 +25,7 @@ export default function AdminOrders() {
   const fetchOrders = useCallback(
     async (pageParam, phoneParam) => {
       if (!token) return;
+      setLoading(true);
       const localOrders = JSON.parse(localStorage.getItem('orders50k') || '[]').map(o => ({
         _id: o.orderCode,
         orderCode: o.orderCode,
@@ -36,24 +39,42 @@ export default function AdminOrders() {
           headers: { Authorization: `Bearer ${token}` },
           params: { page: pageParam, phone: phoneParam || undefined }
         });
-        setOrders([...data.data, ...localOrders]);
         setPages(data.pages);
+        setOrders(prev =>
+          pageParam === 1
+            ? [...data.data, ...localOrders]
+            : [...prev, ...data.data]
+        );
       } catch (err) {
         console.error(err);
-        setOrders(localOrders);
+        if (pageParam === 1) setOrders(localOrders);
       }
+      setLoading(false);
     },
     [token]
   );
 
   useEffect(() => {
-    fetchOrders(page, phone);
-  }, [token, page, phone, fetchOrders]);
+    fetchOrders(page, searchPhone);
+  }, [token, page, searchPhone, fetchOrders]);
+
+  const handleScroll = useCallback(() => {
+    if (loading || page >= pages) return;
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200) {
+      setPage(p => p + 1);
+    }
+  }, [loading, page, pages]);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const handleSearch = e => {
     e.preventDefault();
+    setOrders([]);
     setPage(1);
-    fetchOrders(1, phone);
+    setSearchPhone(phone);
   };
 
   const handleSort = field => {
@@ -246,23 +267,7 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
-        <div className="pagination">
-          <button
-            className="btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Trang trước
-          </button>
-          <span className="mx-2">{page}/{pages}</span>
-          <button
-            className="btn"
-            onClick={() => setPage(p => Math.min(pages, p + 1))}
-            disabled={page === pages}
-          >
-            Trang sau
-          </button>
-        </div>
+        {loading && <p className="text-center my-2">Đang tải...</p>}
       </div>
       {showDelete && (
         <Modal onClose={() => setShowDelete(false)}>
