@@ -21,7 +21,6 @@ import AdminNetflixAccounts50k from './admin/AdminNetflixAccounts50k';
 import AdminRoute            from './admin/AdminRoute';
 import AdminCustomerOrders   from './admin/AdminCustomerOrders';
 import AdminStats            from './admin/AdminStats';
-import AdminExpiringOrders   from './admin/AdminExpiringOrders';
 import AdminOrders           from './admin/AdminOrders';
 import AdminLogs            from './admin/AdminLogs';
 import AdminResetPin        from './admin/AdminResetPin';
@@ -152,14 +151,6 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminLogs />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/orders/expiring"
-          element={
-            <AdminRoute>
-              <AdminExpiringOrders />
             </AdminRoute>
           }
         />
