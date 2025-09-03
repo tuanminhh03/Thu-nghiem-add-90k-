@@ -59,6 +59,12 @@ export default function PinLogin() {
   };
 
   const handleKeyDown = (idx, e) => {
+    if (
+      !['Backspace', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key) &&
+      !/^\d$/.test(e.key)
+    ) {
+      e.preventDefault();
+    }
     if (e.key === 'Backspace' && !digits[idx] && idx > 0) {
       refs.current[idx - 1]?.focus();
     }
@@ -107,8 +113,9 @@ export default function PinLogin() {
           {digits.map((d, i) => (
             <input
               key={i}
-              type="password"
+              type="text"
               inputMode="numeric"
+              pattern="[0-9]*"
               maxLength={1}
               className="pin-input"
               value={d}

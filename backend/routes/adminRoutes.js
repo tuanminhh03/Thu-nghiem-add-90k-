@@ -23,7 +23,6 @@ import {
   stats,
   getAdminLogs
 } from '../controllers/adminController.js';
-import { getExpiringOrders } from '../controllers/orderController.js';
 
 const router = Router();
 
@@ -36,8 +35,6 @@ router.post('/customers/:id/reset-pin', authenticateAdmin, authorizeRoles('super
 router.delete('/customers/:id', authenticateAdmin, authorizeRoles('superadmin'), deleteCustomer);
 router.get('/customers/:id/orders', authenticateAdmin, getCustomerOrders);
 router.get('/orders', authenticateAdmin, getOrders);
-
-router.get('/orders/expiring', authenticateAdmin, getExpiringOrders);
 
 router.get('/orders/:id/history', authenticateAdmin, getOrderHistory);
 router.delete('/orders/:id', authenticateAdmin, deleteOrder);

@@ -219,25 +219,6 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// =============== Lấy đơn sắp hết hạn ==================
-export const getExpiringOrders = async (req, res) => {
-  try {
-    const now = new Date();
-    const threeDays = new Date(now);
-    threeDays.setDate(now.getDate() + 3);
-
-    const expiringOrders = await Order.find({
-      expiresAt: { $lte: threeDays },
-    })
-      .sort({ expiresAt: 1 })
-      .lean();
-
-    return res.json({ success: true, data: expiringOrders });
-  } catch (err) {
-    console.error("getExpiringOrders error:", err);
-    return res.status(500).json({ success: false, message: "Lỗi server" });
-  }
-};
 
 // =============== Lấy tất cả tài khoản ==================
 export const getAllAccounts = async (req, res) => {
