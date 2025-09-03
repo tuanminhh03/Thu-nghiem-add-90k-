@@ -300,8 +300,8 @@ export default function CustomerDashboard() {
                                     )}
 
 
-                                    {/* ✅ Chỉ cho GTK mới có select chức năng */}
-                                    {((o.orderCode || "").startsWith("GTK") && !(o.orderCode || "").startsWith("ADGTK")) && warrantyProcessingId !== rowId && (
+                                    {/* ✅ Chỉ cho GTK/ADGTK mới có select chức năng */}
+                                    {(((o.orderCode || "").startsWith("GTK") || (o.orderCode || "").startsWith("ADGTK"))) && warrantyProcessingId !== rowId && (
 
                                       <div className="action-select">
                                         <select
