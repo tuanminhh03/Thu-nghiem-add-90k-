@@ -14,6 +14,15 @@ export default function Register() {
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
 
+  const handleDigitKeyDown = (e) => {
+    if (
+      !['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key) &&
+      !/\d/.test(e.key)
+    ) {
+      e.preventDefault();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -86,11 +95,16 @@ export default function Register() {
           <label className={styles.label}>
             Mã PIN
             <input
-              type="password"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               className={styles.input}
               placeholder="Nhập mã PIN 6 số"
               value={pin}
-              onChange={(e) => setPin(e.target.value.trim())}
+              onChange={(e) =>
+                setPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }
+              onKeyDown={handleDigitKeyDown}
               disabled={loading}
               maxLength={6}
             />
@@ -98,11 +112,16 @@ export default function Register() {
           <label className={styles.label}>
             Nhập lại Mã PIN
             <input
-              type="password"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               className={styles.input}
               placeholder="Nhập lại mã PIN"
               value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value.trim())}
+              onChange={(e) =>
+                setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }
+              onKeyDown={handleDigitKeyDown}
               disabled={loading}
               maxLength={6}
             />
