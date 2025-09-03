@@ -168,6 +168,7 @@ export default function AdminDashboard() {
             <thead>
               <tr>
                 <th>STT</th>
+                <th>Tên khách hàng</th>
                 <th>Tài khoản (SĐT)</th>
                 <th>Ngày tạo TK</th>
                 <th>Số dư hiện tại</th>
@@ -178,6 +179,7 @@ export default function AdminDashboard() {
               {customers.map((c, idx) => (
                 <tr key={c._id}>
                   <td>{idx + 1}</td>
+                  <td>{c.name}</td>
                   <td>
                     <Link
                       to={`/admin/customers/${c._id}/orders`}
@@ -214,7 +216,7 @@ export default function AdminDashboard() {
               ))}
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="text-center">
+                  <td colSpan="6" className="text-center">
                     Không có khách hàng
                   </td>
                 </tr>
