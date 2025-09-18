@@ -217,6 +217,59 @@
   background: #249C6A;
 }
 
+.profile-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 0.5rem 0 1.5rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.profile-form h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.profile-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.profile-label {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.profile-input {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(20, 20, 20, 0.6);
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-input:focus {
+  border-color: #e50914;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.35);
+}
+
+.profile-hint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 /* 4. Responsive */
 @media (max-width: 640px) {
   /* Bố cục chuyển 1 cột, gọn khoảng cách */
@@ -312,6 +365,24 @@
     padding: 12px 16px;
     font-size: 1rem;
     border-radius: 12px;
+  }
+
+  .profile-form {
+    padding: 1.1rem;
+    gap: 1rem;
+    margin: 0.25rem 0 1rem;
+  }
+
+  .profile-form h3 {
+    font-size: 1rem;
+  }
+
+  .profile-label {
+    font-size: 0.9rem;
+  }
+
+  .profile-hint {
+    font-size: 0.75rem;
   }
 }
 .description {
