@@ -106,7 +106,7 @@ export const createOrder = async (req, res) => {
   const { session, hasTransaction } = await startTransactionSession();
   try {
     const sessionOpts = hasTransaction ? { session } : {};
-    const { plan, duration, amount } = req.body;
+    const { plan, duration, amount, profileName, pin } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -122,6 +122,28 @@ export const createOrder = async (req, res) => {
     if (!amountNum || amountNum <= 0) {
       await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
+    }
+
+    let normalizedProfileName = "";
+    let normalizedPin = "";
+
+    if (plan === "Gói cao cấp") {
+      normalizedProfileName = typeof profileName === "string" ? profileName.trim() : "";
+      normalizedPin = typeof pin === "string" ? pin.trim() : "";
+
+      if (!normalizedProfileName) {
+        await endSessionSafe(session, hasTransaction, "abort");
+        return res.status(400).json({ success: false, message: "Vui lòng cung cấp tên hồ sơ" });
+      }
+
+      if (!/^\d{4}$/.test(normalizedPin)) {
+        await endSessionSafe(session, hasTransaction, "abort");
+        return res.status(400).json({ success: false, message: "Mã PIN phải gồm đúng 4 chữ số" });
+      }
+
+      if (normalizedProfileName.length > 50) {
+        normalizedProfileName = normalizedProfileName.slice(0, 50);
+      }
     }
 
     // Lấy thông tin khách hàng để trừ tiền
@@ -172,6 +194,10 @@ export const createOrder = async (req, res) => {
     profile.customerPhone = customer.phone;
     profile.purchaseDate = purchaseDate;
     profile.expirationDate = expiresAt;
+    if (plan === "Gói cao cấp") {
+      profile.name = normalizedProfileName;
+      profile.pin = normalizedPin;
+    }
     await account.save(sessionOpts);
 
     // Tạo đơn hàng & gán hồ sơ

@@ -217,6 +217,7 @@ export default function CustomerDashboard() {
                   <th>Ngày mua</th>
                   <th>Ngày hết hạn</th>
                   <th>Số ngày còn lại</th>
+                  <th>Thông tin</th>
                   <th>Chức năng</th>
                 </tr>
               </thead>
@@ -252,6 +253,16 @@ export default function CustomerDashboard() {
                         <td>{expiry.toLocaleDateString('vi-VN')}</td>
                         <td>{isExpired ? 'Đã hết hạn' : `${daysLeft} ngày`}</td>
                         <td>
+                          <button
+                            type="button"
+                            className="info-button"
+                            onClick={() => setExpandedOrderId(expandedOrderId === rowId ? null : rowId)}
+                            aria-expanded={expandedOrderId === rowId}
+                          >
+                            Xem
+                          </button>
+                        </td>
+                        <td>
                           <button type="button" className="extend-button" onClick={() => handleExtendClick(o)}>
                             Gia hạn
                           </button>
@@ -260,7 +271,7 @@ export default function CustomerDashboard() {
 
                       {expandedOrderId === rowId && (
                         <tr className="order-details-row">
-                          <td colSpan={7}>
+                          <td colSpan={8}>
                             <div className="order-details">
                               <p>
                                 <strong>Email:</strong> {isExpired ? '-' : o.accountEmail || '-'}
