@@ -66,6 +66,23 @@
   padding: 0;
 }
 
+.info-button {
+  background-color: #f59e0b;
+  color: #ffffff;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.info-button:hover {
+  background-color: #d97706;
+  transform: translateY(-1px);
+}
+
 /* Nút Gia hạn */
 .extend-button {
   background-color: #10b981;     /* Xanh lá tươi */
