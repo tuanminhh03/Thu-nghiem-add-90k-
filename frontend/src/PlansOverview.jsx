@@ -19,6 +19,8 @@ export default function PlansOverview() {
   const durations = ['01 tháng', '03 tháng', '06 tháng', '12 tháng'];
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedDuration, setSelectedDuration] = useState(durations[0]);
+  const [profileName, setProfileName] = useState('');
+  const [profilePin, setProfilePin] = useState('');
   const navigate = useNavigate();
 
   const planDescriptions = {
@@ -47,6 +49,11 @@ export default function PlansOverview() {
   const handlePlanChange = (plan) => {
     setSelectedPlan(plan);
     setSelectedDuration(durations[0]);
+
+    if (plan !== 'Gói cao cấp') {
+      setProfileName('');
+      setProfilePin('');
+    }
   };
 
   // amount dựa trên priceMapValue (bạn có file priceMapValue)
@@ -68,6 +75,21 @@ export default function PlansOverview() {
 
   const handlePayment = async () => {
     if (!selectedPlan) return;
+
+    if (selectedPlan === 'Gói cao cấp') {
+      const trimmedName = profileName.trim();
+      const sanitizedPin = profilePin.trim();
+
+      if (!trimmedName) {
+        alert('Vui lòng nhập tên hồ sơ mà bạn muốn sử dụng.');
+        return;
+      }
+
+      if (!/^\d{4}$/.test(sanitizedPin)) {
+        alert('Mã PIN phải gồm đúng 4 chữ số.');
+        return;
+      }
+    }
 
     if (!window.confirm('Bạn có muốn thanh toán không?')) return;
 
@@ -117,9 +139,20 @@ export default function PlansOverview() {
 
     // ===== Nhánh Gói cao cấp (giữ nguyên logic cũ gọi /api/orders) =====
     try {
+      const payload = {
+        plan: selectedPlan,
+        duration: selectedDuration,
+        amount,
+      };
+
+      if (selectedPlan === 'Gói cao cấp') {
+        payload.profileName = profileName.trim();
+        payload.pin = profilePin.trim();
+      }
+
       const { data } = await axios.post(
         'http://localhost:5000/api/orders',
-        { plan: selectedPlan, duration: selectedDuration, amount },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -134,6 +167,11 @@ export default function PlansOverview() {
         );
       } else {
         alert('Thanh toán thành công!');
+      }
+
+      if (selectedPlan === 'Gói cao cấp') {
+        setProfileName('');
+        setProfilePin('');
       }
 
       navigate('/my-orders');
@@ -195,6 +233,52 @@ export default function PlansOverview() {
           {selectedPlan && (
             <>
               <p className="description">{planDescriptions[selectedPlan]}</p>
+
+              {selectedPlan === 'Gói cao cấp' && (
+                <div className="profile-form">
+                  <h3>Đặt thông tin hồ sơ riêng</h3>
+                  <div className="profile-input-group">
+                    <label className="profile-label" htmlFor="profileName">
+                      Tên hồ sơ Netflix
+                    </label>
+                    <input
+                      id="profileName"
+                      type="text"
+                      maxLength={50}
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="profile-input"
+                      placeholder="Ví dụ: Gia đình A, Bé Na..."
+                    />
+                    <span className="profile-hint">
+                      Tên hồ sơ sẽ hiển thị trực tiếp trong tài khoản Netflix Premium.
+                    </span>
+                  </div>
+                  <div className="profile-input-group">
+                    <label className="profile-label" htmlFor="profilePin">
+                      Mã PIN 4 số
+                    </label>
+                    <input
+                      id="profilePin"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={profilePin}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setProfilePin(digitsOnly);
+                      }}
+                      className="profile-input"
+                      placeholder="Nhập 4 chữ số"
+                    />
+                    <span className="profile-hint">
+                      Mã PIN dùng để khóa hồ sơ của bạn. Vui lòng chỉ nhập số.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="duration-selection">
                 {durations.map((d) => (
                   <button
