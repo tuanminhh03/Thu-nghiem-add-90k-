@@ -83,6 +83,28 @@ Kết quả build sẽ nằm trong thư mục `/dist`.
 | `npm run dev` | Backend & Frontend | Chạy server phát triển |
 | `npm run build` | Frontend | Build cho môi trường production |
 | `npm run lint` | Frontend | Kiểm tra lỗi code với ESLint |
+| `npm run netflix:script --prefix backend --` | Backend | Chạy script Puppeteer `loginByCookie.js` |
+
+### Script tự động Netflix
+
+Trong thư mục `backend/scripts/` có sẵn script `loginByCookie.js` giúp tự động đăng nhập Netflix bằng cookie/tài khoản, quản lý hồ sơ, cài PIN…
+
+1. Cài biến môi trường cần thiết trong `backend/.env` (ví dụ):
+   ```env
+   NETFLIX_EMAIL=...
+   NETFLIX_PASSWORD=...
+   ACCOUNT_PASSWORD=...   # mật khẩu xác nhận hồ sơ
+   COOKIE_FILE=./cookies.json
+   USER_DATA_DIR=./chrome-profile
+   ```
+2. Đặt file cookie (nếu có) đúng đường dẫn.
+3. Chạy lệnh:
+   ```bash
+   npm run netflix:script --prefix backend -- auto "Tên hồ sơ" 1234 [--kids]
+   ```
+   hoặc chạy trực tiếp: `node backend/scripts/loginByCookie.js` với tham số phù hợp.
+
+Script yêu cầu Chrome/Chromium được cài đặt (thiết lập `CHROME_PATH` nếu cần).
 
 ---
 

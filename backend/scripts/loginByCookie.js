@@ -1,4 +1,4 @@
-﻿// loginByCookie.js (ESM)
+// loginByCookie.js (ESM)
 // Flow:
 // 1) Đọc .env (NETFLIX_EMAIL, NETFLIX_PASSWORD, COOKIE_FILE)
 // 2) Thử login bằng cookies -> nếu fail thì login bằng tài khoản/mật khẩu và TỰ LƯU cookies
