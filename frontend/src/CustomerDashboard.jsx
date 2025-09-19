@@ -27,11 +27,122 @@ export default function CustomerDashboard() {
   const [warrantyProcessingId, setWarrantyProcessingId] = useState(null);
   const [warrantyStep, setWarrantyStep] = useState("");
   const [dotCount, setDotCount] = useState(1);
+  const [premiumActionId, setPremiumActionId] = useState(null);
 
   // ✅ thông báo bảo hành theo từng order
   const [persistentMessages, setPersistentMessages] = useState({});
 
   const token = localStorage.getItem('token');
+
+  const normalizeId = (value) => (value ? value.toString() : '');
+
+  const applyUpdatedOrder = (updated) => {
+    if (!updated) return;
+    setOrders((prev) => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map((entry) => {
+        const entryId = normalizeId(entry._id || entry.orderCode);
+        const updatedId = normalizeId(updated._id || updated.orderCode);
+        return entryId === updatedId ? { ...entry, ...updated } : entry;
+      });
+    });
+  };
+
+  const runPremiumAction = async (order, actionFn, fallbackMessage = '') => {
+    const orderId = normalizeId(order._id || order.orderCode);
+    if (!orderId) {
+      alert('Không tìm thấy mã đơn hàng');
+      return null;
+    }
+
+    setPremiumActionId(orderId);
+    try {
+      const response = await actionFn(orderId);
+      const updatedOrder = response?.data?.order;
+      if (updatedOrder) {
+        applyUpdatedOrder(updatedOrder);
+      } else {
+        await fetchOrders();
+      }
+      const message = response?.data?.message || fallbackMessage;
+      if (message) {
+        alert(message);
+      }
+      return response;
+    } catch (err) {
+      console.error('Premium action error:', err);
+      alert(err?.response?.data?.message || 'Có lỗi xảy ra khi thực hiện chức năng');
+      return null;
+    } finally {
+      setPremiumActionId(null);
+    }
+  };
+
+  const handlePremiumAction = async (order, action) => {
+    if (!action) return;
+
+    if (action === 'household') {
+      const noteInput = window.prompt('Nhập ghi chú (có thể để trống nếu không có):', order.householdNote || '');
+      if (noteInput === null) return;
+      const trimmed = noteInput.trim();
+      await runPremiumAction(
+        order,
+        (orderId) =>
+          axios.post(
+            `http://localhost:5000/api/orders/${orderId}/household`,
+            { note: trimmed },
+            { headers: { Authorization: `Bearer ${token}` } }
+          ),
+        'Đã gửi yêu cầu cập nhật hộ gia đình'
+      );
+      return;
+    }
+
+    if (action === 'profileName') {
+      const nameInput = window.prompt('Nhập tên hồ sơ mới:', order.profileName || '');
+      if (nameInput === null) return;
+      const trimmed = nameInput.trim();
+      if (!trimmed) {
+        alert('Tên hồ sơ không được để trống');
+        return;
+      }
+      if (trimmed.length > 50) {
+        alert('Tên hồ sơ tối đa 50 ký tự');
+        return;
+      }
+      await runPremiumAction(
+        order,
+        (orderId) =>
+          axios.put(
+            `http://localhost:5000/api/orders/${orderId}/profile-name`,
+            { profileName: trimmed },
+            { headers: { Authorization: `Bearer ${token}` } }
+          ),
+        'Đã cập nhật tên hồ sơ'
+      );
+      return;
+    }
+
+    if (action === 'pin') {
+      const pinInput = window.prompt('Nhập mã PIN mới (4 chữ số):', '');
+      if (pinInput === null) return;
+      const trimmed = pinInput.trim();
+      if (!/^\d{4}$/.test(trimmed)) {
+        alert('Mã PIN phải gồm đúng 4 chữ số');
+        return;
+      }
+      await runPremiumAction(
+        order,
+        (orderId) =>
+          axios.put(
+            `http://localhost:5000/api/orders/${orderId}/pin`,
+            { pin: trimmed },
+            { headers: { Authorization: `Bearer ${token}` } }
+          ),
+        'Đã cập nhật mã PIN'
+      );
+    }
+  };
 
   // fetch orders
   const fetchOrders = async () => {
@@ -234,6 +345,9 @@ export default function CustomerDashboard() {
                   const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
                   const isExpired = o.status === 'EXPIRED' || daysLeft <= 0;
                   const rowId = o._id || o.orderCode;
+                  const latestHistory = Array.isArray(o.history) && o.history.length > 0
+                    ? o.history[o.history.length - 1]
+                    : null;
 
                   return (
                     <React.Fragment key={rowId}>
@@ -300,7 +414,34 @@ export default function CustomerDashboard() {
                                 <>
                                   <p><strong>Tên hồ sơ:</strong> {o.profileName || '-'}</p>
                                   <p><strong>Mã PIN:</strong> {o.pin || '-'}</p>
-                                  <p><strong>Ngày cập nhật:</strong> {formatHistoryEntry(o.history?.[o.history.length - 1])}</p>
+                                  <p><strong>Ngày cập nhật:</strong> {formatHistoryEntry(latestHistory)}</p>
+                                  {(o.householdNote || o.householdUpdatedAt) && (
+                                    <p>
+                                      <strong>Hộ gia đình:</strong> {o.householdNote || 'Đã cập nhật'}
+                                      {o.householdUpdatedAt && ` (${formatDateTime(o.householdUpdatedAt)})`}
+                                    </p>
+                                  )}
+                                  <div className="premium-actions">
+                                    <div className="action-select">
+                                      <select
+                                        defaultValue=""
+                                        onChange={(e) => {
+                                          const value = e.target.value;
+                                          e.target.value = '';
+                                          handlePremiumAction(o, value);
+                                        }}
+                                        disabled={premiumActionId === rowId}
+                                      >
+                                        <option value="" disabled>-- Chọn chức năng --</option>
+                                        <option value="household">Cập nhập hộ gia đình</option>
+                                        <option value="profileName">Thay đổi tên hồ sơ</option>
+                                        <option value="pin">Đổi mã PIN</option>
+                                      </select>
+                                    </div>
+                                    {premiumActionId === rowId && (
+                                      <span className="premium-action-status">Đang xử lý...</span>
+                                    )}
+                                  </div>
                                 </>
                               )}
                               {o.plan === 'Gói tiết kiệm' && !isExpired && (

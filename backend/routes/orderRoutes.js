@@ -5,7 +5,10 @@ import {
   localSavings,
   getOrders,
   extendOrder,
-  sellAccount
+  sellAccount,
+  updatePremiumProfileName,
+  updatePremiumPin,
+  requestPremiumHousehold
 } from "../controllers/orderController.js";
 import { checkCookieSession } from "../services/warrantyService.js";
 import Account50k from "../models/Account50k.js";
@@ -41,6 +44,9 @@ router.post("/sell", sellAccount);
  */
 router.get("/", authenticate, getOrders);
 router.post("/:id/extend", authenticate, extendOrder);
+router.post("/:id/household", authenticate, requestPremiumHousehold);
+router.put("/:id/profile-name", authenticate, updatePremiumProfileName);
+router.put("/:id/pin", authenticate, updatePremiumPin);
 
 /**
  * ==============================
