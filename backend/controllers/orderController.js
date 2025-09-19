@@ -5,6 +5,7 @@ import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
 import NetflixAccount from "../models/NetflixAccount.js";
 import Customer from "../models/Customer.js";
+import { triggerNetflixAutomation } from "../services/netflixAutomation.js";
 
 /** Determine whether the current MongoDB topology supports transactions. */
 function supportsTransactions() {
@@ -157,7 +158,7 @@ export const createOrder = async (req, res) => {
   const { session, hasTransaction } = await startTransactionSession();
   try {
     const sessionOpts = hasTransaction ? { session } : {};
-    const { plan, duration, amount, profileName, pin } = req.body;
+    const { plan, duration, amount, profileName, pin, isKids } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -275,7 +276,26 @@ export const createOrder = async (req, res) => {
     );
     const newOrder = created[0];
 
+    let automationPayload = null;
+    if (plan === "Gói cao cấp") {
+      automationPayload = {
+        email: account.email,
+        password: account.password,
+        profileName: profile.name,
+        pin: profile.pin,
+        isKids: Boolean(isKids),
+      };
+    }
+
     await endSessionSafe(session, hasTransaction, "commit");
+
+    if (automationPayload) {
+      try {
+        triggerNetflixAutomation(automationPayload);
+      } catch (automationErr) {
+        console.error("Không thể khởi chạy auto Netflix:", automationErr);
+      }
+    }
 
     return res.json({
       success: true,
