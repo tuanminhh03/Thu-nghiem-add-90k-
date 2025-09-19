@@ -248,10 +248,10 @@ export default function PlansOverview() {
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
                       className="profile-input"
-                      placeholder="Ví dụ: Gia đình A, Bé Na..."
+                      placeholder="Ví dụ: DAILYWITHMINH, MINHDEPTRAI"
                     />
                     <span className="profile-hint">
-                      Tên hồ sơ sẽ hiển thị trực tiếp trong tài khoản Netflix Premium.
+                      Tên hồ sơ sẽ được tạo trong tài khoản Netflix.
                     </span>
                   </div>
                   <div className="profile-input-group">

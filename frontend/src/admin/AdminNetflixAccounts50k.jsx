@@ -56,12 +56,15 @@ export default function AdminNetflixAccounts50k() {
         const data = evt.target.result;
         let rows = [];
 
-        if (file.name.toLowerCase().endsWith(".csv")) {
-          const text = new TextDecoder().decode(
-            data instanceof ArrayBuffer ? data : new TextEncoder().encode(String(data))
-          ).trim();
-          rows = text.split(/\r?\n/).map(line => line.split("|"));
-        } else {
+if (file.name.toLowerCase().endsWith(".csv")) {
+  const text = new TextDecoder().decode(data);
+  const parsed = Papa.parse(text, {
+    header: true,           // Đọc theo tên cột
+    skipEmptyLines: true,
+    transformHeader: h => h.trim().toLowerCase()
+  });
+  rows = parsed.data.map(r => [r.email, r.password, r.cookies]);
+} else {
           const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
           const wb = XLSX.read(new Uint8Array(data), { type: "array" });
           const sheet = wb.SheetNames[0];
@@ -89,7 +92,7 @@ export default function AdminNetflixAccounts50k() {
 
         fetchAccounts();
       } catch (err) {
-        console.error("Lỗi khi import:", err);
+        console.error("Lỗi khi import:a", err);
         alert("Import thất bại!");
       }
     };
