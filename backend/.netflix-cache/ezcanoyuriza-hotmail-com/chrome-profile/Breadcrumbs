@@ -1,0 +1,72 @@
+0:00:30 Tab2 FinishNav22
+0:00:30 Tab2 StartNav23 #typed
+0:00:31 Tab2 FinishNav23
+0:00:33 Tab2 PageLoad
+0:00:33 Tab2 StartNav24 #renderer-script #auto_subframe
+0:00:33 Tab2 FinishNav24
+0:00:33 Tab2 PageLoad
+0:00:33 Tab2 StartNav25 #renderer-script #auto_subframe
+0:00:33 Tab2 FinishNav25
+0:00:33 Tab2 PageLoad
+0:00:34 Tab2 StartNav26 #typed
+0:00:34 Tab2 RemoveInfobar73
+0:00:34 Tab2 FinishNav26
+0:00:35 Tab2 AddInfobar73
+0:00:35 Tab2 StartNav27 #renderer-script #auto_subframe
+0:00:35 Tab2 FinishNav27
+0:00:35 Tab2 PageLoad
+0:00:35 Tab2 StartNav28 #renderer-script #auto_subframe
+0:00:35 Tab2 FinishNav28
+0:00:35 Tab2 PageLoad
+0:00:38 Tab2 PageLoad
+0:00:38 Tab2 StartNav29 #typed
+0:00:38 Tab2 FinishNav29
+0:00:41 Tab2 PageLoad
+0:00:41 Tab2 StartNav30 #renderer-script #auto_subframe
+0:00:41 Tab2 FinishNav30
+0:00:41 Tab2 PageLoad
+0:00:41 Tab2 StartNav31 #renderer-script #auto_subframe
+0:00:41 Tab2 FinishNav31
+0:00:41 Tab2 PageLoad
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:43 TextSelectionChanged
+0:00:44 TextSelectionChanged
+0:00:44 TextSelectionChanged
+0:00:44 TextSelectionChanged
+0:00:44 TextSelectionChanged
+0:00:44 Tab2 StartNav32 #renderer-user #link
+0:00:44 Tab2 FinishNav32
+0:00:44 PasswordManager_LoginPassed
+0:00:45 TextSelectionChanged
+0:00:45 TextSelectionChanged
+0:00:45 TextSelectionChanged
+0:00:45 TextSelectionChanged
+0:00:45 TextSelectionChanged
+0:00:45 Tab2 StartNav33 #renderer-user #link
+0:00:46 Tab2 RemoveInfobar73
+0:00:46 Tab2 FinishNav33
+0:00:47 Tab2 AddInfobar73
+0:00:48 Tab2 PageLoad
+0:00:48 Tab2 StartNav34 #renderer-script #auto_subframe
+0:00:48 Tab2 FinishNav34
+0:00:48 Tab2 PageLoad
+0:00:48 Tab2 StartNav35 #renderer-script #auto_subframe
+0:00:48 Tab2 FinishNav35
+0:00:48 Tab2 PageLoad
+0:00:53 Tab2 StartNav36 #reload
+0:00:54 Tab2 RemoveInfobar73
+0:00:54 Tab2 FinishNav36
+0:00:54 Tab2 AddInfobar73
+0:00:56 Tab2 PageLoad
+0:00:56 Tab2 StartNav37 #renderer-script #auto_subframe
+0:00:56 Tab2 FinishNav37
+0:00:56 Tab2 PageLoad
+0:00:56 Tab2 StartNav38 #renderer-script #auto_subframe
+0:00:56 Tab2 FinishNav38
+0:00:56 Tab2 PageLoad
+0:00:57 Browser1 Close Tab2 at 1
