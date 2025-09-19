@@ -54,6 +54,57 @@ async function endSessionSafe(session, hasTransaction, action = "commit") {
   }
 }
 
+function buildOrderFilter(identifier) {
+  const isObjectId =
+    typeof identifier === "string" && /^[0-9a-fA-F]{24}$/.test(identifier);
+  return isObjectId ? { _id: identifier } : { orderCode: identifier };
+}
+
+async function findOwnedOrder(identifier, userId) {
+  if (!identifier) {
+    return {
+      error: { status: 400, message: "Thiếu mã đơn hàng" },
+    };
+  }
+
+  const filter = buildOrderFilter(identifier);
+  const order = await Order.findOne(filter);
+  if (!order) {
+    return {
+      error: { status: 404, message: "Không tìm thấy đơn hàng" },
+    };
+  }
+
+  if (!userId || String(order.user) !== String(userId)) {
+    return {
+      error: { status: 403, message: "Bạn không sở hữu đơn hàng này" },
+    };
+  }
+
+  return { order };
+}
+
+async function findPremiumOrder(identifier, userId) {
+  const { order, error } = await findOwnedOrder(identifier, userId);
+  if (error) return { error };
+
+  if (order.plan !== "Gói cao cấp") {
+    return {
+      error: {
+        status: 400,
+        message: "Chức năng chỉ áp dụng cho gói cao cấp",
+      },
+    };
+  }
+
+  return { order };
+}
+
+async function reloadOrderLean(orderId) {
+  if (!orderId) return null;
+  return Order.findById(orderId).lean();
+}
+
 // =============== Gói Tiết Kiệm (GTK) ==================
 export const localSavings = async (req, res) => {
   try {
@@ -106,7 +157,7 @@ export const createOrder = async (req, res) => {
   const { session, hasTransaction } = await startTransactionSession();
   try {
     const sessionOpts = hasTransaction ? { session } : {};
-    const { plan, duration, amount } = req.body;
+    const { plan, duration, amount, profileName, pin } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -122,6 +173,28 @@ export const createOrder = async (req, res) => {
     if (!amountNum || amountNum <= 0) {
       await endSessionSafe(session, hasTransaction, "abort");
       return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
+    }
+
+    let normalizedProfileName = "";
+    let normalizedPin = "";
+
+    if (plan === "Gói cao cấp") {
+      normalizedProfileName = typeof profileName === "string" ? profileName.trim() : "";
+      normalizedPin = typeof pin === "string" ? pin.trim() : "";
+
+      if (!normalizedProfileName) {
+        await endSessionSafe(session, hasTransaction, "abort");
+        return res.status(400).json({ success: false, message: "Vui lòng cung cấp tên hồ sơ" });
+      }
+
+      if (!/^\d{4}$/.test(normalizedPin)) {
+        await endSessionSafe(session, hasTransaction, "abort");
+        return res.status(400).json({ success: false, message: "Mã PIN phải gồm đúng 4 chữ số" });
+      }
+
+      if (normalizedProfileName.length > 50) {
+        normalizedProfileName = normalizedProfileName.slice(0, 50);
+      }
     }
 
     // Lấy thông tin khách hàng để trừ tiền
@@ -172,6 +245,10 @@ export const createOrder = async (req, res) => {
     profile.customerPhone = customer.phone;
     profile.purchaseDate = purchaseDate;
     profile.expirationDate = expiresAt;
+    if (plan === "Gói cao cấp") {
+      profile.name = normalizedProfileName;
+      profile.pin = normalizedPin;
+    }
     await account.save(sessionOpts);
 
     // Tạo đơn hàng & gán hồ sơ
@@ -394,5 +471,181 @@ export async function extendOrder(req, res) {
     console.error("extendOrder error:", err);
     await endSessionSafe(session, hasTransaction, "abort");
     return res.status(500).json({ message: "Lỗi server khi gia hạn" });
+  }
+}
+
+export async function updatePremiumProfileName(req, res) {
+  try {
+    const userId = req.user?.id;
+    const { profileName } = req.body || {};
+
+    let normalizedName = typeof profileName === "string" ? profileName.trim() : "";
+    if (!normalizedName) {
+      return res
+        .status(400)
+        .json({ message: "Vui lòng nhập tên hồ sơ mới" });
+    }
+    if (normalizedName.length > 50) {
+      normalizedName = normalizedName.slice(0, 50);
+    }
+
+    const { order, error } = await findPremiumOrder(req.params.id, userId);
+    if (error) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
+    if (!order.accountEmail || !order.profileId) {
+      return res
+        .status(400)
+        .json({ message: "Đơn hàng chưa được gán hồ sơ Netflix" });
+    }
+
+    const account = await NetflixAccount.findOne({ email: order.accountEmail });
+    if (!account) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy tài khoản Netflix tương ứng" });
+    }
+
+    const profile = account.profiles.find((p) => p.id === order.profileId);
+    if (!profile) {
+      return res.status(404).json({
+        message: "Không tìm thấy hồ sơ tương ứng trong tài khoản",
+      });
+    }
+
+    profile.name = normalizedName;
+    await account.save();
+
+    order.profileName = normalizedName;
+    if (!Array.isArray(order.history)) {
+      order.history = [];
+    }
+    order.history.push({
+      message: `Khách đổi tên hồ sơ thành "${normalizedName}"`,
+      date: new Date(),
+    });
+
+    await order.save();
+    const updatedOrder = await reloadOrderLean(order._id);
+
+    return res.json({
+      success: true,
+      message: "Đã cập nhật tên hồ sơ thành công",
+      order: updatedOrder,
+    });
+  } catch (err) {
+    console.error("updatePremiumProfileName error:", err);
+    return res.status(500).json({
+      message: "Lỗi khi cập nhật tên hồ sơ",
+      error: err.message,
+    });
+  }
+}
+
+export async function updatePremiumPin(req, res) {
+  try {
+    const userId = req.user?.id;
+    const { pin } = req.body || {};
+
+    const normalizedPin = typeof pin === "string" ? pin.trim() : "";
+    if (!/^\d{4}$/.test(normalizedPin)) {
+      return res
+        .status(400)
+        .json({ message: "Mã PIN phải gồm đúng 4 chữ số" });
+    }
+
+    const { order, error } = await findPremiumOrder(req.params.id, userId);
+    if (error) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
+    if (!order.accountEmail || !order.profileId) {
+      return res
+        .status(400)
+        .json({ message: "Đơn hàng chưa được gán hồ sơ Netflix" });
+    }
+
+    const account = await NetflixAccount.findOne({ email: order.accountEmail });
+    if (!account) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy tài khoản Netflix tương ứng" });
+    }
+
+    const profile = account.profiles.find((p) => p.id === order.profileId);
+    if (!profile) {
+      return res.status(404).json({
+        message: "Không tìm thấy hồ sơ tương ứng trong tài khoản",
+      });
+    }
+
+    profile.pin = normalizedPin;
+    await account.save();
+
+    order.pin = normalizedPin;
+    if (!Array.isArray(order.history)) {
+      order.history = [];
+    }
+    order.history.push({
+      message: "Khách đổi mã PIN",
+      date: new Date(),
+    });
+
+    await order.save();
+    const updatedOrder = await reloadOrderLean(order._id);
+
+    return res.json({
+      success: true,
+      message: "Đã cập nhật mã PIN thành công",
+      order: updatedOrder,
+    });
+  } catch (err) {
+    console.error("updatePremiumPin error:", err);
+    return res.status(500).json({
+      message: "Lỗi khi cập nhật mã PIN",
+      error: err.message,
+    });
+  }
+}
+
+export async function requestPremiumHousehold(req, res) {
+  try {
+    const userId = req.user?.id;
+    const rawNote = req.body?.note;
+    let note = typeof rawNote === "string" ? rawNote.trim() : "";
+    if (note.length > 200) {
+      note = note.slice(0, 200);
+    }
+
+    const { order, error } = await findPremiumOrder(req.params.id, userId);
+    if (error) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
+    order.householdNote = note || undefined;
+    order.householdUpdatedAt = new Date();
+    if (!Array.isArray(order.history)) {
+      order.history = [];
+    }
+    const message = note
+      ? `Khách yêu cầu cập nhật hộ gia đình: ${note}`
+      : "Khách yêu cầu cập nhật hộ gia đình";
+    order.history.push({ message, date: new Date() });
+
+    await order.save();
+    const updatedOrder = await reloadOrderLean(order._id);
+
+    return res.json({
+      success: true,
+      message: "Đã ghi nhận yêu cầu cập nhật hộ gia đình",
+      order: updatedOrder,
+    });
+  } catch (err) {
+    console.error("requestPremiumHousehold error:", err);
+    return res.status(500).json({
+      message: "Lỗi khi cập nhật hộ gia đình",
+      error: err.message,
+    });
   }
 }

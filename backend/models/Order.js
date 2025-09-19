@@ -51,6 +51,12 @@ const orderSchema = new Schema({
     type: Date,
   },
   accountCookies: { type: String },
+  householdNote: {
+    type: String,
+  },
+  householdUpdatedAt: {
+    type: Date,
+  },
   history: [
     {
       message: String,
