@@ -417,7 +417,7 @@ export default function CustomerDashboard() {
                                   <p><strong>Ngày cập nhật:</strong> {formatHistoryEntry(latestHistory)}</p>
                                   {(o.householdNote || o.householdUpdatedAt) && (
                                     <p>
-                                      <strong>Hộ gia đình:</strong> {o.householdNote || 'Đã cập nhật'}
+                                      <strong>Link cập nhập hộ gia đình:</strong> {o.householdNote || 'Đã cập nhật'}
                                       {o.householdUpdatedAt && ` (${formatDateTime(o.householdUpdatedAt)})`}
                                     </p>
                                   )}

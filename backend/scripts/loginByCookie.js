@@ -1,4 +1,12 @@
-﻿import 'dotenv/config';
+﻿// loginByCookie.js (ESM)
+// Flow:
+// 1) Đọc .env (NETFLIX_EMAIL, NETFLIX_PASSWORD, COOKIE_FILE)
+// 2) Thử login bằng cookies -> nếu fail thì login bằng tài khoản/mật khẩu và TỰ LƯU cookies
+// 3) Mở hồ sơ theo tên/ID -> ép vào /settings/lock/<ID>
+// 4) Nếu thấy "Xóa khóa hồ sơ" thì gỡ trước (ƯU TIÊN REMOVE nếu cùng lúc có Remove/Edit)
+// 5) Vào pinentry -> nhập PIN 4 số -> Save (tuyệt đối không click Edit PIN)
+
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
@@ -118,6 +126,15 @@ function normalizeName(s) {
     .replace(/\s+/g, ' ')                 // gộp space
     .trim();
 }
+/* ====== Name cleanup for Netflix's "Your profile" badge ====== */
+function cleanUiProfileName(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/(?:\s*|\n|\r)*(Hồ\s*sơ\s*của\s*bạn|Ho\s*so\s*cua\s*ban|Your\s*profile)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 
 /* ====== DB: đọc danh sách hồ sơ & ngày hết hạn ====== */
 const PROFILE_DB_FILE = process.env.PROFILE_DB_FILE || './profiles.db.json';
@@ -386,44 +403,57 @@ async function loginWithCredentials(page, email, password) {
 /* ============== Quét & mở hồ sơ theo tên ============== */
 async function getProfileNames(page) {
   return await page.evaluate(() => {
+    const clean = (s) => {
+      if (!s) return '';
+      return String(s)
+        .replace(/(?:\s*|\n|\r)*(Hồ\s*sơ\s*của\s*bạn|Ho\s*so\s*cua\s*ban|Your\s*profile)\s*$/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
     const blocks = Array.from(document.querySelectorAll('[data-cl-view="accountProfileSettings"]'));
-    const names = blocks.map((b, i) =>
-      (b.querySelector('p')?.textContent || b.textContent || `Hồ sơ ${i + 1}`)
+    const names = blocks.map((b, i) => {
+      const raw = ((b.querySelector('p')?.textContent || b.textContent || `Hồ sơ ${i + 1}`) + '')
         .trim()
-        .split('\n')[0]
-    );
+        .split('\n')[0];
+      return clean(raw);
+    });
     const seen = new Set();
     return names.filter((n) => (seen.has(n) ? false : (seen.add(n), true)));
   });
 }
 
+
 async function resolveProfileTarget(page, profileName) {
   return await page.evaluate((name) => {
-    const blocks = Array.from(document.querySelectorAll('[data-cl-view="accountProfileSettings"]'));
-    const block = blocks.find((b) => {
-      const first =
-        ((b.querySelector('p')?.textContent || b.textContent || '') + '')
-          .trim()
-          .split('\n')[0];
-      return first === name;
-    });
-    if (!block) return null;
-
-    const li = block.closest('li') || block.parentElement;
-    const btn =
-      (li && li.querySelector('button[data-uia$="PressableListItem"]')) ||
-      block.closest('button[data-uia$="PressableListItem"]') ||
-      block.querySelector('button[data-uia$="PressableListItem"]') ||
-      block;
-
-    const r = btn.getBoundingClientRect();
-    return {
-      selector: btn.getAttribute('data-uia')
-        ? `button[data-uia="${btn.getAttribute('data-uia')}"]`
-        : null,
-      rect: { x: Math.floor(r.left + r.width / 2), y: Math.floor(r.top + r.height / 2) },
-    };
-  }, profileName);
+  const clean = (s) => {
+    if (!s) return '';
+    return String(s)
+      .replace(/(?:\s*|\n|\r)*(Hồ\s*sơ\s*của\s*bạn|Ho\s*so\s*cua\s*ban|Your\s*profile)\s*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+  const blocks = Array.from(document.querySelectorAll('[data-cl-view="accountProfileSettings"]'));
+  const block = blocks.find((b) => {
+    const first = clean(((b.querySelector('p')?.textContent || b.textContent || '') + '')
+      .trim()
+      .split('\n')[0]);
+    return first === name;
+  });
+  if (!block) return null;
+  const li = block.closest('li') || block.parentElement;
+  const btn =
+    (li && li.querySelector('button[data-uia$="PressableListItem"]')) ||
+    block.closest('button[data-uia$="PressableListItem"]') ||
+    block.querySelector('button[data-uia$="PressableListItem"]') ||
+    block;
+  const r = btn.getBoundingClientRect();
+  return {
+    selector: btn.getAttribute('data-uia')
+      ? `button[data-uia="${btn.getAttribute('data-uia')}"]`
+      : null,
+    rect: { x: Math.floor(r.left + r.width / 2), y: Math.floor(r.top + r.height / 2) },
+  };
+}, profileName);
 }
 
 async function dispatchRealClick(page, selector) {
@@ -708,6 +738,177 @@ async function clickSaveNewProfile(page) {
 
   return false;
 }
+/* ====== EDIT PROFILE (đổi tên) ====== */
+// Bổ sung selector cho màn Edit
+// ==== EDIT PROFILE selectors (ưu tiên theo UI bạn cung cấp) ====
+S.editProfileNameInput = [
+  // CHUẨN: input dùng để rename
+  '[data-uia="edit-profile-page+profile-name-input"]',
+  'input[name="profile-name"]',
+
+  // Dự phòng cho các layout khác
+  'input[name="profileName"]',
+  'input#profileName',
+  '[data-uia="account-profiles-page+edit-profile+name-input"]',
+  'form[action*="/profile/edit" i] input[type="text"]',
+  'div[role="dialog"] input[type="text"]'
+];
+
+S.editProfileSaveBtn = [
+  // CHUẨN: nút Lưu trên trang Edit
+  'button[data-uia="edit-profile-page+submit-button"]',
+  'button[data-cl-command="SubmitCommand"]',
+
+  // Dự phòng
+  '[data-uia="account-profiles-page+edit-profile+primary-button"]',
+  'form[action*="/profile/edit" i] button[type="submit"]',
+  'div[role="dialog"] button[type="submit"]',
+  "button[data-uia*='primary-button']",
+  "button[data-uia*='save' i]"
+];
+
+
+// Điều hướng cứng vào trang Edit: /settings/profile/edit/<ID>
+async function hardGotoEditProfile(page, settingsId, refererUrl) {
+  const editUrl = `https://www.netflix.com/settings/profile/edit/${settingsId}`;
+  const refererHeaders = refererUrl ? { Referer: refererUrl } : {};
+  return await withExtraHTTPHeaders(page, refererHeaders, async () => {
+    const tryOnce = async (how) => {
+      if (how === 'goto') {
+        await page.goto(editUrl, { waitUntil:'networkidle2', timeout:60000, ...(refererUrl ? { referer: refererUrl } : {}) }).catch(()=>{});
+      } else if (how === 'href') {
+        await page.evaluate(u => { location.href = u; }, editUrl).catch(()=>{});
+      } else {
+        await page.evaluate(u => { window.location.assign(u); }, editUrl).catch(()=>{});
+      }
+      await raceAny(
+        page.waitForNavigation({ waitUntil:'networkidle2', timeout:8000 }),
+        page.waitForFunction(id => location.pathname.includes(`/settings/profile/edit/${id}`), { timeout:8000 }, settingsId)
+      );
+      if (await isErrorPage(page)) {
+        try { await page.goto(page.url(), { waitUntil:'networkidle2', timeout:60000 }); } catch {}
+      }
+      return new RegExp(`/settings/profile/edit/${settingsId}($|[/?#])`).test(page.url());
+    };
+    if (await tryOnce('goto'))   return true;
+    if (await tryOnce('href'))   return true;
+    if (await tryOnce('assign')) return true;
+    return false;
+  });
+}
+
+// Gõ tên mới trong form Edit
+async function typeEditProfileName(page, newName) {
+  const SEL = S.editProfileNameInput.join(',');
+  const handle = await page.waitForSelector(SEL, { visible:true, timeout:12000 }).catch(()=>null);
+  if (!handle) return false;
+
+  // thử gõ trực tiếp
+  try { await handle.click({ clickCount:3 }); await handle.type(newName, { delay:30 }); return true; } catch {}
+
+  // fallback React-controlled
+  const ok = await setReactInputValue(page.mainFrame(), handle, newName);
+  if (ok) return true;
+
+  // fallback cuối cùng
+  return await page.evaluate((v) => {
+    const cand = document.querySelector('input[name="profileName"]') ||
+                 document.querySelector('#profileName') ||
+                 document.querySelector('[data-uia="account-profiles-page+edit-profile+name-input"]') ||
+                 document.querySelector('form[action*="/profile/edit" i] input[type="text"]');
+    if (!cand) return false;
+    const { set: valueSetter } = Object.getOwnPropertyDescriptor(cand, 'value') || {};
+    const proto = Object.getPrototypeOf(cand);
+    const { set: protoSetter } = Object.getOwnPropertyDescriptor(proto, 'value') || {};
+    const setNative = (val) => (protoSetter && valueSetter !== protoSetter) ? protoSetter.call(cand, val) : (valueSetter ? valueSetter.call(cand, val) : (cand.value = val));
+    try {
+      setNative(''); cand.dispatchEvent(new Event('input', { bubbles:true })); cand.dispatchEvent(new Event('change', { bubbles:true }));
+      setNative(v);  cand.dispatchEvent(new Event('input', { bubbles:true })); cand.dispatchEvent(new Event('change', { bubbles:true }));
+      return true;
+    } catch { return false; }
+  }, newName);
+}
+
+// Bấm Lưu trong form Edit
+async function clickSaveOnEdit(page) {
+  await closeOverlaysIfAny(page); // tránh toast che nút
+  const frames = page.frames();
+  for (const f of frames) {
+    for (const sel of S.editProfileSaveBtn) {
+      const btn = await f.$(sel).catch(() => null);
+      if (!btn) continue;
+
+      const ok = await robustClickHandle(page, btn);
+      if (!ok) continue;
+
+      const saved = await raceAny(
+        f.waitForFunction(() =>
+          !document.querySelector('div[role="dialog"]') && !document.querySelector('[data-uia="modal"]'), { timeout: 6000 }),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }),
+        page.waitForResponse(res => {
+          const u = res.url().toLowerCase();
+          return res.status() >= 200 && res.status() < 300 &&
+                 /(profile.*edit|edit.*profile|profile.*save|submitcommand)/.test(u);
+        }, { timeout: 6000 })
+      );
+      if (saved) return true;
+    }
+  }
+
+  // Fallback: Enter để submit
+  try {
+    const input = await page.$(S.editProfileNameInput.join(','));
+    if (input) { await input.focus(); await page.keyboard.press('Enter'); }
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 4000 }).catch(() => {});
+  } catch {}
+  return true; // nhiều layout tự lưu → coi như OK
+}
+
+
+// API: đổi tên theo settingsId (kèm optional set PIN)
+async function renameProfileById(page, settingsId, newName, { refererUrl, pin4 } = {}) {
+  const okNav = await hardGotoEditProfile(page, settingsId, refererUrl);
+  if (!okNav) { console.log('❌ Không vào được trang Edit.'); return false; }
+
+  const typed = await typeEditProfileName(page, newName);
+  if (!typed) { console.log('❌ Không gõ được tên mới.'); return false; }
+
+  const saved = await clickSaveOnEdit(page);
+  if (!saved) { console.log('⚠️ Không xác nhận được trạng thái Lưu (có thể vẫn OK).'); }
+
+  // xác nhận tên đã đổi (không bắt buộc nhưng tốt nên có)
+  try {
+    await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:30000 }).catch(()=>{});
+    await gentleReveal(page);
+    const names = await getProfileNames(page);
+    if (!names.includes(newName)) {
+      console.log('⚠️ Danh sách chưa phản ánh tên mới:', names);
+    }
+  } catch {}
+
+  // nếu có PIN → đặt PIN
+  if (/^\d{4}$/.test(pin4 || '')) {
+    console.log('🔐 Đặt/đổi PIN sau khi rename…');
+    const okPin = await setPinSmart(page, settingsId, HARDCODED_PASSWORD, pin4, page.url());
+    if (!okPin) console.log('⚠️ Không đặt được PIN.');
+  }
+  return true;
+}
+
+// API: đổi tên theo tên hồ sơ cũ (resolve → settingsId)
+async function renameProfileByName(page, oldName, newName, { pin4 } = {}) {
+  await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:60000 }).catch(()=>{});
+  await gentleReveal(page);
+  const names = await getProfileNames(page);
+  if (!names.includes(oldName)) {
+    console.log(`❌ Không thấy hồ sơ "${oldName}". Danh sách:`, names);
+    return false;
+  }
+  const opened = await openProfileAndGetId(page, oldName, 5);
+  if (!opened) { console.log('❌ Không lấy được settingsId của hồ sơ cần đổi.'); return false; }
+  return await renameProfileById(page, opened.id, newName, { refererUrl: opened.settingsUrl, pin4 });
+}
+
 
 /**
  * Tạo hồ sơ mới. Trả về { ok, settingsId }.
@@ -1103,6 +1304,7 @@ async function hardGotoSettings(page, settingsId, refererUrl) {
     return false;
   });
 }
+
 // ==== Tìm nút "Xóa hồ sơ" trên mọi frame ====
 async function findDeleteProfileButtonAnyFrame(page) {
   const hit = await findFirstVisibleInFrames(page, S.deleteProfileBtn);
@@ -1349,7 +1551,7 @@ async function clickConfirmDeleteInDialog(page, timeoutMs = 6000) {
       btns.find(b => /delete/i.test((b.textContent||'').trim()));
     if (!target || !visible(target)) return false;
 
-    try { target.scrollIntoView({block:'center',inline:'center'}); } catch {}
+    try { target.scrollIntoView({block:'center', inline:'center'}); } catch {}
     try { target.focus(); } catch {}
     target.click();
     return true;
@@ -1364,6 +1566,7 @@ async function clickConfirmDeleteInDialog(page, timeoutMs = 6000) {
 
   return !!clicked;
 }
+
 /* ============== XÓA HỒ SƠ – chỉ thao tác trên /settings/<ID> ============== */
 async function deleteProfileBySettingsId(
   page,
@@ -1410,12 +1613,12 @@ async function deleteProfileBySettingsId(
   console.log('🗑️ Bấm "Xóa hồ sơ" trong modal xác nhận…');
   const ok2 = await safeRun(() => clickSecondDeleteButton(page, { timeoutMs: 6000 }), false);
   // KHÔNG giữ handle cũ: modal có thể detach frame → luôn bọc safeRun
-  __dialogFrameCache = { ts: 0, frame: null };
+__dialogFrameCache = { ts: 0, frame: null };
 
-  await safeRun(() => typeProfileNameInConfirmDialog(page, profileNameForConfirm), false);
-  await safeRun(() => clickConfirmDeleteDialogsIfAny(page), false);
-  await safeRun(() => confirmDangerInDialog(page), false);
-  await safeRun(() => handleIdentityVerifyModal(page, password), false);
+await safeRun(() => typeProfileNameInConfirmDialog(page, profileNameForConfirm), false);
+await safeRun(() => clickConfirmDeleteDialogsIfAny(page), false);
+await safeRun(() => confirmDangerInDialog(page), false);
+await safeRun(() => handleIdentityVerifyModal(page, password), false);
 
   if (!ok2) {
     await closeOverlaysIfAny(page);
@@ -1756,9 +1959,7 @@ async function clickRemoveProfileLockButton(page) {
   const hit = await findButtonAnyFrame(
     page,
     S.removeLockBtn,
-    ['xóa khóa hồ sơ', 'xoá khóa hồ sơ', 'tắt khóa hồ sơ', 'bỏ khóa hồ sơ',
-      'remove profile lock', 'disable profile lock', 'remove lock', 'delete profile lock',
-      'xóa', 'xoá', 'remove', 'disable', 'delete']
+    ['xóa', 'xoá', 'remove', 'disable', 'delete']
   );
   if (!hit) return false;
 
@@ -2065,6 +2266,7 @@ async function autoProvisionProfile(page, wantedName, pin4, { isKids = false } =
     });
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(60000);
+
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     );
@@ -2168,6 +2370,40 @@ async function autoProvisionProfile(page, wantedName, pin4, { isKids = false } =
       await holdOrExit(0);
       return;
     }
+    {
+  const action1 = (process.argv[2] || '').trim().toLowerCase();
+  if (action1 === 'rename') {
+    const oldOrId = process.argv[3] || '';
+    const newName = process.argv[4] || '';
+    const maybePin = process.argv[5] || ''; // tuỳ chọn
+
+    if (!oldOrId || !newName) {
+      console.log('❌ Thiếu tham số. Dùng:\n  node loginByCookie.js rename "Old Name" "New Name" [PIN4]\n  hoặc\n  node loginByCookie.js rename SETTINGS_ID "New Name" [PIN4]');
+      await holdOrExit(1);
+      return;
+    }
+
+    // đảm bảo đã login
+    await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:60000 }).catch(()=>{});
+    if (!(await isLoggedIn(page))) {
+      const ok = await loginWithCredentials(page, NETFLIX_EMAIL, NETFLIX_PASSWORD);
+      if (!ok) { console.log('❌ Không đăng nhập được.'); await holdOrExit(1); return; }
+    }
+
+    let okRename = false;
+    if (/^[A-Z0-9]+$/.test(oldOrId)) {
+      // là settingsId
+      okRename = await renameProfileById(page, oldOrId, newName, { refererUrl: 'https://www.netflix.com/account/profiles', pin4: maybePin });
+    } else {
+      // là tên
+      okRename = await renameProfileByName(page, oldOrId, newName, { pin4: maybePin });
+    }
+
+    console.log(okRename ? '✅ RENAME DONE' : '❌ RENAME FAIL');
+    await holdOrExit(okRename ? 0 : 1);
+    return;
+  }
+}
 
     // Lấy settingsId
     let settingsId = null;
