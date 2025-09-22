@@ -5,7 +5,11 @@ import Order from "../models/Order.js";
 import Account50k from "../models/Account50k.js";
 import NetflixAccount from "../models/NetflixAccount.js";
 import Customer from "../models/Customer.js";
-import { triggerNetflixAutomation } from "../services/netflixAutomation.js";
+import {
+  triggerNetflixAutomation,
+  triggerNetflixPinUpdate,
+  triggerNetflixProfileRename,
+} from "../services/netflixAutomation.js";
 
 /** Determine whether the current MongoDB topology supports transactions. */
 function supportsTransactions() {
@@ -534,6 +538,14 @@ export async function updatePremiumProfileName(req, res) {
       });
     }
 
+    const previousName = profile.name || order.profileName || "";
+    const automationPin = (() => {
+      const fromProfile = typeof profile.pin === "string" ? profile.pin.trim() : "";
+      if (/^\d{4}$/.test(fromProfile)) return fromProfile;
+      const fromOrder = typeof order.pin === "string" ? order.pin.trim() : "";
+      return fromOrder;
+    })();
+
     profile.name = normalizedName;
     await account.save();
 
@@ -548,6 +560,23 @@ export async function updatePremiumProfileName(req, res) {
 
     await order.save();
     const updatedOrder = await reloadOrderLean(order._id);
+
+    if (previousName && previousName !== normalizedName) {
+      triggerNetflixProfileRename({
+        email: account.email,
+        password: account.password,
+        currentProfileName: previousName,
+        newProfileName: normalizedName,
+        pin: automationPin,
+      });
+    } else if (!previousName && /^\d{4}$/.test(automationPin)) {
+      triggerNetflixAutomation({
+        email: account.email,
+        password: account.password,
+        profileName: normalizedName,
+        pin: automationPin,
+      });
+    }
 
     return res.json({
       success: true,
@@ -614,6 +643,20 @@ export async function updatePremiumPin(req, res) {
 
     await order.save();
     const updatedOrder = await reloadOrderLean(order._id);
+
+    const profileNameForPin = (() => {
+      const fromProfile = typeof profile.name === "string" ? profile.name.trim() : "";
+      if (fromProfile) return fromProfile;
+      const fromOrder = typeof order.profileName === "string" ? order.profileName.trim() : "";
+      return fromOrder;
+    })();
+
+    triggerNetflixPinUpdate({
+      email: account.email,
+      password: account.password,
+      profileName: profileNameForPin,
+      pin: normalizedPin,
+    });
 
     return res.json({
       success: true,
