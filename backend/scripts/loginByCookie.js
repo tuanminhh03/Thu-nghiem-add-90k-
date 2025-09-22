@@ -177,34 +177,74 @@ function isExpired(expiresAt, now = new Date(), graceDays = 0) {
  * - Nếu forceOldest: chọn expiresAt sớm nhất
  */
 function pickEvictionCandidate(uiNames = [], dbMap = new Map(), opts = {}) {
-  const { graceDays = 0, forceOldest = false, preferredVictim = null } = opts;
+  const {
+    graceDays = 0,
+    forceOldest = false,
+    preferredVictim = null,
+    protectedIndices = [],
+  } = opts;
 
   if (preferredVictim && uiNames.includes(preferredVictim)) return preferredVictim;
 
-  const unknown = uiNames.find(n => !dbMap.has(n));
-  if (unknown) return unknown;
+  const protectedSet = new Set(
+    Array.isArray(protectedIndices)
+      ? protectedIndices.map((v) => Number(v)).filter((v) => Number.isInteger(v) && v >= 0)
+      : []
+  );
 
-  let expiredBest = null;
-  let expiredBestDate = null;
-  for (const n of uiNames) {
-    const exp = dbMap.get(n);
-    if (exp && isExpired(exp, new Date(), graceDays)) {
-      if (!expiredBestDate || exp < expiredBestDate) {
-        expiredBest = n; expiredBestDate = exp;
-      }
+  const indices = uiNames.map((_, idx) => idx);
+  const openIndices = indices.filter((idx) => !protectedSet.has(idx));
+  const fallbackIndices = indices.filter((idx) => protectedSet.has(idx));
+
+  const firstMatchingIndex = (list, predicate) => {
+    for (const idx of list) {
+      if (predicate(uiNames[idx], idx)) return idx;
     }
-  }
-  if (expiredBest) return expiredBest;
+    return undefined;
+  };
+
+  const selectUnknown = () => {
+    let idx = firstMatchingIndex(openIndices, (name) => !dbMap.has(name));
+    if (idx === undefined) {
+      idx = firstMatchingIndex(fallbackIndices, (name) => !dbMap.has(name));
+    }
+    return idx;
+  };
+
+  const selectExpired = (predicate) => {
+    const pickFrom = (list) => {
+      let bestIdx = -1;
+      let bestDate = null;
+      for (const idx of list) {
+        const name = uiNames[idx];
+        const exp = dbMap.get(name);
+        if (!exp) continue;
+        if (!predicate(exp)) continue;
+        if (!bestDate || exp < bestDate) {
+          bestDate = exp;
+          bestIdx = idx;
+        }
+      }
+      return bestIdx;
+    };
+
+    let idx = pickFrom(openIndices);
+    if (idx === -1) {
+      idx = pickFrom(fallbackIndices);
+    }
+    return idx;
+  };
+
+  let idx = selectUnknown();
+  if (idx !== undefined) return uiNames[idx];
+
+  const now = new Date();
+  idx = selectExpired((exp) => isExpired(exp, now, graceDays));
+  if (idx !== -1) return uiNames[idx];
 
   if (forceOldest) {
-    let oldest = null, oldestDate = null;
-    for (const n of uiNames) {
-      const exp = dbMap.get(n);
-      if (exp && (!oldestDate || exp < oldestDate)) {
-        oldest = n; oldestDate = exp;
-      }
-    }
-    if (oldest) return oldest;
+    idx = selectExpired(() => true);
+    if (idx !== -1) return uiNames[idx];
   }
 
   return null;
@@ -867,24 +907,46 @@ async function clickSaveOnEdit(page) {
 
 // API: đổi tên theo settingsId (kèm optional set PIN)
 async function renameProfileById(page, settingsId, newName, { refererUrl, pin4 } = {}) {
-  const okNav = await hardGotoEditProfile(page, settingsId, refererUrl);
-  if (!okNav) { console.log('❌ Không vào được trang Edit.'); return false; }
+  const attempts = 2;
+  let confirmed = false;
+  let lastNames = null;
 
-  const typed = await typeEditProfileName(page, newName);
-  if (!typed) { console.log('❌ Không gõ được tên mới.'); return false; }
+  for (let i = 1; i <= attempts && !confirmed; i++) {
+    if (i > 1) { console.log(`🔁 Thử đổi tên lại (lần ${i}/${attempts})…`); }
 
-  const saved = await clickSaveOnEdit(page);
-  if (!saved) { console.log('⚠️ Không xác nhận được trạng thái Lưu (có thể vẫn OK).'); }
+    const okNav = await hardGotoEditProfile(page, settingsId, refererUrl);
+    if (!okNav) { console.log('❌ Không vào được trang Edit.'); return false; }
 
-  // xác nhận tên đã đổi (không bắt buộc nhưng tốt nên có)
-  try {
-    await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:30000 }).catch(()=>{});
-    await gentleReveal(page);
-    const names = await getProfileNames(page);
-    if (!names.includes(newName)) {
+    const typed = await typeEditProfileName(page, newName);
+    if (!typed) { console.log('❌ Không gõ được tên mới.'); return false; }
+
+    const saved = await clickSaveOnEdit(page);
+    if (!saved) { console.log('⚠️ Không xác nhận được trạng thái Lưu (có thể vẫn OK).'); }
+
+    await sleep(600);
+
+    try {
+      await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:30000 }).catch(()=>{});
+      await gentleReveal(page);
+      const names = await getProfileNames(page);
+      lastNames = names;
+      if (names.includes(newName)) {
+        confirmed = true;
+        break;
+      }
       console.log('⚠️ Danh sách chưa phản ánh tên mới:', names);
+      await sleep(800);
+    } catch {}
+  }
+
+  if (!confirmed) {
+    if (lastNames) {
+      console.log('❌ Không thấy tên mới sau khi đổi. Danh sách hiện tại:', lastNames);
+    } else {
+      console.log('❌ Không thấy tên mới sau khi đổi.');
     }
-  } catch {}
+    return false;
+  }
 
   // nếu có PIN → đặt PIN
   if (/^\d{4}$/.test(pin4 || '')) {
@@ -2182,8 +2244,12 @@ async function autoProvisionProfile(page, wantedName, pin4, { isKids = false } =
   }
   const preferredVictim = preferredVictimRaw ? normalizeName(preferredVictimRaw) : null;
 
-  const victimNorm = pickEvictionCandidate(top5Norm, dbMapNorm,
-    { graceDays, forceOldest, preferredVictim });
+  const victimNorm = pickEvictionCandidate(top5Norm, dbMapNorm, {
+    graceDays,
+    forceOldest,
+    preferredVictim,
+    protectedIndices: [0],
+  });
   const victim = victimNorm ? (uiIndex.get(victimNorm) || victimNorm) : null;
 
   if (!victim) {
@@ -2209,7 +2275,21 @@ async function autoProvisionProfile(page, wantedName, pin4, { isKids = false } =
       throw e;
     }
   }
-  if (!okDel) { console.log('❌ Xoá thất bại.'); return false; }
+
+  if (!okDel) {
+    console.log('⚠️ Xoá thất bại → thử đổi tên trực tiếp thay thế…');
+    const renamed = await renameProfileById(page, res.id, wantedName, {
+      refererUrl: res.settingsUrl,
+      pin4,
+    });
+    if (renamed) {
+      console.log('✅ Đã đổi tên hồ sơ (không cần tạo mới).');
+      return true;
+    }
+    console.log('❌ Đổi tên cũng thất bại.');
+    return false;
+  }
+
   console.log('✅ Đã xoá hồ sơ:', victim);
 
   // Tạo + đặt PIN
