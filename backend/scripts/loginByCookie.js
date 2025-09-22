@@ -2209,7 +2209,21 @@ async function autoProvisionProfile(page, wantedName, pin4, { isKids = false } =
       throw e;
     }
   }
-  if (!okDel) { console.log('❌ Xoá thất bại.'); return false; }
+
+  if (!okDel) {
+    console.log('⚠️ Xoá thất bại → thử đổi tên trực tiếp thay thế…');
+    const renamed = await renameProfileById(page, res.id, wantedName, {
+      refererUrl: res.settingsUrl,
+      pin4,
+    });
+    if (renamed) {
+      console.log('✅ Đã đổi tên hồ sơ (không cần tạo mới).');
+      return true;
+    }
+    console.log('❌ Đổi tên cũng thất bại.');
+    return false;
+  }
+
   console.log('✅ Đã xoá hồ sơ:', victim);
 
   // Tạo + đặt PIN
