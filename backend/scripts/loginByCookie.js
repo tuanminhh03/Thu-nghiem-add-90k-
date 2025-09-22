@@ -867,24 +867,46 @@ async function clickSaveOnEdit(page) {
 
 // API: đổi tên theo settingsId (kèm optional set PIN)
 async function renameProfileById(page, settingsId, newName, { refererUrl, pin4 } = {}) {
-  const okNav = await hardGotoEditProfile(page, settingsId, refererUrl);
-  if (!okNav) { console.log('❌ Không vào được trang Edit.'); return false; }
+  const attempts = 2;
+  let confirmed = false;
+  let lastNames = null;
 
-  const typed = await typeEditProfileName(page, newName);
-  if (!typed) { console.log('❌ Không gõ được tên mới.'); return false; }
+  for (let i = 1; i <= attempts && !confirmed; i++) {
+    if (i > 1) { console.log(`🔁 Thử đổi tên lại (lần ${i}/${attempts})…`); }
 
-  const saved = await clickSaveOnEdit(page);
-  if (!saved) { console.log('⚠️ Không xác nhận được trạng thái Lưu (có thể vẫn OK).'); }
+    const okNav = await hardGotoEditProfile(page, settingsId, refererUrl);
+    if (!okNav) { console.log('❌ Không vào được trang Edit.'); return false; }
 
-  // xác nhận tên đã đổi (không bắt buộc nhưng tốt nên có)
-  try {
-    await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:30000 }).catch(()=>{});
-    await gentleReveal(page);
-    const names = await getProfileNames(page);
-    if (!names.includes(newName)) {
+    const typed = await typeEditProfileName(page, newName);
+    if (!typed) { console.log('❌ Không gõ được tên mới.'); return false; }
+
+    const saved = await clickSaveOnEdit(page);
+    if (!saved) { console.log('⚠️ Không xác nhận được trạng thái Lưu (có thể vẫn OK).'); }
+
+    await sleep(600);
+
+    try {
+      await page.goto('https://www.netflix.com/account/profiles', { waitUntil:'networkidle2', timeout:30000 }).catch(()=>{});
+      await gentleReveal(page);
+      const names = await getProfileNames(page);
+      lastNames = names;
+      if (names.includes(newName)) {
+        confirmed = true;
+        break;
+      }
       console.log('⚠️ Danh sách chưa phản ánh tên mới:', names);
+      await sleep(800);
+    } catch {}
+  }
+
+  if (!confirmed) {
+    if (lastNames) {
+      console.log('❌ Không thấy tên mới sau khi đổi. Danh sách hiện tại:', lastNames);
+    } else {
+      console.log('❌ Không thấy tên mới sau khi đổi.');
     }
-  } catch {}
+    return false;
+  }
 
   // nếu có PIN → đặt PIN
   if (/^\d{4}$/.test(pin4 || '')) {
