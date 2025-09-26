@@ -12,8 +12,10 @@ export default function AdminLayout({ children }) {
     { href: '/admin/orders', label: 'Đơn hàng' },
     { href: '/admin/netflix-accounts', label: 'Tài khoản gói cao cấp' },
     { href: '/admin/netflix-accounts-50k', label: 'Tài khoản gói tiết kiệm' },
-    { href: '/admin/logs', label: 'Nhật ký' }
+    { href: '/admin/logs', label: 'Nhật ký' },
   ];
+
+  const activeLink = links.find((l) => location.pathname.startsWith(l.href));
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -21,38 +23,68 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="admin-container">
+    <div className="admin-shell">
       <aside className="admin-sidebar">
-        {/* tiêu đề sidebar */}
-        <div className="admin-sidebar-header">Admin Panel</div>
+        <div className="admin-sidebar-header">
+          <span className="admin-brand-initial">NF</span>
+          <div>
+            <p className="admin-brand-title">Netflix Admin</p>
+            <p className="admin-brand-subtitle">Control Center</p>
+          </div>
+        </div>
 
-        {/* nav links */}
-        <nav className="flex-1 overflow-y-auto">
-          {links.map(l => (
+        <nav className="admin-nav">
+          {links.map((link) => (
             <Link
-              key={l.href}
-              to={l.href}
+              key={link.href}
+              to={link.href}
               className={`nav-link ${
-                location.pathname.startsWith(l.href) ? 'active' : ''
+                location.pathname.startsWith(link.href) ? 'active' : ''
               }`}
             >
-              {l.label}
+              <span className="nav-indicator" />
+              {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* logout */}
-        <button
-          onClick={handleLogout}
-          className="btn btn-danger"
-        >
-          Đăng xuất
-        </button>
+        <div className="admin-sidebar-footer">
+          <button onClick={handleLogout} className="btn btn-outline">
+            Đăng xuất
+          </button>
+          <p className="sidebar-hint">Giữ an toàn cho thông tin khách hàng và số dư ví.</p>
+        </div>
       </aside>
 
-      <main className="admin-content">
-        {children}
-      </main>
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <div className="topbar-left">
+            <span className="topbar-breadcrumb">Trang quản trị</span>
+            <h1 className="topbar-title">{activeLink?.label || 'Admin'}</h1>
+          </div>
+
+          <div className="topbar-right">
+            <button
+              className="btn btn-soft"
+              onClick={() => window.open('https://t.me/netflixsupport', '_blank')}
+              type="button"
+            >
+              Hỗ trợ
+            </button>
+            <div className="topbar-divider" />
+            <div className="topbar-user">
+              <span className="topbar-avatar">AD</span>
+              <div>
+                <p className="user-name">Quản trị viên</p>
+                <p className="user-role">Administrator</p>
+                <span className="topbar-status">Đang trực tuyến</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="admin-content">{children}</main>
+      </div>
     </div>
   );
 }
