@@ -1,9 +1,60 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import Modal from './Modal';
 import './Admin.css';
+
+const currencyFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+
+const formatCurrency = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return currencyFormatter.format(Number(value));
+};
+
+const formatDate = (value) => {
+  try {
+    return new Date(value).toLocaleDateString('vi-VN');
+  } catch {
+    return '—';
+  }
+};
+
+const getBalanceTone = (amount) => {
+  if (amount >= 300000) return 'success';
+  if (amount >= 100000) return 'warning';
+  return 'neutral';
+};
+
+const statIcon = (type) => {
+  switch (type) {
+    case 'customers':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 0a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.31 0-6 1.79-6 4v1a1 1 0 0 0 1 1h10.2a6.26 6.26 0 0 1-.2-1.5A6.5 6.5 0 0 1 21.5 11a6.32 6.32 0 0 1 1.5.18V7c0-2.21-2.69-4-6-4a6.32 6.32 0 0 0-1.5.18 6.32 6.32 0 0 0-1.5-.18c-3.31 0-6 1.79-6 4v6Z" />
+        </svg>
+      );
+    case 'balance':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5a1 1 0 0 0-1 1v3h18V6a1 1 0 0 0-1-1Zm17 6H3v7a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1Zm-11 5H7a1 1 0 0 1 0-2h3a1 1 0 0 1 0 2Zm7-3h-3a1 1 0 0 1 0-2h3a1 1 0 0 1 0 2Z" />
+        </svg>
+      );
+    case 'growth':
+    default:
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m3 13 5-5 4 4 6-6 3 3-9 9-4-4-3 3Z" />
+        </svg>
+      );
+  }
+};
 
 export default function AdminDashboard() {
   // ========================
@@ -55,6 +106,68 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (token) fetchCustomers();
   }, [token, fetchCustomers]);
+
+  const dashboardMetrics = useMemo(() => {
+    if (!customers.length) {
+      return {
+        total: 0,
+        active: 0,
+        balance: 0,
+        newThisMonth: 0,
+      };
+    }
+
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const totalBalance = customers.reduce(
+      (acc, customer) => acc + (Number(customer.amount) || 0),
+      0
+    );
+
+    const activeCustomers = customers.filter(
+      (customer) => (Number(customer.amount) || 0) > 0
+    ).length;
+
+    const recentCustomers = customers.filter((customer) => {
+      const created = new Date(customer.createdAt);
+      return (
+        created.getMonth() === thisMonth && created.getFullYear() === thisYear
+      );
+    }).length;
+
+    return {
+      total: customers.length,
+      active: activeCustomers,
+      balance: totalBalance,
+      newThisMonth: recentCustomers,
+    };
+  }, [customers]);
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: 'customers',
+        label: 'Tổng khách hàng',
+        value: dashboardMetrics.total,
+        helper: 'Số lượng tài khoản đang quản lý',
+      },
+      {
+        key: 'balance',
+        label: 'Tổng số dư',
+        value: formatCurrency(dashboardMetrics.balance),
+        helper: 'Tổng số dư trong ví khách hàng',
+      },
+      {
+        key: 'growth',
+        label: 'Khách mới trong tháng',
+        value: dashboardMetrics.newThisMonth,
+        helper: 'Tính theo tháng hiện tại',
+      },
+    ],
+    [dashboardMetrics]
+  );
 
   // ========================
   // 3. Handlers
@@ -129,121 +242,178 @@ export default function AdminDashboard() {
   // ========================
   return (
     <AdminLayout>
-      <div className="card">
-        <header className="admin-header">
-          <h1 className="text-xl font-semibold">Quản lý khách hàng</h1>
-          <button onClick={fetchCustomers} className="btn btn-primary">
-            Làm mới
-          </button>
-        </header>
+      <section className="dashboard">
+        <div className="dashboard-hero">
+          <div>
+            <h1>Quản lý khách hàng</h1>
+            <p>Theo dõi tình trạng tài khoản và số dư khách hàng theo thời gian thực.</p>
+          </div>
+          <div className="hero-actions">
+            <button onClick={fetchCustomers} className="btn btn-primary" type="button">
+              Làm mới dữ liệu
+            </button>
+          </div>
+        </div>
 
-        {/* Thông báo lỗi/thành công */}
         {msg?.text && (
-          <p
-            className={`mb-4 text-center ${
-              msg.type === 'success' ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
+          <div className={`alert ${msg.type === 'success' ? 'alert-success' : 'alert-danger'}`}>
             {msg.text}
-          </p>
+          </div>
         )}
 
-        {/* Form tìm kiếm */}
-        <form onSubmit={handleSearch} className="form-search">
-          <input
-            type="text"
-            placeholder="Tìm theo SĐT"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input"
-          />
-          <button type="submit" className="btn btn-primary">
-            Tìm kiếm
-          </button>
-        </form>
+        <div className="stat-card-grid">
+          {statCards.map((card) => (
+            <article key={card.key} className="stat-card">
+              <div className="stat-icon">{statIcon(card.key)}</div>
+              <div className="stat-content">
+                <p className="stat-label">{card.label}</p>
+                <p className="stat-value">{card.value}</p>
+                <p className="stat-helper">{card.helper}</p>
+              </div>
+            </article>
+          ))}
+        </div>
 
-        {/* Bảng dữ liệu */}
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Tên khách hàng</th>
-                <th>Tài khoản (SĐT)</th>
-                <th>Ngày tạo TK</th>
-                <th>Số dư hiện tại</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c, idx) => (
-                <tr key={c._id}>
-                  <td>{idx + 1}</td>
-                  <td>{c.name}</td>
-                  <td>
-                    <Link
-                      to={`/admin/customers/${c._id}/orders`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {c.phone}
-                    </Link>
-                  </td>
-                  <td>{new Date(c.createdAt).toLocaleDateString('vi-VN')}</td>
-                  <td>{c.amount}</td>
-                  <td className="text-center">
-                    <a
-                      href={`/admin/customers/${c._id}/reset-pin`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-primary mr-2"
-                    >
-                      Đặt lại PIN
-                    </a>
-                    <button
-                      onClick={() => openTopup(c)}
-                      className="btn btn-primary mr-2"
-                    >
-                      Nạp tiền
-                    </button>
-                    <button
-                      onClick={() => openDelete(c)}
-                      className="btn btn-danger"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {customers.length === 0 && (
+        <section className="surface-card">
+          <header className="surface-header">
+            <div>
+              <h2>Danh sách khách hàng</h2>
+              <p>Thông tin trạng thái ví, đơn hàng và tác vụ quản lý nhanh.</p>
+            </div>
+            <div className="surface-meta">
+              <span className="meta-item">Tổng số: {dashboardMetrics.total}</span>
+              <span className="meta-item">Đang hoạt động: {dashboardMetrics.active}</span>
+            </div>
+          </header>
+
+          <form onSubmit={handleSearch} className="form-search">
+            <div className="input-group">
+              <span className="input-icon" aria-hidden="true">🔍</span>
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo số điện thoại"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input"
+              />
+            </div>
+            <button type="submit" className="btn btn-soft">
+              Tìm kiếm
+            </button>
+          </form>
+
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan="6" className="text-center">
-                    Không có khách hàng
-                  </td>
+                  <th>STT</th>
+                  <th>Khách hàng</th>
+                  <th>Số điện thoại</th>
+                  <th>Ngày tạo</th>
+                  <th>Số dư</th>
+                  <th>Thao tác</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="pagination">
-          <button
-            className="btn"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Trang trước
-          </button>
-          <span className="mx-2">
-            {page}/{pages}
-          </span>
-          <button
-            className="btn"
-            onClick={() => setPage((p) => Math.min(pages, p + 1))}
-            disabled={page === pages}
-          >
-            Trang sau
-          </button>
-        </div>
-      </div>
+              </thead>
+              <tbody>
+                {customers.map((customer, idx) => {
+                  const safeId = customer._id || `${customer.phone}-${idx}`;
+                  const shortId = customer._id ? customer._id.slice(-6) : 'N/A';
+                  const avatarText = (customer.name || customer.phone || 'U')[0]?.toUpperCase();
+
+                  return (
+                    <tr key={safeId}>
+                      <td>{(page - 1) * 10 + idx + 1}</td>
+                      <td>
+                        <div className="customer-cell">
+                          <span className="customer-avatar">{avatarText}</span>
+                          <div>
+                            <p className="customer-name">{customer.name || 'Chưa cập nhật'}</p>
+                            <p className="customer-note">ID: {shortId}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <Link
+                          to={`/admin/customers/${customer._id}/orders`}
+                          className="link"
+                        >
+                          {customer.phone}
+                        </Link>
+                      </td>
+                      <td>{formatDate(customer.createdAt)}</td>
+                      <td>
+                        <span
+                          className={`balance-badge ${getBalanceTone(Number(customer.amount) || 0)}`}
+                        >
+                          {formatCurrency(customer.amount)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <a
+                            href={`/admin/customers/${customer._id}/reset-pin`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-ghost"
+                          >
+                            Đặt lại PIN
+                          </a>
+                          <button
+                            onClick={() => openTopup(customer)}
+                            className="btn btn-soft"
+                            type="button"
+                          >
+                            Nạp tiền
+                          </button>
+                          <button
+                            onClick={() => openDelete(customer)}
+                            className="btn btn-danger"
+                            type="button"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {customers.length === 0 && (
+                  <tr>
+                    <td colSpan="6">
+                      <div className="empty-state">
+                        <h3>Không có dữ liệu</h3>
+                        <p>Hãy thử điều chỉnh bộ lọc hoặc thêm khách hàng mới.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pagination">
+            <button
+              className="btn btn-ghost"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              type="button"
+            >
+              Trang trước
+            </button>
+            <span className="pagination-status">
+              Trang {page} / {pages}
+            </span>
+            <button
+              className="btn btn-ghost"
+              onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              disabled={page === pages}
+              type="button"
+            >
+              Trang sau
+            </button>
+          </div>
+        </section>
+      </section>
       {showTopup && (
         <Modal onClose={() => setShowTopup(false)}>
           <h2 className="text-lg mb-4">Nạp tiền cho {selected?.phone}</h2>
