@@ -577,6 +577,9 @@ export const buyAccountGTK = async (req, res) => {
 
     // 4. Trừ tiền user
     customer.amount -= amount;
+    if (!customer.name) {
+      customer.name = "Khách mới";
+    }
     await customer.save();
 
     // 5. Tạo Order mới
