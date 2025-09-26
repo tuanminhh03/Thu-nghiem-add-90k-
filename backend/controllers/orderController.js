@@ -133,6 +133,9 @@ export const localSavings = async (req, res) => {
     }
 
     customer.amount -= amountNum;
+    if (!customer.name) {
+      customer.name = "Khách mới";
+    }
     await customer.save();
 
     const newOrder = await Order.create({
