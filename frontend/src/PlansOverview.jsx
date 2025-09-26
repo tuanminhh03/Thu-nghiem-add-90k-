@@ -10,6 +10,8 @@ import {
   ShieldCheckIcon,
   StarIcon,
   ArrowsPointingOutIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 
 const API_BASE = "http://localhost:5000/api";
@@ -21,13 +23,14 @@ export default function PlansOverview() {
   const [selectedDuration, setSelectedDuration] = useState(durations[0]);
   const [profileName, setProfileName] = useState('');
   const [profilePin, setProfilePin] = useState('');
+  const [openFaq, setOpenFaq] = useState(null); // <— state cho accordion FAQ
   const navigate = useNavigate();
 
   const planDescriptions = {
     'Gói tiết kiệm':
-      'Trong quá trình sử dụng bạn có thể gặp vấn đề bị thoát tài khoản và phải đổi tài khoản khác trong quá trình sử dụng, để khắc phục cho vấn đề đó, bên em có Website bảo hành tự động 24/7, đảm bảo rằng mọi người có thể tự lấy tài khoản dễ dàng khi gặp lỗi.',
+      'Trong quá trình sử dụng, tài khoản có thể gặp sự cố đăng xuất và phải đổi tài khoản khác. Để khắc phục, hệ thống bảo hành tự động 24/7 của Dailywithminh cho phép bạn chủ động lấy tài khoản khác tự động 24/7, giúp bạn không bị gián đoạn thời gian xem phim',
     'Gói cao cấp':
-      'Đối với gói cao cấp, quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng. Có Website lấy mã hộ gia đình tự động 24/7',
+      'Gói này phù hợp với quý khách yêu thích sự ổn định, không bị đổi tài khoản. Quý khách sẽ được cấp tài khoản có chứa 5 hồ sơ, quý khách sẽ dụng 1 hồ sơ trong 5 hồ sơ đó. Quý khách được đặt hồ sơ riêng + mã PIN riêng.Có đường link lấy mã hộ gia đình tự động 24/7',
   };
 
   // Giá hiển thị (tĩnh, để render)
@@ -49,23 +52,20 @@ export default function PlansOverview() {
   const handlePlanChange = (plan) => {
     setSelectedPlan(plan);
     setSelectedDuration(durations[0]);
-
     if (plan !== 'Gói cao cấp') {
       setProfileName('');
       setProfilePin('');
     }
   };
 
-  // amount dựa trên priceMapValue (bạn có file priceMapValue)
+  // amount dựa trên priceMapValue
   const amount = selectedPlan ? priceMapValue[selectedPlan][selectedDuration] : 0;
   const displayPrice = selectedPlan
     ? priceMapDisplay[selectedPlan][selectedDuration]
     : 'Giá từ 50.000₫ đến 1.000.000₫';
 
-  // token (JWT) từ localStorage
   const token = localStorage.getItem('token');
 
-  // map duration sang số ngày
   const durationToDays = {
     '01 tháng': 30,
     '03 tháng': 90,
@@ -84,7 +84,6 @@ export default function PlansOverview() {
         alert('Vui lòng nhập tên hồ sơ mà bạn muốn sử dụng.');
         return;
       }
-
       if (!/^\d{4}$/.test(sanitizedPin)) {
         alert('Mã PIN phải gồm đúng 4 chữ số.');
         return;
@@ -93,7 +92,6 @@ export default function PlansOverview() {
 
     if (!window.confirm('Bạn có muốn thanh toán không?')) return;
 
-    // Kiểm tra user đăng nhập bằng localStorage.user (giữ logic hiện tại của bạn)
     const stored = localStorage.getItem('user');
     if (!stored) {
       alert('Vui lòng đăng nhập để thanh toán');
@@ -108,55 +106,49 @@ export default function PlansOverview() {
       return;
     }
 
-  //  Gói tiết kiệm
-  if (selectedPlan === 'Gói tiết kiệm') {
-    try {
-      const planDays = durationToDays[selectedDuration] || 30;
+    if (selectedPlan === 'Gói tiết kiệm') {
+      try {
+        const planDays = durationToDays[selectedDuration] || 30;
+        const res = await axios.post(
+          `${API_BASE}/account50k/buy`,
+          { planDays, amount },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-      const res = await axios.post(
-        'http://localhost:5000/api/account50k/buy',
-        { planDays, amount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        if (!res.data || res.data.success !== true) {
+          throw new Error(res.data?.message || 'Mua thất bại');
+        }
 
-      if (!res.data || res.data.success !== true) {
-        throw new Error(res.data?.message || 'Mua thất bại');
+        const { order } = res.data.data;
+        alert(
+          `Thanh toán thành công!\nMã đơn: ${order.orderCode}\nUsername: ${order.accountEmail}\nPassword: ${order.accountPassword}`
+        );
+        navigate('/my-orders');
+      } catch (err) {
+        console.error('Lỗi mua Gói tiết kiệm:', err);
+        alert(err?.response?.data?.message || err.message || 'Mua thất bại');
       }
-
-      const { order } = res.data.data;
-
-      alert(
-        `Thanh toán thành công!\nMã đơn: ${order.orderCode}\nUsername: ${order.accountEmail}\nPassword: ${order.accountPassword}`
-      );
-
-      navigate('/my-orders');
-    } catch (err) {
-      console.error('Lỗi mua Gói tiết kiệm:', err);
-      alert(err?.response?.data?.message || err.message || 'Mua thất bại');
+      return;
     }
-    return;
-  }
 
-    // ===== Nhánh Gói cao cấp (giữ nguyên logic cũ gọi /api/orders) =====
+    // Gói cao cấp
     try {
       const payload = {
         plan: selectedPlan,
         duration: selectedDuration,
         amount,
+        ...(selectedPlan === 'Gói cao cấp' && {
+          profileName: profileName.trim(),
+          pin: profilePin.trim(),
+        }),
       };
 
-      if (selectedPlan === 'Gói cao cấp') {
-        payload.profileName = profileName.trim();
-        payload.pin = profilePin.trim();
-      }
-
       const { data } = await axios.post(
-        'http://localhost:5000/api/orders',
+        `${API_BASE}/orders`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // trừ tiền local
       user.amount -= amount;
       localStorage.setItem('user', JSON.stringify(user));
 
@@ -181,6 +173,26 @@ export default function PlansOverview() {
       alert(`Thanh toán thất bại: ${serverMsg || 'Lỗi server'}`);
     }
   };
+
+  // ===== FAQ content =====
+  const faqs = [
+    {
+      q: 'Sự khác nhau giữa Gói tiết kiệm và Gói cao cấp?',
+      a: 'Gói tiết kiệm có thể bị đổi tài khoản khi phát sinh lỗi, nhưng có hệ thống bảo hành tự động 24/7. Gói cao cấp giữ tài khoản ổn định, có hồ sơ riêng và PIN riêng, không bị đổi tài khoản.',
+    },
+    {
+      q: 'Làm sao để tránh bị đổi tài khoản ở Gói Tiết Kiệm?',
+      a: 'Để hạn chế bị đăng xuất và phải đổi tài khoản khác thì \n1. Không thêm xóa sửa hồ sơ có sẵn trong tài khoản, có hồ sơ nào mình cứ dùng.\n2. Không được đổi ngôn ngữ giao diện có sẵn trong hồ sơ. Nếu ngôn ngữ khó nhìn quá vui lòng liên hệ CSKH của dailywithminh để được đổi ngôn ngữ hoặc đổi tài khoản khác nha',
+    },
+    {
+      q: 'Đối với gói Tiết Kiệm làm sao để xem được vietsub khi mà tài khoản đang giao diện ngôn ngữ khác?',
+      a: 'Bạn có thể tìm phim bạn muốn xem bằng tiếng việt nó sẽ hiện ra ngay đầu. Nếu muốn xem phim với vietsub bạn cứ ấn vào phim sau đó chọn phụ đề là vietnamese hoặc liên quan đến vietnam như là vietnamita, ...',
+    },
+    {
+      q: 'Dailywithminh có uy tín không?',
+      a: 'Quá uy tín là quá uy tín =)))))))))',
+    },
+  ];
 
   return (
     <div className="plans-overview">
@@ -301,7 +313,7 @@ export default function PlansOverview() {
         </div>
       </div>
 
-      {/* Sticky CTA (hiện trên mobile nhờ CSS) */}
+      {/* Sticky CTA (mobile) */}
       {selectedPlan && (
         <div className="sticky-cta">
           <div className="summary">
@@ -315,6 +327,39 @@ export default function PlansOverview() {
           </button>
         </div>
       )}
+
+      {/* ===== FAQ SECTION (nằm dưới giao diện) ===== */}
+      <section id="faq" className="faq-section pro">
+  <div className="faq-container">
+    <header className="faq-head">
+      <p className="faq-eyebrow">Hỗ trợ nhanh</p>
+      <h2 className="faq-title">Câu hỏi thường gặp</h2>
+      <p className="faq-subtitle">Những thắc mắc phổ biến khi mua gói Netflix tại Dailywithminh</p>
+    </header>
+
+    <ul className="faq-list">
+      {faqs.map((item, idx) => {
+        const opened = openFaq === idx;
+        return (
+          <li key={idx} className={`faq-item pro ${opened ? 'open' : ''}`}>
+            <button
+              className="faq-question pro"
+              onClick={() => setOpenFaq(opened ? null : idx)}
+              aria-expanded={opened}
+            >
+              <span className="q-text">{item.q}</span>
+              <span className={`chev ${opened ? 'rot' : ''}`} aria-hidden />
+            </button>
+            <div className="faq-answer pro" style={{ maxHeight: opened ? '320px' : '0px' }}>
+              <p>{item.a}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</section>
+
     </div>
   );
 }

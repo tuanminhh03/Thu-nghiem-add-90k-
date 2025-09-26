@@ -1,11 +1,11 @@
-/* Container chính */
+/* ======= Container chính ======= */
 .customer-dashboard .card {
-  max-width: 1200px;          /* Giới hạn chiều rộng */
-  margin: 2rem auto;          /* Canh giữa */
+  max-width: 1200px;
+  margin: 2rem auto;
   padding: 2rem;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 1rem;        /* Bo góc mềm mại */
+  border-radius: 1rem;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
@@ -19,7 +19,7 @@
 
 /* Bảng */
 .table-wrapper {
-  overflow: auto; /* giúp sticky header hoạt động khi có scroll */
+  overflow: auto;
 }
 .table-wrapper table {
   width: 100%;
@@ -28,19 +28,15 @@
   border-radius: 0.75rem;
   overflow: hidden;
 }
-
-/* Header cố định khi scroll */
 .table-wrapper thead th {
   position: sticky;
   top: 0;
-  background: #374151;            /* Màu đậm để nổi bật */
-  color: #fafafa;                 /* Chữ trắng */
+  background: #374151;
+  color: #fafafa;
   padding: 1rem;
   font-weight: 600;
   z-index: 2;
 }
-
-/* Các hàng */
 .table-wrapper tbody tr:nth-child(even) {
   background-color: #f9fafb;
 }
@@ -48,8 +44,6 @@
   background-color: #e5e7eb;
   transition: background 0.2s;
 }
-
-/* Các ô */
 .table-wrapper td {
   padding: 0.75rem 1rem;
   color: #4b5563;
@@ -66,9 +60,10 @@
   padding: 0;
 }
 
+/* Nút chức năng */
 .info-button {
   background-color: #f59e0b;
-  color: #ffffff;
+  color: #fff;
   border: none;
   padding: 0.45rem 0.9rem;
   border-radius: 0.5rem;
@@ -77,16 +72,13 @@
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
 }
-
 .info-button:hover {
   background-color: #d97706;
   transform: translateY(-1px);
 }
-
-/* Nút Gia hạn */
 .extend-button {
-  background-color: #10b981;     /* Xanh lá tươi */
-  color: #ffffff;
+  background-color: #10b981;
+  color: #fff;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
@@ -111,144 +103,7 @@
   padding: 1rem;
 }
 
-/* Nút Bảo hành */
-.warranty-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: linear-gradient(135deg, #3b82f6, #2563eb); /* xanh dương gradient */
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-}
-.warranty-button:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.45);
-}
-.warranty-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
-}
-
-/* Trạng thái đang xử lý bảo hành */
-.warranty-processing {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
-}
-.warranty-progress-button {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  cursor: default;
-  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.3);
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-}
-
-/* Select chức năng */
-.action-select {
-  position: relative;
-  display: inline-block;
-}
-.action-select select {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 0.75rem;
-  padding: 0.6rem 2.5rem 0.6rem 0.9rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #111827;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-  transition: border-color .2s ease, box-shadow .2s ease, transform .05s ease;
-}
-.action-select select:hover {
-  border-color: #2563eb;
-  box-shadow: 0 6px 14px rgba(37,99,235,0.10);
-}
-.action-select select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.20);
-}
-.action-select select:active {
-  transform: translateY(1px);
-}
-.action-select::after {
-  content: "";
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 14px 14px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%232563eb'><path d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.06l3.71-2.83a.75.75 0 1 1 .92 1.18l-4.25 3.25a.75.75 0 0 1-.91 0L5.21 8.41a.75.75 0 0 1 .02-1.2z'/></svg>");
-
-}
-.action-select select:disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
-  border-color: #e5e7eb;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Thông báo bảo hành */
-.warranty-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.warranty-message {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-  padding: 0.45rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.premium-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.premium-action-status {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #2563eb;
-}
-
-/* Nút Copy */
+/* Copy */
 .copy-button {
   margin-left: 8px;
   padding: 2px 6px;
@@ -263,7 +118,7 @@
   background: #e0e0e0;
 }
 
-/* Mobile */
+/* Mobile spacing */
 @media (max-width: 768px) {
   .customer-dashboard .card {
     margin: 1rem;
@@ -273,4 +128,75 @@
   .table-wrapper td {
     padding: 0.5rem;
   }
+}
+
+/* ======= Overlay xoay ngang ======= */
+/* Ẩn mặc định */
+.customer-dashboard .rotate-portrait-overlay { display: none; }
+
+/* Khi màn hình dọc → hiện overlay, KHÔNG ẩn app */
+@media screen and (orientation: portrait) {
+  .customer-dashboard { position: relative; }
+  .customer-dashboard .rotate-portrait-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 41, 59, 0.65);
+    backdrop-filter: blur(3px);
+    display: grid;
+    place-items: center;
+    z-index: 2147483647;
+    pointer-events: all;
+  }
+  body { overflow: hidden; } /* chặn cuộn nền */
+}
+
+/* Card giữa màn hình */
+.customer-dashboard .rotate-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 22px 26px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+/* Icon và animation */
+.customer-dashboard .rotate-phone-wrap { position: relative; width: 120px; height: 120px; }
+.customer-dashboard .rotate-phone {
+  width: 85px; height: 135px; position: absolute; left: 12px; top: -4px;
+  transform-origin: 50% 80%;
+  animation: rotate-tilt 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+}
+@keyframes rotate-tilt {
+  0%{transform:rotate(0)}
+  30%{transform:rotate(90deg)}
+  55%{transform:rotate(85deg)}
+  75%{transform:rotate(90deg)}
+  100%{transform:rotate(0)}
+}
+.customer-dashboard .rotate-ring {
+  position: absolute; width: 95px; height: 95px; right: -6px; bottom: -2px;
+  transform-origin: 50% 50%;
+  animation: rotate-spin 2.2s linear infinite;
+  opacity: .9;
+}
+@keyframes rotate-spin {
+  0%{transform:rotate(0) scale(.95)}
+  50%{transform:rotate(180deg) scale(1)}
+  100%{transform:rotate(360deg) scale(.95)}
+}
+.customer-dashboard .rotate-text {
+  color: #e5e7eb;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: .2px;
+  text-align: center;
+}
+
+/* iOS Safari height fix */
+@supports (height: 100dvh) {
+  .customer-dashboard .rotate-portrait-overlay { height: 100dvh; }
 }
