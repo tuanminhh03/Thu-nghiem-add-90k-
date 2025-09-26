@@ -10,7 +10,6 @@ const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   currency: 'VND',
   maximumFractionDigits: 0,
 });
-
 const numberFormatter = new Intl.NumberFormat('vi-VN');
 
 const formatCurrency = (value) => {
@@ -101,7 +100,7 @@ export default function AdminDashboard() {
       });
       setCustomers(data.data);
       setPages(data.pages);
-      // Clear any previous message on successful refresh (kept from feature branch)
+      // Clear any previous message on successful refresh
       setMsg({ text: '', type: '' });
     } catch (err) {
       console.error(err);
@@ -317,8 +316,8 @@ export default function AdminDashboard() {
               <p>Thông tin trạng thái ví, đơn hàng và tác vụ quản lý nhanh.</p>
             </div>
             <div className="surface-meta">
-              <span className="meta-item">Tổng số: {dashboardMetrics.total}</span>
-              <span className="meta-item">Đang hoạt động: {dashboardMetrics.active}</span>
+              <span className="meta-item">Tổng số: {formatNumber(dashboardMetrics.total)}</span>
+              <span className="meta-item">Đang hoạt động: {formatNumber(dashboardMetrics.active)}</span>
             </div>
           </header>
 

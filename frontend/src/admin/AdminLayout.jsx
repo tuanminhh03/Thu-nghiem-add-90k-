@@ -38,9 +38,7 @@ export default function AdminLayout({ children }) {
             <Link
               key={link.href}
               to={link.href}
-              className={`nav-link ${
-                location.pathname.startsWith(link.href) ? 'active' : ''
-              }`}
+              className={`nav-link ${location.pathname.startsWith(link.href) ? 'active' : ''}`}
             >
               <span className="nav-indicator" />
               {link.label}
