@@ -26,10 +26,10 @@ export default function AdminLayout({ children }) {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <span className="admin-brand-initial">A</span>
+          <span className="admin-brand-initial">NF</span>
           <div>
-            <p className="admin-brand-title">Admin Panel</p>
-            <p className="admin-brand-subtitle">Netflix Management</p>
+            <p className="admin-brand-title">Netflix Admin</p>
+            <p className="admin-brand-subtitle">Control Center</p>
           </div>
         </div>
 
@@ -38,9 +38,7 @@ export default function AdminLayout({ children }) {
             <Link
               key={link.href}
               to={link.href}
-              className={`nav-link ${
-                location.pathname.startsWith(link.href) ? 'active' : ''
-              }`}
+              className={`nav-link ${location.pathname.startsWith(link.href) ? 'active' : ''}`}
             >
               <span className="nav-indicator" />
               {link.label}
@@ -49,20 +47,21 @@ export default function AdminLayout({ children }) {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button onClick={handleLogout} className="btn btn-ghost">
+          <button onClick={handleLogout} className="btn btn-outline">
             Đăng xuất
           </button>
+          <p className="sidebar-hint">Giữ an toàn cho thông tin khách hàng và số dư ví.</p>
         </div>
       </aside>
 
       <div className="admin-main">
         <header className="admin-topbar">
-          <div>
-            <p className="topbar-label">Trang quản trị</p>
+          <div className="topbar-left">
+            <span className="topbar-breadcrumb">Trang quản trị</span>
             <h1 className="topbar-title">{activeLink?.label || 'Admin'}</h1>
           </div>
 
-          <div className="topbar-actions">
+          <div className="topbar-right">
             <button
               className="btn btn-soft"
               onClick={() => window.open('https://t.me/netflixsupport', '_blank')}
@@ -70,11 +69,13 @@ export default function AdminLayout({ children }) {
             >
               Hỗ trợ
             </button>
+            <div className="topbar-divider" />
             <div className="topbar-user">
               <span className="topbar-avatar">AD</span>
               <div>
                 <p className="user-name">Quản trị viên</p>
                 <p className="user-role">Administrator</p>
+                <span className="topbar-status">Đang trực tuyến</span>
               </div>
             </div>
           </div>

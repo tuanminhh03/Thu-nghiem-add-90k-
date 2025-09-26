@@ -10,12 +10,20 @@ const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   currency: 'VND',
   maximumFractionDigits: 0,
 });
+const numberFormatter = new Intl.NumberFormat('vi-VN');
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
   return currencyFormatter.format(Number(value));
+};
+
+const formatNumber = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '0';
+  }
+  return numberFormatter.format(Number(value));
 };
 
 const formatDate = (value) => {
@@ -44,6 +52,12 @@ const statIcon = (type) => {
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 5a1 1 0 0 0-1 1v3h18V6a1 1 0 0 0-1-1Zm17 6H3v7a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1Zm-11 5H7a1 1 0 0 1 0-2h3a1 1 0 0 1 0 2Zm7-3h-3a1 1 0 0 1 0-2h3a1 1 0 0 1 0 2Z" />
+        </svg>
+      );
+    case 'active':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-6 8a6 6 0 0 1 12 0v1H6Zm12.3-9.7 1.7 1.71-5 5-3-3 1.71-1.71 1.29 1.3Z" />
         </svg>
       );
     case 'growth':
@@ -86,7 +100,7 @@ export default function AdminDashboard() {
       });
       setCustomers(data.data);
       setPages(data.pages);
-      // Clear any previous message on successful refresh (kept from feature branch)
+      // Clear any previous message on successful refresh
       setMsg({ text: '', type: '' });
     } catch (err) {
       console.error(err);
@@ -150,8 +164,14 @@ export default function AdminDashboard() {
       {
         key: 'customers',
         label: 'Tổng khách hàng',
-        value: dashboardMetrics.total,
-        helper: 'Số lượng tài khoản đang quản lý',
+        value: formatNumber(dashboardMetrics.total),
+        helper: 'Tổng số tài khoản đang quản lý',
+      },
+      {
+        key: 'active',
+        label: 'Khách đang hoạt động',
+        value: formatNumber(dashboardMetrics.active),
+        helper: 'Có số dư dương trong ví',
       },
       {
         key: 'balance',
@@ -162,7 +182,7 @@ export default function AdminDashboard() {
       {
         key: 'growth',
         label: 'Khách mới trong tháng',
-        value: dashboardMetrics.newThisMonth,
+        value: formatNumber(dashboardMetrics.newThisMonth),
         helper: 'Tính theo tháng hiện tại',
       },
     ],
@@ -244,14 +264,29 @@ export default function AdminDashboard() {
     <AdminLayout>
       <section className="dashboard">
         <div className="dashboard-hero">
-          <div>
+          <div className="dashboard-hero-body">
+            <span className="hero-kicker">Tổng quan khách hàng</span>
             <h1>Quản lý khách hàng</h1>
             <p>Theo dõi tình trạng tài khoản và số dư khách hàng theo thời gian thực.</p>
+            <div className="hero-meta">
+              <span className="hero-pill">
+                <strong>{formatNumber(dashboardMetrics.total)}</strong> khách hàng
+              </span>
+              <span className="hero-pill">
+                <strong>{formatNumber(dashboardMetrics.active)}</strong> đang hoạt động
+              </span>
+              <span className="hero-pill">
+                <strong>{formatNumber(dashboardMetrics.newThisMonth)}</strong> mới tháng này
+              </span>
+            </div>
           </div>
-          <div className="hero-actions">
+          <div className="dashboard-hero-actions">
             <button onClick={fetchCustomers} className="btn btn-primary" type="button">
               Làm mới dữ liệu
             </button>
+            <Link to="/admin/orders" className="btn btn-outline">
+              Xem đơn hàng
+            </Link>
           </div>
         </div>
 
@@ -281,8 +316,8 @@ export default function AdminDashboard() {
               <p>Thông tin trạng thái ví, đơn hàng và tác vụ quản lý nhanh.</p>
             </div>
             <div className="surface-meta">
-              <span className="meta-item">Tổng số: {dashboardMetrics.total}</span>
-              <span className="meta-item">Đang hoạt động: {dashboardMetrics.active}</span>
+              <span className="meta-item">Tổng số: {formatNumber(dashboardMetrics.total)}</span>
+              <span className="meta-item">Đang hoạt động: {formatNumber(dashboardMetrics.active)}</span>
             </div>
           </header>
 
