@@ -153,10 +153,7 @@ export default function AdminOrders() {
   );
 
   const stats = useMemo(() => {
-    const premiumOrders = orders.filter(o => o.plan === 'Gói cao cấp');
-    const savingOrders = orders.filter(o => o.plan === 'Gói tiết kiệm');
-    const premiumCount = premiumOrders.length;
-    const savingCount = savingOrders.length;
+
     const activeCount = orders.filter(o => {
       const expires = getExpiry(o);
       return expires.getTime() > Date.now();
@@ -167,48 +164,6 @@ export default function AdminOrders() {
       premiumCount,
       savingCount,
       activeCount,
-      premiumActive: premiumOrders.filter(o => daysLeft(o) > 0).length,
-      savingActive: savingOrders.filter(o => daysLeft(o) > 0).length,
-      premiumExpiring: premiumOrders.filter(o => {
-        const left = daysLeft(o);
-        return left > 0 && left <= 7;
-      }).length,
-      savingExpiring: savingOrders.filter(o => {
-        const left = daysLeft(o);
-        return left > 0 && left <= 7;
-      }).length,
-    };
-  }, [orders]);
-
-  const planHighlights = useMemo(() => {
-    const total = orders.length || 1;
-    return [
-      {
-        key: 'saving',
-        name: 'Gói tiết kiệm',
-        total: stats.savingCount,
-        active: stats.savingActive,
-        expiringSoon: stats.savingExpiring,
-        percentage: Math.round((stats.savingCount / total) * 100),
-      },
-      {
-        key: 'premium',
-        name: 'Gói cao cấp',
-        total: stats.premiumCount,
-        active: stats.premiumActive,
-        expiringSoon: stats.premiumExpiring,
-        percentage: Math.round((stats.premiumCount / total) * 100),
-      },
-    ];
-  }, [
-    orders.length,
-    stats.savingCount,
-    stats.premiumCount,
-    stats.savingActive,
-    stats.premiumActive,
-    stats.savingExpiring,
-    stats.premiumExpiring,
-  ]);
 
   const sorted = useMemo(() => {
     const getValue = o => {
@@ -271,41 +226,6 @@ export default function AdminOrders() {
           </div>
         </section>
 
-        <section className="orders-plan-grid" aria-label="Tổng quan gói dịch vụ">
-          {planHighlights.map(plan => (
-            <article key={plan.key} className={`plan-card plan-card-${plan.key}`}>
-              <header className="plan-card-header">
-                <div className="plan-card-chip">{plan.name}</div>
-                <span className="plan-card-percentage">{plan.percentage}% tổng đơn</span>
-              </header>
-              <div className="plan-card-body">
-                <p className="plan-card-total">{plan.total}</p>
-                <p className="plan-card-total-label">đơn hàng đã ghi nhận</p>
-                <dl className="plan-card-metrics">
-                  <div>
-                    <dt>Đang hoạt động</dt>
-                    <dd>{plan.active}</dd>
-                  </div>
-                  <div>
-                    <dt>Sắp hết hạn (≤7 ngày)</dt>
-                    <dd>{plan.expiringSoon}</dd>
-                  </div>
-                </dl>
-              </div>
-              <div className="plan-card-progress" role="presentation">
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      plan.percentage > 0 ? Math.max(plan.percentage, 12) : 6
-                    )}%`,
-                  }}
-                />
-              </div>
-            </article>
-          ))}
-        </section>
 
         <form onSubmit={handleSearch} className="orders-controls">
           <div className="orders-search-group">
