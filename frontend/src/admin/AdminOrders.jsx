@@ -143,6 +143,73 @@ export default function AdminOrders() {
     setShowDelete(false);
   };
 
+  const planFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: 'Tất cả gói' },
+      { value: 'Gói tiết kiệm', label: 'Gói tiết kiệm' },
+      { value: 'Gói cao cấp', label: 'Gói cao cấp' },
+    ],
+    []
+  );
+
+  const stats = useMemo(() => {
+    const premiumOrders = orders.filter(o => o.plan === 'Gói cao cấp');
+    const savingOrders = orders.filter(o => o.plan === 'Gói tiết kiệm');
+    const premiumCount = premiumOrders.length;
+    const savingCount = savingOrders.length;
+    const activeCount = orders.filter(o => {
+      const expires = getExpiry(o);
+      return expires.getTime() > Date.now();
+    }).length;
+
+    return {
+      totalOrders: orders.length,
+      premiumCount,
+      savingCount,
+      activeCount,
+      premiumActive: premiumOrders.filter(o => daysLeft(o) > 0).length,
+      savingActive: savingOrders.filter(o => daysLeft(o) > 0).length,
+      premiumExpiring: premiumOrders.filter(o => {
+        const left = daysLeft(o);
+        return left > 0 && left <= 7;
+      }).length,
+      savingExpiring: savingOrders.filter(o => {
+        const left = daysLeft(o);
+        return left > 0 && left <= 7;
+      }).length,
+    };
+  }, [orders]);
+
+  const planHighlights = useMemo(() => {
+    const total = orders.length || 1;
+    return [
+      {
+        key: 'saving',
+        name: 'Gói tiết kiệm',
+        total: stats.savingCount,
+        active: stats.savingActive,
+        expiringSoon: stats.savingExpiring,
+        percentage: Math.round((stats.savingCount / total) * 100),
+      },
+      {
+        key: 'premium',
+        name: 'Gói cao cấp',
+        total: stats.premiumCount,
+        active: stats.premiumActive,
+        expiringSoon: stats.premiumExpiring,
+        percentage: Math.round((stats.premiumCount / total) * 100),
+      },
+    ];
+  }, [
+    orders.length,
+    stats.savingCount,
+    stats.premiumCount,
+    stats.savingActive,
+    stats.premiumActive,
+    stats.savingExpiring,
+    stats.premiumExpiring,
+  ]);
+
   const sorted = useMemo(() => {
     const getValue = o => {
       if (sortField === 'orderCode') {
@@ -176,35 +243,137 @@ export default function AdminOrders() {
 
   return (
     <AdminLayout>
-      <div className="card">
-        <header className="admin-header">
-          <h1 className="text-xl font-semibold">Quản lý đơn hàng</h1>
-        </header>
-        <form onSubmit={handleSearch} className="form-search">
-          <input
-            type="text"
-            placeholder="Tìm theo SĐT"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            className="input"
-          />
-          <select
-            value={planFilter}
-            onChange={e => {
-              setPlanFilter(e.target.value);
-              setPage(1);
-            }}
-            className="input"
-          >
-            <option value="all">Tất cả gói</option>
-            <option value="Gói cao cấp">Gói cao cấp</option>
-            <option value="Gói tiết kiệm">Gói tiết kiệm</option>
-          </select>
-          <button type="submit" className="btn btn-primary">
-            Tìm kiếm
-          </button>
+      <div className="card orders-card">
+        <section className="orders-hero">
+          <div>
+            <h1 className="orders-title">Quản lý đơn hàng</h1>
+            <p className="orders-subtitle">
+              Theo dõi trạng thái, tìm kiếm nhanh theo số điện thoại và quản lý các gói dịch vụ.
+            </p>
+          </div>
+          <div className="orders-quick-stats">
+            <div className="orders-stat">
+              <span className="orders-stat-label">Tổng đơn</span>
+              <strong className="orders-stat-value">{stats.totalOrders}</strong>
+            </div>
+            <div className="orders-stat">
+              <span className="orders-stat-label">Đang hoạt động</span>
+              <strong className="orders-stat-value">{stats.activeCount}</strong>
+            </div>
+            <div className="orders-stat">
+              <span className="orders-stat-label">Gói cao cấp</span>
+              <strong className="orders-stat-value">{stats.premiumCount}</strong>
+            </div>
+            <div className="orders-stat">
+              <span className="orders-stat-label">Gói tiết kiệm</span>
+              <strong className="orders-stat-value">{stats.savingCount}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="orders-plan-grid" aria-label="Tổng quan gói dịch vụ">
+          {planHighlights.map(plan => (
+            <article key={plan.key} className={`plan-card plan-card-${plan.key}`}>
+              <header className="plan-card-header">
+                <div className="plan-card-chip">{plan.name}</div>
+                <span className="plan-card-percentage">{plan.percentage}% tổng đơn</span>
+              </header>
+              <div className="plan-card-body">
+                <p className="plan-card-total">{plan.total}</p>
+                <p className="plan-card-total-label">đơn hàng đã ghi nhận</p>
+                <dl className="plan-card-metrics">
+                  <div>
+                    <dt>Đang hoạt động</dt>
+                    <dd>{plan.active}</dd>
+                  </div>
+                  <div>
+                    <dt>Sắp hết hạn (≤7 ngày)</dt>
+                    <dd>{plan.expiringSoon}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="plan-card-progress" role="presentation">
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      plan.percentage > 0 ? Math.max(plan.percentage, 12) : 6
+                    )}%`,
+                  }}
+                />
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <form onSubmit={handleSearch} className="orders-controls">
+          <div className="orders-search-group">
+            <label htmlFor="order-search" className="orders-label">
+              Tìm theo SĐT
+            </label>
+            <div className="input-shell">
+              <svg
+                aria-hidden="true"
+                className="input-shell-icon"
+                fill="none"
+                height="20"
+                viewBox="0 0 24 24"
+                width="20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15.5 15.5L21 21"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M17 10.5C17 14.0899 14.0899 17 10.5 17C6.91015 17 4 14.0899 4 10.5C4 6.91015 6.91015 4 10.5 4C14.0899 4 17 6.91015 17 10.5Z"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+              <input
+                id="order-search"
+                type="text"
+                placeholder="Nhập số điện thoại khách hàng"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="orders-filter-group">
+            <span className="orders-label">Lọc theo gói</span>
+            <div className="filter-chip-group" role="group" aria-label="Lọc theo gói dịch vụ">
+              {planFilterOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`filter-chip ${planFilter === option.value ? 'active' : ''}`}
+                  onClick={() => {
+                    setPlanFilter(option.value);
+                    setPage(1);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="orders-submit-group">
+            <button type="submit" className="btn btn-primary">
+              Tìm kiếm
+            </button>
+          </div>
         </form>
-        <div className="table-container">
+
+        <div className="table-container orders-table-container">
           <table className="table">
             <thead>
               <tr>
@@ -241,7 +410,15 @@ export default function AdminOrders() {
                       </button>
                     </td>
                     <td>{o.user?.phone || ''}</td>
-                    <td>{o.plan}</td>
+                    <td>
+                      <span
+                        className={`plan-badge ${
+                          o.plan === 'Gói cao cấp' ? 'plan-badge-premium' : 'plan-badge-saving'
+                        }`}
+                      >
+                        {o.plan}
+                      </span>
+                    </td>
                     <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
                     <td>{expires.toLocaleDateString('vi-VN')}</td>
                     <td>{left > 0 ? left : 'Đã hết hạn'}</td>
