@@ -153,7 +153,8 @@ export default function AdminOrders() {
   );
 
   const stats = useMemo(() => {
-
+    const premiumCount = orders.filter(o => o.plan === 'Gói cao cấp').length;
+    const savingCount = orders.filter(o => o.plan === 'Gói tiết kiệm').length;
     const activeCount = orders.filter(o => {
       const expires = getExpiry(o);
       return expires.getTime() > Date.now();
@@ -164,6 +165,8 @@ export default function AdminOrders() {
       premiumCount,
       savingCount,
       activeCount,
+    };
+  }, [orders]);
 
   const sorted = useMemo(() => {
     const getValue = o => {
