@@ -680,6 +680,7 @@
   line-height: 1;
 }
 
+
 .orders-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1054,6 +1055,7 @@
   .orders-quick-stats {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
+
 }
 
 @media (max-width: 900px) {
@@ -1103,6 +1105,7 @@
   .orders-quick-stats {
     width: 100%;
   }
+
 
   .orders-controls {
     grid-template-columns: 1fr 1fr;
@@ -1162,6 +1165,7 @@
     grid-template-columns: repeat(2, minmax(140px, 1fr));
     gap: 0.75rem;
   }
+
 }
 
 @media (max-width: 540px) {
@@ -1190,4 +1194,5 @@
     background: rgba(248, 250, 252, 0.88);
     border-radius: 0.85rem;
   }
+
 }
