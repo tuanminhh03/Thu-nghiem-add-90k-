@@ -280,11 +280,12 @@
 }
 
 .admin-content {
-  padding: 2.5rem;
-  max-width: 1200px;
+  padding: 2.5rem 2.75rem 3.25rem;
   width: 100%;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   flex: 1;
+  align-self: stretch;
 }
 
 /* ============================
@@ -622,7 +623,8 @@
 }
 
 .orders-card {
-  padding: clamp(2rem, 2vw + 1.5rem, 2.75rem);
+  padding: clamp(2.25rem, 2.6vw + 1.5rem, 3rem);
+  width: 100%;
 }
 
 .orders-hero {
@@ -1045,6 +1047,10 @@
     padding: 1.25rem 2rem;
   }
 
+  .admin-content {
+    padding: 2.25rem 2rem 3rem;
+  }
+
   .orders-quick-stats {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
@@ -1084,6 +1090,10 @@
 
   .admin-main {
     min-height: calc(100vh - 90px);
+  }
+
+  .admin-content {
+    padding: 2rem 1.75rem 2.75rem;
   }
 
   .orders-hero {
