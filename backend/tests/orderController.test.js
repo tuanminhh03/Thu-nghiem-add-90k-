@@ -1,155 +1,255 @@
-import mongoose from "mongoose";
-import Order from "../models/Order.js";
-import Account50k from "../models/Account50k.js";
-import NetflixAccount from "../models/NetflixAccount.js";
-import Customer from "../models/Customer.js";
-import { triggerNetflixAutomation } from "../services/netflixAutomation.js";
+import { jest } from "@jest/globals";
 
-/** Determine whether the current MongoDB topology supports transactions. */
-function supportsTransactions() {
-  try {
-    const client = mongoose.connection.getClient
-      ? mongoose.connection.getClient()
-      : mongoose.connection.client;
-    const type =
-      client?.topology?.description?.type ||
-      client?.topology?.s?.description?.type; // fallback for some driver versions
-    // Transactions: ReplicaSetWithPrimary, ReplicaSetNoPrimary, Sharded, LoadBalanced
-    return ["ReplicaSetWithPrimary", "ReplicaSetNoPrimary", "Sharded", "LoadBalanced"].includes(type);
-  } catch {
-    return false;
-  }
-}
+const mockSessionFactory = () => ({
+  startTransaction: jest.fn(),
+  commitTransaction: jest.fn(),
+  abortTransaction: jest.fn(),
+  endSession: jest.fn(),
+});
 
-/** Start a session and (if supported) a transaction. */
-async function startTransactionSession() {
-  const session = await mongoose.startSession();
-  let hasTransaction = false;
-  if (supportsTransactions()) {
-    try {
-      session.startTransaction();
-      hasTransaction = true;
-@@ -135,51 +136,51 @@ export const localSavings = async (req, res) => {
-      plan,
-      orderCode: `GTK${Date.now()}`,
-      duration,
-      amount: amountNum,
-      status: "PAID",
-      purchaseDate: new Date(),
-    });
-
-    return res.json({
-      success: true,
-      message: "Mua gói tiết kiệm thành công",
-      order: newOrder,
-      balance: customer.amount,
-    });
-  } catch (err) {
-    console.error("localSavings error:", err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// =============== Gói Cao Cấp (GCC) ==================
-export const createOrder = async (req, res) => {
-  const { session, hasTransaction } = await startTransactionSession();
-  try {
-    const sessionOpts = hasTransaction ? { session } : {};
-    const { plan, duration, amount, profileName, pin, isKids } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      await endSessionSafe(session, hasTransaction, "abort");
-      return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
-    }
-    if (!plan || !duration || amount === undefined) {
-      await endSessionSafe(session, hasTransaction, "abort");
-      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đơn hàng" });
-    }
-
-    const amountNum = Number(amount);
-    if (!amountNum || amountNum <= 0) {
-      await endSessionSafe(session, hasTransaction, "abort");
-      return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
-    }
-
-    let normalizedProfileName = "";
-    let normalizedPin = "";
-
-    if (plan === "Gói cao cấp") {
-      normalizedProfileName = typeof profileName === "string" ? profileName.trim() : "";
-      normalizedPin = typeof pin === "string" ? pin.trim() : "";
-
-      if (!normalizedProfileName) {
-@@ -253,52 +254,71 @@ export const createOrder = async (req, res) => {
-
-    // Tạo đơn hàng & gán hồ sơ
-    const created = await Order.create(
-      [
-        {
-          user: userId,
-          plan,
-          orderCode: `GCC${Math.floor(Math.random() * 99000) + 1000}`,
-          duration,
-          amount: amountNum,
-          status: "PAID",
-          accountEmail: account.email,
-          accountPassword: account.password,
-          profileId: profile.id,
-          profileName: profile.name,
-          pin: profile.pin,
-          purchaseDate,
-          expiresAt,
-          history: [{ message: "Tạo đơn hàng", date: purchaseDate }],
-        },
-      ],
-      sessionOpts
-    );
-    const newOrder = created[0];
-
-    let automationPayload = null;
-    if (plan === "Gói cao cấp") {
-      automationPayload = {
-        email: account.email,
-        password: account.password,
-        profileName: profile.name,
-        pin: profile.pin,
-        isKids: Boolean(isKids),
-      };
-    }
-
-    await endSessionSafe(session, hasTransaction, "commit");
-
-    if (automationPayload) {
-      try {
-        triggerNetflixAutomation(automationPayload);
-      } catch (automationErr) {
-        console.error("Không thể khởi chạy auto Netflix:", automationErr);
-      }
-    }
-
-    return res.json({
-      success: true,
-      message: "Mua gói cao cấp thành công",
-      order: newOrder,
-      balance: customer.amount,
-      netflixAccount: {
-        email: account.email,
-        password: account.password,
-        profileName: profile.name,
-        pin: profile.pin,
+const mockMongoose = {
+  startSession: jest.fn(),
+  connection: {
+    getClient: jest.fn(() => ({
+      topology: { description: { type: "Standalone" } },
+      s: { description: { type: "Standalone" } },
+    })),
+    client: {
+      topology: {
+        description: { type: "Standalone" },
+        s: { description: { type: "Standalone" } },
       },
-    });
-  } catch (err) {
-    console.error("createOrder error:", err);
-    await endSessionSafe(session, hasTransaction, "abort");
-    return res.status(500).json({ success: false, message: err.message });
-  }
+    },
+  },
 };
 
+const mockOrder = {
+  create: jest.fn(),
+};
 
-// =============== Lấy tất cả tài khoản ==================
-export const getAllAccounts = async (req, res) => {
-  try {
-    const accounts = await Account50k.find().lean();
-    return res.json({ success: true, data: accounts });
+const mockAccount50k = {
+  find: jest.fn(() => ({ lean: jest.fn() })),
+};
+
+const mockNetflixAccount = {
+  findOne: jest.fn(),
+};
+
+const mockCustomer = {
+  findById: jest.fn(),
+};
+
+const triggerNetflixAutomationMock = jest.fn();
+const triggerNetflixPinUpdateMock = jest.fn();
+const triggerNetflixProfileRenameMock = jest.fn();
+
+jest.unstable_mockModule("mongoose", () => ({
+  __esModule: true,
+  default: mockMongoose,
+}));
+
+jest.unstable_mockModule("../models/Order.js", () => ({
+  __esModule: true,
+  default: mockOrder,
+}));
+
+jest.unstable_mockModule("../models/Account50k.js", () => ({
+  __esModule: true,
+  default: mockAccount50k,
+}));
+
+jest.unstable_mockModule("../models/NetflixAccount.js", () => ({
+  __esModule: true,
+  default: mockNetflixAccount,
+}));
+
+jest.unstable_mockModule("../models/Customer.js", () => ({
+  __esModule: true,
+  default: mockCustomer,
+}));
+
+jest.unstable_mockModule("../services/netflixAutomation.js", () => ({
+  triggerNetflixAutomation: triggerNetflixAutomationMock,
+  triggerNetflixPinUpdate: triggerNetflixPinUpdateMock,
+  triggerNetflixProfileRename: triggerNetflixProfileRenameMock,
+}));
+
+const { localSavings, createOrder } = await import("../controllers/orderController.js");
+const mongoose = (await import("mongoose")).default;
+const Order = (await import("../models/Order.js")).default;
+const NetflixAccount = (await import("../models/NetflixAccount.js")).default;
+const Customer = (await import("../models/Customer.js")).default;
+
+const createMockRes = () => {
+  const res = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+  };
+  return res;
+};
+
+describe("orderController", () => {
+  let session;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    session = mockSessionFactory();
+    mongoose.startSession.mockResolvedValue(session);
+  });
+
+  describe("localSavings", () => {
+    it("returns 401 when user is not authenticated", async () => {
+      const req = { body: { amount: 100 }, user: null };
+      const res = createMockRes();
+
+      await localSavings(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Chưa đăng nhập",
+      });
+    });
+
+    it("creates a savings order and deducts balance", async () => {
+      const userId = "user123";
+      const req = {
+        body: { amount: 100, duration: "1 tháng", plan: "Gói tiết kiệm" },
+        user: { id: userId },
+      };
+      const res = createMockRes();
+      const customer = {
+        amount: 200,
+        name: "",
+        save: jest.fn().mockResolvedValue(),
+      };
+      const newOrder = { id: "order1", amount: 100 };
+
+      Customer.findById.mockResolvedValue(customer);
+      Order.create.mockResolvedValue(newOrder);
+
+      await localSavings(req, res);
+
+      expect(Customer.findById).toHaveBeenCalledWith(userId);
+      expect(customer.amount).toBe(100);
+      expect(customer.save).toHaveBeenCalledTimes(1);
+      expect(Order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user: userId,
+          amount: 100,
+          plan: "Gói tiết kiệm",
+        })
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          order: newOrder,
+          balance: 100,
+        })
+      );
+    });
+  });
+
+  describe("createOrder", () => {
+    it("returns 401 when user is missing", async () => {
+      const req = {
+        body: { plan: "Gói cao cấp", duration: "1 tháng", amount: 100 },
+        user: null,
+      };
+      const res = createMockRes();
+
+      await createOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Chưa đăng nhập",
+      });
+      expect(session.endSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("creates a premium order and triggers automation", async () => {
+      const userId = "user456";
+      const req = {
+        body: {
+          plan: "Gói cao cấp",
+          duration: "1 tháng",
+          amount: 150,
+          profileName: "  Gia đình  ",
+          pin: " 1234 ",
+          isKids: true,
+        },
+        user: { id: userId },
+      };
+      const res = createMockRes();
+      const customer = {
+        _id: userId,
+        amount: 300,
+        phone: "0123456789",
+        save: jest.fn().mockResolvedValue(),
+      };
+      const account = {
+        email: "acc@example.com",
+        password: "pass123",
+        profiles: [
+          {
+            id: "profile1",
+            status: "empty",
+            name: "",
+            pin: "",
+          },
+        ],
+        save: jest.fn().mockResolvedValue(),
+      };
+      const newOrder = {
+        _id: "orderXYZ",
+        plan: "Gói cao cấp",
+      };
+
+      Customer.findById.mockResolvedValue(customer);
+      NetflixAccount.findOne.mockResolvedValue(account);
+      Order.create.mockResolvedValue([newOrder]);
+
+      await createOrder(req, res);
+
+      expect(Customer.findById).toHaveBeenCalledWith(userId);
+      expect(NetflixAccount.findOne).toHaveBeenCalledWith({
+        plan: "Gói cao cấp",
+        "profiles.status": "empty",
+      });
+      expect(Order.create).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            user: userId,
+            plan: "Gói cao cấp",
+            amount: 150,
+            profileName: "Gia đình",
+            pin: "1234",
+          }),
+        ],
+        {}
+      );
+      expect(customer.amount).toBe(150);
+      expect(customer.save).toHaveBeenCalledWith({});
+      expect(account.save).toHaveBeenCalledWith({});
+      expect(triggerNetflixAutomationMock).toHaveBeenCalledWith({
+        email: "acc@example.com",
+        password: "pass123",
+        profileName: "Gia đình",
+        pin: "1234",
+        isKids: true,
+      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          order: newOrder,
+          balance: 150,
+          netflixAccount: expect.objectContaining({
+            email: "acc@example.com",
+            profileName: "Gia đình",
+          }),
+        })
+      );
+    });
+  });
+});
