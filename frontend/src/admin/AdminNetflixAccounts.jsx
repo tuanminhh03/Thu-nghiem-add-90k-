@@ -15,6 +15,11 @@ export default function AdminNetflixAccounts() {
   const [selected, setSelected] = useState(null);
   const [profileEdits, setProfileEdits] = useState({});
 
+  const selectedProfileCount = selected ? selected.profiles.length : 0;
+  const selectedUsedCount = selected
+    ? selected.profiles.filter(p => p.status === 'used').length
+    : 0;
+
   const fetchAccounts = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/netflix-accounts', {
@@ -264,78 +269,111 @@ export default function AdminNetflixAccounts() {
 
         {selected && (
           <div className="modal-backdrop" onClick={() => setSelected(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <h2 className="mb-2">Hồ sơ của {selected.email}</h2>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Tên hồ sơ</th>
-                    <th>Mã Pin</th>
-                    <th>SDT khách</th>
-                    <th>Ngày mua</th>
-                    <th>Ngày hết hạn</th>
-                    <th>Hành động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.profiles.map(p => (
-                    <tr key={p.id}>
-                      <td>
-                        <input
-                          type="text"
-                          value={
-                            profileEdits[p.id]?.name ?? p.name ?? ''
-                          }
-                          onChange={e =>
-                            handleProfileChange(p.id, 'name', e.target.value)
-                          }
-                          onBlur={() => saveProfile(p.id)}
-                          className="input"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
-                          onChange={e =>
-                            handleProfileChange(p.id, 'pin', e.target.value)
-                          }
-                          onBlur={() => saveProfile(p.id)}
-                          className="input"
-                        />
-                      </td>
-                      <td>{p.customerPhone || '-'}</td>
-                      <td>
-                        {p.purchaseDate
-                          ? new Date(p.purchaseDate).toLocaleDateString()
-                          : '-'}
-                      </td>
-                      <td>
-                        {p.expirationDate
-                          ? new Date(p.expirationDate).toLocaleDateString()
-                          : '-'}
-                      </td>
-                      <td className="text-center">
-                        <button
-                          onClick={() => handleProfileDelete(p.id)}
-                          className="btn btn-danger mr-2"
-                        >
-                          Xóa
-                        </button>
-                        <button
-                          onClick={() => handleProfileTransfer(p.id)}
-                          className="btn btn-secondary"
-                        >
-                          Chuyển
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button onClick={() => setSelected(null)} className="btn mt-4">
-                Đóng
-              </button>
+            <div
+              className="modal modal--accounts"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <div>
+                  <h2 className="modal-title">Hồ sơ của {selected.email}</h2>
+                  <p className="modal-subtitle">
+                    {selected.plan} · {selectedUsedCount}/{selectedProfileCount} hồ
+                    sơ đã dùng
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost modal-close"
+                  onClick={() => setSelected(null)}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="modal-table">
+                  <table className="table table--profiles">
+                    <thead>
+                      <tr>
+                        <th>Tên hồ sơ</th>
+                        <th>Mã Pin</th>
+                        <th>SDT khách</th>
+                        <th>Ngày mua</th>
+                        <th>Ngày hết hạn</th>
+                        <th className="text-center">Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.profiles.map(p => (
+                        <tr key={p.id}>
+                          <td>
+                            <input
+                              type="text"
+                              value={
+                                profileEdits[p.id]?.name ?? p.name ?? ''
+                              }
+                              onChange={e =>
+                                handleProfileChange(p.id, 'name', e.target.value)
+                              }
+                              onBlur={() => saveProfile(p.id)}
+                              className="input input-inline"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
+                              onChange={e =>
+                                handleProfileChange(p.id, 'pin', e.target.value)
+                              }
+                              onBlur={() => saveProfile(p.id)}
+                              className="input input-inline"
+                            />
+                          </td>
+                          <td>{p.customerPhone || '-'}</td>
+                          <td>
+                            {p.purchaseDate
+                              ? new Date(p.purchaseDate).toLocaleDateString()
+                              : '-'}
+                          </td>
+                          <td>
+                            {p.expirationDate
+                              ? new Date(p.expirationDate).toLocaleDateString()
+                              : '-'}
+                          </td>
+                          <td className="modal-profile-actions">
+                            <button
+                              type="button"
+                              onClick={() => handleProfileDelete(p.id)}
+                              className="btn btn-danger btn-sm"
+                            >
+                              Xóa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleProfileTransfer(p.id)}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Chuyển
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="btn btn-ghost"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         )}
