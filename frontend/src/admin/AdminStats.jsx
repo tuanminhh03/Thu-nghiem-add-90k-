@@ -164,6 +164,7 @@ export default function AdminStats() {
     fetchStats();
     fetchOrders();
 
+    // ✅ Gỡ conflict: dùng getApiUrl(...) cho SSE stream
     const streamUrl = getApiUrl(`/api/admin/orders/stream?token=${encodeURIComponent(token)}`);
     const es = new EventSource(streamUrl);
 
