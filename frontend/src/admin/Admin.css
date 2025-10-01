@@ -327,6 +327,16 @@
   background: var(--primary-dark);
 }
 
+.btn-secondary {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--text-color);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.12);
+}
+
 .btn-soft {
   background: var(--primary-soft);
   color: var(--primary);
@@ -343,6 +353,12 @@
 
 .btn-ghost:hover:not(:disabled) {
   background: rgba(15, 23, 42, 0.08);
+}
+
+.btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 0.65rem;
 }
 
 .btn-outline {
@@ -613,6 +629,7 @@
    Data Surfaces & Tables
    ============================ */
 
+
 .surface-card,
 .card {
   background: var(--surface);
@@ -620,6 +637,14 @@
   padding: 2rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
+}
+
+/* Ensure admin content cards stretch the full available width, overriding the
+   generic `.card` styles defined in the client application shell. */
+.admin-content .card {
+  max-width: none;
+  width: 100%;
+  margin: 0 0 2rem;
 }
 
 .orders-card {
@@ -963,6 +988,18 @@
   gap: 0.5rem;
 }
 
+.text-center {
+  text-align: center !important;
+}
+
+.modal-profile-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .empty-state {
   text-align: center;
   padding: 2.5rem 1rem;
@@ -1030,9 +1067,109 @@
   background: var(--surface);
   padding: 2rem;
   border-radius: var(--card-radius);
-  max-width: 520px;
-  width: 92%;
+  max-width: min(960px, calc(100% - 3rem));
+  width: 100%;
   box-shadow: var(--shadow-soft);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.modal-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.modal-close {
+  padding: 0.4rem;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.modal-close:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.modal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.modal-table {
+  border: 1px solid var(--border-color);
+  border-radius: calc(var(--card-radius) - 0.35rem);
+  overflow: auto;
+  background: var(--surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.modal-table .table {
+  min-width: 680px;
+}
+
+.modal-table .table th,
+.modal-table .table td {
+  padding: 0.85rem 1.1rem;
+}
+
+.modal-table .table tbody tr:hover td {
+  background: rgba(229, 9, 20, 0.12);
+}
+
+.modal-footer {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.input-inline {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.92rem;
+  transition: border-color var(--transition-speed),
+    box-shadow var(--transition-speed), background var(--transition-speed);
+}
+
+.input-inline:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  background: #fff;
+}
+
+.modal--accounts .modal-table .table td:nth-child(3),
+.modal--accounts .modal-table .table td:nth-child(4),
+.modal--accounts .modal-table .table td:nth-child(5),
+.modal--accounts .modal-table .table th:nth-child(3),
+.modal--accounts .modal-table .table th:nth-child(4),
+.modal--accounts .modal-table .table th:nth-child(5) {
+  white-space: nowrap;
 }
 
 /* ============================
