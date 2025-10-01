@@ -164,6 +164,7 @@ export default function AdminStats() {
     fetchStats();
     fetchOrders();
 
+    // ✅ Gỡ conflict: dùng getApiUrl(...) cho SSE stream
     const streamUrl = getApiUrl(`/api/admin/orders/stream?token=${encodeURIComponent(token)}`);
     const es = new EventSource(streamUrl);
 
@@ -195,20 +196,17 @@ export default function AdminStats() {
   const visitChart = Array.isArray(stats?.visitChart) ? stats.visitChart : [];
   const ordersChart = Array.isArray(stats?.ordersChart) ? stats.ordersChart : [];
 
-  const revenueTodaySeries = revenueChart[revenueChart.length - 1]?.total;
-  const revenueYesterdaySeries = revenueChart[revenueChart.length - 2]?.total ?? revenueTodaySeries;
-  const revenueToday = Number(stats?.revenueToday ?? revenueTodaySeries ?? 0);
-  const revenueYesterday = Number(stats?.revenueYesterday ?? revenueYesterdaySeries ?? 0);
+  const revenueToday = Number(revenueChart[revenueChart.length - 1]?.total ?? stats?.revenueToday ?? 0);
+  const revenueYesterday = Number(
+    revenueChart[revenueChart.length - 2]?.total ?? revenueChart[revenueChart.length - 1]?.total ?? stats?.revenueYesterday ?? 0
+  );
   const revenueDelta = getDelta(revenueToday, revenueYesterday, { currency: true });
 
   const totalVisits30Days = visitChart.reduce((sum, d) => sum + Number(d?.total ?? 0), 0);
   const visitsToday = Number(stats?.visitsToday ?? 0);
   const visitsLatest = Number(visitChart[visitChart.length - 1]?.total ?? visitsToday);
   const visitsYesterday = Number(
-    stats?.visitsYesterday ??
-      visitChart[visitChart.length - 2]?.total ??
-      visitChart[visitChart.length - 1]?.total ??
-      visitsLatest
+    visitChart[visitChart.length - 2]?.total ?? visitChart[visitChart.length - 1]?.total ?? visitsLatest
   );
   const visitDelta = getDelta(visitsLatest, visitsYesterday);
 
@@ -219,10 +217,7 @@ export default function AdminStats() {
   const ordersToday = Number(stats?.ordersToday ?? 0);
   const ordersLatest = Number(ordersChart[ordersChart.length - 1]?.total ?? ordersToday);
   const ordersYesterday = Number(
-    stats?.ordersYesterday ??
-      ordersChart[ordersChart.length - 2]?.total ??
-      ordersChart[ordersChart.length - 1]?.total ??
-      ordersLatest
+    ordersChart[ordersChart.length - 2]?.total ?? ordersChart[ordersChart.length - 1]?.total ?? ordersLatest
   );
   const orderDelta = getDelta(ordersLatest, ordersYesterday);
   const ordersAverage = ordersChart.length > 0 ? ordersLast30Days / ordersChart.length : 0;
