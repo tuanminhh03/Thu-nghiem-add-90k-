@@ -8,7 +8,7 @@ export default function AdminLayout({ children }) {
 
   const links = [
     { href: '/admin/dashboard', label: 'Dashboard' },
-    { href: '/admin', label: 'Khách hàng' },
+    { href: '/admin/analytics', label: 'Thống kê' },
     { href: '/admin/orders', label: 'Đơn hàng' },
     { href: '/admin/netflix-accounts', label: 'Tài khoản gói cao cấp' },
     { href: '/admin/netflix-accounts-50k', label: 'Tài khoản gói tiết kiệm' },
