@@ -613,6 +613,7 @@
    Data Surfaces & Tables
    ============================ */
 
+
 .surface-card,
 .card {
   background: var(--surface);
@@ -620,6 +621,14 @@
   padding: 2rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
+}
+
+/* Ensure admin content cards stretch the full available width, overriding the
+   generic `.card` styles defined in the client application shell. */
+.admin-content .card {
+  max-width: none;
+  width: 100%;
+  margin: 0 0 2rem;
 }
 
 .orders-card {
