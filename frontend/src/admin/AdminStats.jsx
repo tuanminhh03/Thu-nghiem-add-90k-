@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   ResponsiveContainer,
@@ -109,51 +109,97 @@ export default function AdminStats() {
   const [section, setSection] = useState('revenue');
   const [range, setRange] = useState(createDefaultRange);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const token = localStorage.getItem('adminToken');
-
-  const fetchStats = useCallback(() => {
-    axios
-      .get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        setStats(r.data);
-        setLastUpdated(new Date());
-      })
-      .catch(console.error);
-  }, [token]);
-
-  const fetchOrders = useCallback(() => {
-    axios
-      .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setOrders(Array.isArray(r.data.data) ? r.data.data : []))
-      .catch(console.error);
-  }, [token]);
+  const [loadError, setLoadError] = useState(null);
+  const tokenRef = useRef(localStorage.getItem('adminToken'));
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!token) return undefined;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setStats(response.data);
+      setLastUpdated(new Date());
+      setLoadError(null);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+        setLoadError('Không tải được dữ liệu thống kê. Vui lòng thử lại.');
+      }
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setOrders(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+      }
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setLoadError(null);
     fetchStats();
     fetchOrders();
+  }, [fetchOrders, fetchStats]);
+
+  useEffect(() => {
+    const token = tokenRef.current;
+    if (!token) return undefined;
+
+    fetchStats();
+    fetchOrders();
+
     const es = new EventSource(
-      `http://localhost:5000/api/admin/orders/stream?token=${token}`
+      `http://localhost:5000/api/admin/orders/stream?token=${encodeURIComponent(token)}`
     );
-    es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      fetchStats();
-      setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+
+    es.onmessage = (event) => {
+      if (!isMountedRef.current) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (!data || !data._id) return;
+        fetchStats();
+        setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+      } catch (error) {
+        console.error('orders stream parse error', error);
+      }
     };
-    return () => es.close();
-  }, [token, fetchStats, fetchOrders]);
 
-  if (!stats)
-    return (
-      <AdminLayout>
-        <p className="loading">Đang tải...</p>
-      </AdminLayout>
-    );
+    es.onerror = (error) => {
+      if (isMountedRef.current) {
+        console.error('orders stream error', error);
+      }
+      es.close();
+    };
 
-  const formattedLastUpdated = useMemo(() => {
-    if (!lastUpdated) return '';
+    return () => {
+      es.close();
+    };
+  }, [fetchStats, fetchOrders]);
+
+  let formattedLastUpdated = '';
+  if (lastUpdated) {
     try {
-      return new Intl.DateTimeFormat('vi-VN', {
+      formattedLastUpdated = new Intl.DateTimeFormat('vi-VN', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -162,81 +208,100 @@ export default function AdminStats() {
       }).format(lastUpdated);
     } catch (error) {
       console.error(error);
-      return '';
     }
-  }, [lastUpdated]);
+  }
 
-  const revenueToday = stats.revenueChart?.[stats.revenueChart.length - 1]?.total ?? 0;
-  const revenueYesterday =
-    stats.revenueChart?.[stats.revenueChart.length - 2]?.total ?? revenueToday;
+  if (loadError && !stats)
+    return (
+      <AdminLayout>
+        <section className="surface-card empty-state">
+          <h2>Không thể tải thống kê</h2>
+          <p>{loadError}</p>
+          <button type="button" className="btn btn-primary" onClick={handleRetry}>
+            Thử lại
+          </button>
+        </section>
+      </AdminLayout>
+    );
+
+  if (!stats)
+    return (
+      <AdminLayout>
+        <p className="loading">Đang tải...</p>
+      </AdminLayout>
+    );
+
+  const revenueChart = Array.isArray(stats.revenueChart) ? stats.revenueChart : [];
+  const visitChart = Array.isArray(stats.visitChart) ? stats.visitChart : [];
+  const ordersChart = Array.isArray(stats.ordersChart) ? stats.ordersChart : [];
+
+  const revenueToday = revenueChart[revenueChart.length - 1]?.total ?? 0;
+  const revenueYesterday = revenueChart[revenueChart.length - 2]?.total ?? revenueToday;
   const revenueDelta = getDelta(revenueToday, revenueYesterday, { currency: true });
-  const totalVisits30Days = stats.visitChart.reduce((sum, d) => sum + d.total, 0);
+
+  const totalVisits30Days = visitChart.reduce((sum, d) => sum + d.total, 0);
   const visitsToday = Number(stats.visitsToday ?? 0);
-  const visitsLatest = stats.visitChart?.[stats.visitChart.length - 1]?.total ?? visitsToday;
-  const visitsYesterday =
-    stats.visitChart?.[stats.visitChart.length - 2]?.total ?? visitsLatest;
+  const visitsLatest = visitChart[visitChart.length - 1]?.total ?? visitsToday;
+  const visitsYesterday = visitChart[visitChart.length - 2]?.total ?? visitsLatest;
   const visitDelta = getDelta(visitsLatest, visitsYesterday);
-  const revenueAverage =
-    stats.revenueChart?.length > 0
-      ? stats.revenueLast30Days / stats.revenueChart.length
-      : 0;
-  const visitsAverage =
-    stats.visitChart?.length > 0 ? totalVisits30Days / stats.visitChart.length : 0;
 
-  const metricCards = useMemo(
-    () => [
-      {
-        key: 'customers',
-        label: 'Tổng khách hàng',
-        value: formatNumber(stats.customerCount),
-        helper: 'Số tài khoản đang quản lý',
-      },
-      {
-        key: 'revenue',
-        label: 'Doanh thu 30 ngày',
-        value: formatCurrency(stats.revenueLast30Days),
-        helper: `Hôm nay: ${formatCurrency(revenueToday)}`,
-        delta: revenueDelta,
-        active: section === 'revenue',
-        onClick: () => setSection('revenue'),
-      },
-      {
-        key: 'visits',
-        label: 'Lượt truy cập 30 ngày',
-        value: formatNumber(totalVisits30Days),
-        helper: `Hôm nay: ${formatNumber(visitsToday)}`,
-        delta: visitDelta,
-        active: section === 'visits',
-        onClick: () => setSection('visits'),
-      },
-      {
-        key: 'orders',
-        label: 'Đơn hàng theo dõi',
-        value: formatNumber(orders.length),
-        helper: '20 đơn gần nhất từ hệ thống',
-      },
-    ],
-    [
-      stats.customerCount,
-      stats.revenueLast30Days,
-      revenueToday,
-      revenueDelta,
-      section,
-      totalVisits30Days,
-      visitsToday,
-      visitDelta,
-      orders.length,
-    ]
-  );
+  const revenueAverage = revenueChart.length > 0 ? stats.revenueLast30Days / revenueChart.length : 0;
+  const visitsAverage = visitChart.length > 0 ? totalVisits30Days / visitChart.length : 0;
 
-  const chartData = useMemo(() => {
-    const dataset = section === 'visits' ? stats.visitChart : stats.revenueChart;
-    if (!Array.isArray(dataset)) return [];
+  const ordersLast30Days = Number(stats.ordersLast30Days ?? 0);
+  const ordersToday = Number(stats.ordersToday ?? 0);
+  const ordersLatest = ordersChart[ordersChart.length - 1]?.total ?? ordersToday;
+  const ordersYesterday = ordersChart[ordersChart.length - 2]?.total ?? ordersLatest;
+  const orderDelta = getDelta(ordersLatest, ordersYesterday);
+  const ordersAverage = ordersChart.length > 0 ? ordersLast30Days / ordersChart.length : 0;
+
+  const metricCards = [
+    {
+      key: 'customers',
+      label: 'Tổng khách hàng',
+      value: formatNumber(stats.customerCount),
+      helper: 'Số tài khoản đang quản lý',
+    },
+    {
+      key: 'revenue',
+      label: 'Doanh thu 30 ngày',
+      value: formatCurrency(stats.revenueLast30Days),
+      helper: `Hôm nay: ${formatCurrency(revenueToday)}`,
+      delta: revenueDelta,
+      active: section === 'revenue',
+      onClick: () => setSection('revenue'),
+    },
+    {
+      key: 'visits',
+      label: 'Lượt truy cập 30 ngày',
+      value: formatNumber(totalVisits30Days),
+      helper: `Hôm nay: ${formatNumber(visitsToday)}`,
+      delta: visitDelta,
+      active: section === 'visits',
+      onClick: () => setSection('visits'),
+    },
+    {
+      key: 'orders',
+      label: 'Đơn hàng 30 ngày',
+      value: formatNumber(ordersLast30Days),
+      helper: `Hôm nay: ${formatNumber(ordersToday)}`,
+      delta: orderDelta,
+      active: section === 'orders',
+      onClick: () => setSection('orders'),
+    },
+  ];
+
+  const chartData = (() => {
+    const dataset =
+      section === 'visits' ? visitChart : section === 'orders' ? ordersChart : revenueChart;
+    if (!Array.isArray(dataset) || dataset.length === 0) return [];
+
     const startDate = parseISODate(range.start);
     const endDate = parseISODate(range.end);
     if (endDate) {
       endDate.setHours(23, 59, 59, 999);
     }
+
     return dataset
       .map((entry) => {
         const parsedDate = parseISODate(entry.date);
@@ -254,9 +319,9 @@ export default function AdminStats() {
         return true;
       })
       .map((entry) => ({ date: entry.label, total: entry.total }));
-  }, [section, stats.revenueChart, stats.visitChart, range]);
+  })();
 
-  const highlightItems = useMemo(() => {
+  const highlightItems = (() => {
     if (section === 'visits') {
       return [
         {
@@ -270,6 +335,22 @@ export default function AdminStats() {
         {
           label: 'So với hôm qua',
           value: visitDelta ? visitDelta.label : 'Chưa có dữ liệu so sánh',
+        },
+      ];
+    }
+    if (section === 'orders') {
+      return [
+        {
+          label: 'Đơn hàng hôm nay',
+          value: formatNumber(ordersToday || ordersLatest),
+        },
+        {
+          label: 'Trung bình mỗi ngày',
+          value: formatNumber(Math.round(ordersAverage)),
+        },
+        {
+          label: 'So với hôm qua',
+          value: orderDelta ? orderDelta.label : 'Chưa có dữ liệu so sánh',
         },
       ];
     }
@@ -287,16 +368,7 @@ export default function AdminStats() {
         value: revenueDelta ? revenueDelta.label : 'Chưa có dữ liệu so sánh',
       },
     ];
-  }, [
-    section,
-    visitsToday,
-    visitsLatest,
-    visitsAverage,
-    visitDelta,
-    revenueToday,
-    revenueAverage,
-    revenueDelta,
-  ]);
+  })();
 
   const resetRange = () => setRange(createDefaultRange());
 
@@ -316,6 +388,9 @@ export default function AdminStats() {
               </span>
               <span className="hero-pill">
                 <strong>{formatNumber(totalVisits30Days)}</strong> lượt truy cập
+              </span>
+              <span className="hero-pill">
+                <strong>{formatNumber(ordersLast30Days)}</strong> đơn hàng
               </span>
               <span className="hero-pill">
                 <strong>{formatNumber(stats.customerCount)}</strong> khách hàng
@@ -380,7 +455,13 @@ export default function AdminStats() {
         <section className="surface-card analytics-surface">
           <header className="surface-header">
             <div>
-              <h2>{section === 'revenue' ? 'Doanh thu theo ngày' : 'Lượt truy cập theo ngày'}</h2>
+              <h2>
+                {section === 'revenue'
+                  ? 'Doanh thu theo ngày'
+                  : section === 'visits'
+                  ? 'Lượt truy cập theo ngày'
+                  : 'Đơn hàng theo ngày'}
+              </h2>
               <p>Biểu đồ tương tác giúp theo dõi xu hướng trong phạm vi ngày đã chọn.</p>
             </div>
             <div className="analytics-actions">
@@ -402,6 +483,15 @@ export default function AdminStats() {
                   onClick={() => setSection('visits')}
                 >
                   Truy cập
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`toggle-btn ${section === 'orders' ? 'active' : ''}`}
+                  aria-selected={section === 'orders'}
+                  onClick={() => setSection('orders')}
+                >
+                  Đơn hàng
                 </button>
               </div>
             </div>
@@ -469,7 +559,11 @@ export default function AdminStats() {
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} dy={6} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => formatNumber(value)} labelStyle={{ fontWeight: 600 }} />
-                  <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="#2563eb" />
+                  <Bar
+                    dataKey="total"
+                    radius={[6, 6, 0, 0]}
+                    fill={section === 'orders' ? '#16a34a' : '#2563eb'}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
