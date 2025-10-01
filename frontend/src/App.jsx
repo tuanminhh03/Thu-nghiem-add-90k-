@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Header            from './Header';
 import PlansOverview     from './PlansOverview';
@@ -110,18 +110,19 @@ export default function App() {
           path="/admin/dashboard"
           element={
             <AdminRoute>
-              <AdminStats />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
               <AdminDashboard />
             </AdminRoute>
           }
         />
+        <Route
+          path="/admin/analytics"
+          element={
+            <AdminRoute>
+              <AdminStats />
+            </AdminRoute>
+          }
+        />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route
           path="/admin/netflix-accounts"
           element={
