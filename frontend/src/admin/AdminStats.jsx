@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import {
   ResponsiveContainer,
@@ -109,39 +109,105 @@ export default function AdminStats() {
   const [section, setSection] = useState('revenue');
   const [range, setRange] = useState(createDefaultRange);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const token = localStorage.getItem('adminToken');
-
-  const fetchStats = useCallback(() => {
-    axios
-      .get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        setStats(r.data);
-        setLastUpdated(new Date());
-      })
-      .catch(console.error);
-  }, [token]);
-
-  const fetchOrders = useCallback(() => {
-    axios
-      .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setOrders(Array.isArray(r.data.data) ? r.data.data : []))
-      .catch(console.error);
-  }, [token]);
+  const [loadError, setLoadError] = useState(null);
+  const tokenRef = useRef(localStorage.getItem('adminToken'));
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!token) return undefined;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setStats(response.data);
+      setLastUpdated(new Date());
+      setLoadError(null);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+        setLoadError('Không tải được dữ liệu thống kê. Vui lòng thử lại.');
+      }
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setOrders(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+      }
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setLoadError(null);
     fetchStats();
     fetchOrders();
+  }, [fetchOrders, fetchStats]);
+
+  useEffect(() => {
+    const token = tokenRef.current;
+    if (!token) return undefined;
+
+    fetchStats();
+    fetchOrders();
+
     const es = new EventSource(
-      `http://localhost:5000/api/admin/orders/stream?token=${token}`
+      `http://localhost:5000/api/admin/orders/stream?token=${encodeURIComponent(token)}`
     );
-    es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      fetchStats();
-      setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+
+    es.onmessage = (event) => {
+      if (!isMountedRef.current) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (!data || !data._id) return;
+        fetchStats();
+        setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+      } catch (error) {
+        console.error('orders stream parse error', error);
+      }
     };
-    return () => es.close();
-  }, [token, fetchStats, fetchOrders]);
+
+    es.onerror = (error) => {
+      if (isMountedRef.current) {
+        console.error('orders stream error', error);
+      }
+      es.close();
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [fetchStats, fetchOrders]);
+
+  if (loadError && !stats)
+    return (
+      <AdminLayout>
+        <section className="surface-card empty-state">
+          <h2>Không thể tải thống kê</h2>
+          <p>{loadError}</p>
+          <button type="button" className="btn btn-primary" onClick={handleRetry}>
+            Thử lại
+          </button>
+        </section>
+      </AdminLayout>
+    );
 
   if (!stats)
     return (
@@ -170,7 +236,9 @@ export default function AdminStats() {
   const revenueYesterday =
     stats.revenueChart?.[stats.revenueChart.length - 2]?.total ?? revenueToday;
   const revenueDelta = getDelta(revenueToday, revenueYesterday, { currency: true });
-  const totalVisits30Days = stats.visitChart.reduce((sum, d) => sum + d.total, 0);
+  const totalVisits30Days = Array.isArray(stats.visitChart)
+    ? stats.visitChart.reduce((sum, d) => sum + d.total, 0)
+    : 0;
   const visitsToday = Number(stats.visitsToday ?? 0);
   const visitsLatest = stats.visitChart?.[stats.visitChart.length - 1]?.total ?? visitsToday;
   const visitsYesterday =
@@ -182,6 +250,14 @@ export default function AdminStats() {
       : 0;
   const visitsAverage =
     stats.visitChart?.length > 0 ? totalVisits30Days / stats.visitChart.length : 0;
+  const ordersLast30Days = Number(stats.ordersLast30Days ?? 0);
+  const ordersToday = Number(stats.ordersToday ?? 0);
+  const ordersLatest = stats.ordersChart?.[stats.ordersChart.length - 1]?.total ?? ordersToday;
+  const ordersYesterday =
+    stats.ordersChart?.[stats.ordersChart.length - 2]?.total ?? ordersLatest;
+  const orderDelta = getDelta(ordersLatest, ordersYesterday);
+  const ordersAverage =
+    stats.ordersChart?.length > 0 ? ordersLast30Days / stats.ordersChart.length : 0;
 
   const metricCards = useMemo(
     () => [
@@ -211,9 +287,12 @@ export default function AdminStats() {
       },
       {
         key: 'orders',
-        label: 'Đơn hàng theo dõi',
-        value: formatNumber(orders.length),
-        helper: '20 đơn gần nhất từ hệ thống',
+        label: 'Đơn hàng 30 ngày',
+        value: formatNumber(ordersLast30Days),
+        helper: `Hôm nay: ${formatNumber(ordersToday)}`,
+        delta: orderDelta,
+        active: section === 'orders',
+        onClick: () => setSection('orders'),
       },
     ],
     [
@@ -225,12 +304,19 @@ export default function AdminStats() {
       totalVisits30Days,
       visitsToday,
       visitDelta,
-      orders.length,
+      ordersLast30Days,
+      ordersToday,
+      orderDelta,
     ]
   );
 
   const chartData = useMemo(() => {
-    const dataset = section === 'visits' ? stats.visitChart : stats.revenueChart;
+    const dataset =
+      section === 'visits'
+        ? stats.visitChart
+        : section === 'orders'
+        ? stats.ordersChart
+        : stats.revenueChart;
     if (!Array.isArray(dataset)) return [];
     const startDate = parseISODate(range.start);
     const endDate = parseISODate(range.end);
@@ -254,7 +340,7 @@ export default function AdminStats() {
         return true;
       })
       .map((entry) => ({ date: entry.label, total: entry.total }));
-  }, [section, stats.revenueChart, stats.visitChart, range]);
+  }, [section, stats.revenueChart, stats.visitChart, stats.ordersChart, range]);
 
   const highlightItems = useMemo(() => {
     if (section === 'visits') {
@@ -270,6 +356,22 @@ export default function AdminStats() {
         {
           label: 'So với hôm qua',
           value: visitDelta ? visitDelta.label : 'Chưa có dữ liệu so sánh',
+        },
+      ];
+    }
+    if (section === 'orders') {
+      return [
+        {
+          label: 'Đơn hàng hôm nay',
+          value: formatNumber(ordersToday || ordersLatest),
+        },
+        {
+          label: 'Trung bình mỗi ngày',
+          value: formatNumber(Math.round(ordersAverage)),
+        },
+        {
+          label: 'So với hôm qua',
+          value: orderDelta ? orderDelta.label : 'Chưa có dữ liệu so sánh',
         },
       ];
     }
@@ -293,6 +395,10 @@ export default function AdminStats() {
     visitsLatest,
     visitsAverage,
     visitDelta,
+    ordersToday,
+    ordersLatest,
+    ordersAverage,
+    orderDelta,
     revenueToday,
     revenueAverage,
     revenueDelta,
@@ -316,6 +422,9 @@ export default function AdminStats() {
               </span>
               <span className="hero-pill">
                 <strong>{formatNumber(totalVisits30Days)}</strong> lượt truy cập
+              </span>
+              <span className="hero-pill">
+                <strong>{formatNumber(ordersLast30Days)}</strong> đơn hàng
               </span>
               <span className="hero-pill">
                 <strong>{formatNumber(stats.customerCount)}</strong> khách hàng
@@ -380,7 +489,13 @@ export default function AdminStats() {
         <section className="surface-card analytics-surface">
           <header className="surface-header">
             <div>
-              <h2>{section === 'revenue' ? 'Doanh thu theo ngày' : 'Lượt truy cập theo ngày'}</h2>
+              <h2>
+                {section === 'revenue'
+                  ? 'Doanh thu theo ngày'
+                  : section === 'visits'
+                  ? 'Lượt truy cập theo ngày'
+                  : 'Đơn hàng theo ngày'}
+              </h2>
               <p>Biểu đồ tương tác giúp theo dõi xu hướng trong phạm vi ngày đã chọn.</p>
             </div>
             <div className="analytics-actions">
@@ -402,6 +517,15 @@ export default function AdminStats() {
                   onClick={() => setSection('visits')}
                 >
                   Truy cập
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`toggle-btn ${section === 'orders' ? 'active' : ''}`}
+                  aria-selected={section === 'orders'}
+                  onClick={() => setSection('orders')}
+                >
+                  Đơn hàng
                 </button>
               </div>
             </div>
@@ -469,7 +593,11 @@ export default function AdminStats() {
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} dy={6} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => formatNumber(value)} labelStyle={{ fontWeight: 600 }} />
-                  <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="#2563eb" />
+                  <Bar
+                    dataKey="total"
+                    radius={[6, 6, 0, 0]}
+                    fill={section === 'orders' ? '#16a34a' : '#2563eb'}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}

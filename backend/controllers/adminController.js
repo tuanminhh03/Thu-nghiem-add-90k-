@@ -472,7 +472,14 @@ export async function stats(req, res) {
     start.setDate(start.getDate() - 29);
     start.setHours(0, 0, 0, 0);
 
-    const [customerCount, revenueAgg, visitAgg, visitsToday] = await Promise.all([
+    const [
+      customerCount,
+      revenueAgg,
+      visitAgg,
+      visitsToday,
+      ordersAgg,
+      ordersToday,
+    ] = await Promise.all([
       Customer.countDocuments(),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
@@ -482,7 +489,17 @@ export async function stats(req, res) {
         { $match: { createdAt: { $gte: start } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } } }
       ]),
-      PageView.countDocuments({ createdAt: { $gte: today } })
+      PageView.countDocuments({ createdAt: { $gte: today } }),
+      Order.aggregate([
+        { $match: { purchaseDate: { $gte: start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+            total: { $sum: 1 },
+          },
+        },
+      ]),
+      Order.countDocuments({ purchaseDate: { $gte: today } }),
     ]);
 
     const days = [];
@@ -490,23 +507,29 @@ export async function stats(req, res) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const key = d.toISOString().slice(0, 10);
-      days.push({ date: key, revenue: 0, visits: 0 });
+      days.push({ date: key, revenue: 0, visits: 0, orders: 0 });
     }
     const revMap   = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
     const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
+    const orderMap = Object.fromEntries(ordersAgg.map(o => [o._id, o.total]));
     days.forEach(d => {
       d.revenue = revMap[d.date]  || 0;
       d.visits  = visitMap[d.date]|| 0;
+      d.orders  = orderMap[d.date]|| 0;
     });
 
     const revenueLast30Days = days.reduce((sum, d) => sum + d.revenue, 0);
+    const ordersLast30Days  = days.reduce((sum, d) => sum + d.orders, 0);
 
     res.json({
       customerCount,
       revenueLast30Days,
       visitsToday,
+      ordersToday,
+      ordersLast30Days,
       revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
-      visitChart:  days.map(d => ({ date: d.date, total: d.visits  }))
+      visitChart:  days.map(d => ({ date: d.date, total: d.visits  })),
+      ordersChart: days.map(d => ({ date: d.date, total: d.orders  })),
     });
   } catch (err) {
     console.error(err);
