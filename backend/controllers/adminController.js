@@ -7,6 +7,37 @@ import PageView from '../models/PageView.js';
 import AdminLog from '../models/AdminLog.js';
 import updates from '../services/eventService.js';
 
+const ADMIN_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const ADMIN_TIMEZONE_OFFSET = '+07:00';
+
+function getDateParts(date, timeZone = ADMIN_TIME_ZONE) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const [year, month, day] = formatter
+    .format(date)
+    .split('-')
+    .map((value) => Number.parseInt(value, 10));
+
+  return { year, month, day };
+}
+
+function startOfDay(date, timeZone = ADMIN_TIME_ZONE) {
+  const { year, month, day } = getDateParts(date, timeZone);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDateKey(date, timeZone = ADMIN_TIME_ZONE) {
+  const { year, month, day } = getDateParts(date, timeZone);
+  return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day
+    .toString()
+    .padStart(2, '0')}`;
+}
+
 export function ordersStream(req, res) {
   const { token } = req.query;
   if (!token) return res.status(401).end();
@@ -466,11 +497,11 @@ export async function transferProfile(req, res) {
 
 export async function stats(req, res) {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date();
-    start.setDate(start.getDate() - 29);
-    start.setHours(0, 0, 0, 0);
+    const today = startOfDay(new Date());
+    const start = new Date(today);
+    start.setUTCDate(start.getUTCDate() - 29);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
     const [
       customerCount,
@@ -483,43 +514,77 @@ export async function stats(req, res) {
       Customer.countDocuments(),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }, total: { $sum: '$amount' } } }
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$purchaseDate',
+                timezone: ADMIN_TIMEZONE_OFFSET,
+              },
+            },
+            total: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
       ]),
       PageView.aggregate([
         { $match: { createdAt: { $gte: start } } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: 1 } } }
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt',
+                timezone: ADMIN_TIMEZONE_OFFSET,
+              },
+            },
+            total: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
       ]),
       PageView.countDocuments({ createdAt: { $gte: today } }),
       Order.aggregate([
         { $match: { purchaseDate: { $gte: start } } },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$purchaseDate',
+                timezone: ADMIN_TIMEZONE_OFFSET,
+              },
+            },
             total: { $sum: 1 },
           },
         },
+        { $sort: { _id: 1 } },
       ]),
       Order.countDocuments({ purchaseDate: { $gte: today } }),
     ]);
 
     const days = [];
     for (let i = 0; i < 30; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
+      const current = new Date(start);
+      current.setUTCDate(start.getUTCDate() + i);
+      const key = formatDateKey(current);
       days.push({ date: key, revenue: 0, visits: 0, orders: 0 });
     }
-    const revMap   = Object.fromEntries(revenueAgg.map(r => [r._id, r.total]));
-    const visitMap = Object.fromEntries(visitAgg.map(v => [v._id, v.total]));
-    const orderMap = Object.fromEntries(ordersAgg.map(o => [o._id, o.total]));
-    days.forEach(d => {
-      d.revenue = revMap[d.date]  || 0;
-      d.visits  = visitMap[d.date]|| 0;
-      d.orders  = orderMap[d.date]|| 0;
+    const revMap = Object.fromEntries(revenueAgg.map((r) => [r._id, r.total]));
+    const visitMap = Object.fromEntries(visitAgg.map((v) => [v._id, v.total]));
+    const orderMap = Object.fromEntries(ordersAgg.map((o) => [o._id, o.total]));
+    days.forEach((d) => {
+      d.revenue = revMap[d.date] || 0;
+      d.visits = visitMap[d.date] || 0;
+      d.orders = orderMap[d.date] || 0;
     });
 
     const revenueLast30Days = days.reduce((sum, d) => sum + d.revenue, 0);
     const ordersLast30Days  = days.reduce((sum, d) => sum + d.orders, 0);
+
+    const todayKey = formatDateKey(today);
+    const yesterdayKey = formatDateKey(yesterday);
 
     res.json({
       customerCount,
@@ -527,6 +592,10 @@ export async function stats(req, res) {
       visitsToday,
       ordersToday,
       ordersLast30Days,
+      revenueToday: Number(revMap[todayKey] || 0),
+      revenueYesterday: Number(revMap[yesterdayKey] || 0),
+      visitsYesterday: Number(visitMap[yesterdayKey] || 0),
+      ordersYesterday: Number(orderMap[yesterdayKey] || 0),
       revenueChart: days.map(d => ({ date: d.date, total: d.revenue })),
       visitChart:  days.map(d => ({ date: d.date, total: d.visits  })),
       ordersChart: days.map(d => ({ date: d.date, total: d.orders  })),
