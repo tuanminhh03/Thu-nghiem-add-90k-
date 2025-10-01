@@ -24,17 +24,13 @@ const numberFormatter = new Intl.NumberFormat('vi-VN');
 
 const formatCurrency = (value) => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return '—';
-  }
+  if (!Number.isFinite(parsed)) return '—';
   return currencyFormatter.format(parsed);
 };
 
 const formatNumber = (value) => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return '0';
-  }
+  if (!Number.isFinite(parsed)) return '0';
   return numberFormatter.format(parsed);
 };
 
@@ -92,9 +88,7 @@ const renderMetricIcon = (key) => {
 const getDelta = (current, previous, { currency = false } = {}) => {
   if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
   const diff = current - previous;
-  if (diff === 0) {
-    return { label: 'Không đổi', tone: 'neutral', symbol: '→' };
-  }
+  if (diff === 0) return { label: 'Không đổi', tone: 'neutral', symbol: '→' };
   const formatted = currency ? formatCurrency(Math.abs(diff)) : formatNumber(Math.abs(diff));
   return {
     label: `${diff > 0 ? 'Tăng' : 'Giảm'} ${formatted}`,
@@ -110,6 +104,7 @@ export default function AdminStats() {
   const [range, setRange] = useState(createDefaultRange);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loadError, setLoadError] = useState(null);
+
   const tokenRef = useRef(localStorage.getItem('adminToken'));
   const isMountedRef = useRef(true);
 
@@ -196,6 +191,21 @@ export default function AdminStats() {
     };
   }, [fetchStats, fetchOrders]);
 
+  let formattedLastUpdated = '';
+  if (lastUpdated) {
+    try {
+      formattedLastUpdated = new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(lastUpdated);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   if (loadError && !stats)
     return (
       <AdminLayout>
@@ -216,48 +226,31 @@ export default function AdminStats() {
       </AdminLayout>
     );
 
-  const formattedLastUpdated = useMemo(() => {
-    if (!lastUpdated) return '';
-    try {
-      return new Intl.DateTimeFormat('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(lastUpdated);
-    } catch (error) {
-      console.error(error);
-      return '';
-    }
-  }, [lastUpdated]);
+  // ---- Safely derive arrays ----
+  const revenueChart = Array.isArray(stats.revenueChart) ? stats.revenueChart : [];
+  const visitChart = Array.isArray(stats.visitChart) ? stats.visitChart : [];
+  const ordersChart = Array.isArray(stats.ordersChart) ? stats.ordersChart : [];
 
-  const revenueToday = stats.revenueChart?.[stats.revenueChart.length - 1]?.total ?? 0;
-  const revenueYesterday =
-    stats.revenueChart?.[stats.revenueChart.length - 2]?.total ?? revenueToday;
+  // ---- Metrics & deltas ----
+  const revenueToday = Number(revenueChart[revenueChart.length - 1]?.total ?? 0);
+  const revenueYesterday = Number(revenueChart[revenueChart.length - 2]?.total ?? revenueToday);
   const revenueDelta = getDelta(revenueToday, revenueYesterday, { currency: true });
-  const totalVisits30Days = Array.isArray(stats.visitChart)
-    ? stats.visitChart.reduce((sum, d) => sum + d.total, 0)
-    : 0;
+
+  const totalVisits30Days = visitChart.reduce((sum, d) => sum + Number(d?.total ?? 0), 0);
   const visitsToday = Number(stats.visitsToday ?? 0);
-  const visitsLatest = stats.visitChart?.[stats.visitChart.length - 1]?.total ?? visitsToday;
-  const visitsYesterday =
-    stats.visitChart?.[stats.visitChart.length - 2]?.total ?? visitsLatest;
+  const visitsLatest = Number(visitChart[visitChart.length - 1]?.total ?? visitsToday);
+  const visitsYesterday = Number(visitChart[visitChart.length - 2]?.total ?? visitsLatest);
   const visitDelta = getDelta(visitsLatest, visitsYesterday);
-  const revenueAverage =
-    stats.revenueChart?.length > 0
-      ? stats.revenueLast30Days / stats.revenueChart.length
-      : 0;
-  const visitsAverage =
-    stats.visitChart?.length > 0 ? totalVisits30Days / stats.visitChart.length : 0;
+
+  const revenueAverage = revenueChart.length > 0 ? Number(stats.revenueLast30Days ?? 0) / revenueChart.length : 0;
+  const visitsAverage = visitChart.length > 0 ? totalVisits30Days / visitChart.length : 0;
+
   const ordersLast30Days = Number(stats.ordersLast30Days ?? 0);
   const ordersToday = Number(stats.ordersToday ?? 0);
-  const ordersLatest = stats.ordersChart?.[stats.ordersChart.length - 1]?.total ?? ordersToday;
-  const ordersYesterday =
-    stats.ordersChart?.[stats.ordersChart.length - 2]?.total ?? ordersLatest;
+  const ordersLatest = Number(ordersChart[ordersChart.length - 1]?.total ?? ordersToday);
+  const ordersYesterday = Number(ordersChart[ordersChart.length - 2]?.total ?? ordersLatest);
   const orderDelta = getDelta(ordersLatest, ordersYesterday);
-  const ordersAverage =
-    stats.ordersChart?.length > 0 ? ordersLast30Days / stats.ordersChart.length : 0;
+  const ordersAverage = ordersChart.length > 0 ? ordersLast30Days / ordersChart.length : 0;
 
   const metricCards = useMemo(
     () => [
@@ -312,17 +305,13 @@ export default function AdminStats() {
 
   const chartData = useMemo(() => {
     const dataset =
-      section === 'visits'
-        ? stats.visitChart
-        : section === 'orders'
-        ? stats.ordersChart
-        : stats.revenueChart;
-    if (!Array.isArray(dataset)) return [];
+      section === 'visits' ? visitChart : section === 'orders' ? ordersChart : revenueChart;
+    if (!Array.isArray(dataset) || dataset.length === 0) return [];
+
     const startDate = parseISODate(range.start);
     const endDate = parseISODate(range.end);
-    if (endDate) {
-      endDate.setHours(23, 59, 59, 999);
-    }
+    if (endDate) endDate.setHours(23, 59, 59, 999);
+
     return dataset
       .map((entry) => {
         const parsedDate = parseISODate(entry.date);
@@ -330,7 +319,7 @@ export default function AdminStats() {
         return {
           raw: parsedDate,
           label: parsedDate.toLocaleDateString('vi-VN'),
-          total: entry.total,
+          total: Number(entry.total ?? 0),
         };
       })
       .filter((entry) => {
@@ -340,54 +329,27 @@ export default function AdminStats() {
         return true;
       })
       .map((entry) => ({ date: entry.label, total: entry.total }));
-  }, [section, stats.revenueChart, stats.visitChart, stats.ordersChart, range]);
+  }, [section, revenueChart, visitChart, ordersChart, range]);
 
   const highlightItems = useMemo(() => {
     if (section === 'visits') {
       return [
-        {
-          label: 'Lượt truy cập hôm nay',
-          value: formatNumber(visitsToday || visitsLatest),
-        },
-        {
-          label: 'Trung bình mỗi ngày',
-          value: formatNumber(Math.round(visitsAverage)),
-        },
-        {
-          label: 'So với hôm qua',
-          value: visitDelta ? visitDelta.label : 'Chưa có dữ liệu so sánh',
-        },
+        { label: 'Lượt truy cập hôm nay', value: formatNumber(visitsToday || visitsLatest) },
+        { label: 'Trung bình mỗi ngày', value: formatNumber(Math.round(visitsAverage)) },
+        { label: 'So với hôm qua', value: visitDelta ? visitDelta.label : 'Chưa có dữ liệu so sánh' },
       ];
     }
     if (section === 'orders') {
       return [
-        {
-          label: 'Đơn hàng hôm nay',
-          value: formatNumber(ordersToday || ordersLatest),
-        },
-        {
-          label: 'Trung bình mỗi ngày',
-          value: formatNumber(Math.round(ordersAverage)),
-        },
-        {
-          label: 'So với hôm qua',
-          value: orderDelta ? orderDelta.label : 'Chưa có dữ liệu so sánh',
-        },
+        { label: 'Đơn hàng hôm nay', value: formatNumber(ordersToday || ordersLatest) },
+        { label: 'Trung bình mỗi ngày', value: formatNumber(Math.round(ordersAverage)) },
+        { label: 'So với hôm qua', value: orderDelta ? orderDelta.label : 'Chưa có dữ liệu so sánh' },
       ];
     }
     return [
-      {
-        label: 'Doanh thu hôm nay',
-        value: formatCurrency(revenueToday),
-      },
-      {
-        label: 'Trung bình mỗi ngày',
-        value: formatCurrency(Math.round(revenueAverage)),
-      },
-      {
-        label: 'So với hôm qua',
-        value: revenueDelta ? revenueDelta.label : 'Chưa có dữ liệu so sánh',
-      },
+      { label: 'Doanh thu hôm nay', value: formatCurrency(revenueToday) },
+      { label: 'Trung bình mỗi ngày', value: formatCurrency(Math.round(revenueAverage)) },
+      { label: 'So với hôm qua', value: revenueDelta ? revenueDelta.label : 'Chưa có dữ liệu so sánh' },
     ];
   }, [
     section,
@@ -413,9 +375,7 @@ export default function AdminStats() {
           <div className="dashboard-hero-body">
             <span className="hero-kicker">Trang quản trị</span>
             <h1>Dashboard tổng quan</h1>
-            <p>
-              Giám sát doanh thu, lượt truy cập và đơn hàng nổi bật trong 30 ngày gần nhất.
-            </p>
+            <p>Giám sát doanh thu, lượt truy cập và đơn hàng nổi bật trong 30 ngày gần nhất.</p>
             <div className="hero-meta">
               <span className="hero-pill">
                 <strong>{formatCurrency(stats.revenueLast30Days)}</strong> doanh thu 30 ngày
@@ -432,9 +392,7 @@ export default function AdminStats() {
             </div>
           </div>
           <div className="dashboard-hero-actions stats-hero-actions">
-            {formattedLastUpdated && (
-              <p className="hero-updated">Cập nhật: {formattedLastUpdated}</p>
-            )}
+            {formattedLastUpdated && <p className="hero-updated">Cập nhật: {formattedLastUpdated}</p>}
             <div className="hero-actions-group">
               <button onClick={fetchStats} className="btn btn-primary" type="button">
                 Làm mới số liệu
@@ -540,9 +498,7 @@ export default function AdminStats() {
                   className="date-input"
                   value={range.start}
                   max={range.end}
-                  onChange={(event) =>
-                    setRange((prev) => ({ ...prev, start: event.target.value }))
-                  }
+                  onChange={(event) => setRange((prev) => ({ ...prev, start: event.target.value }))}
                 />
               </label>
               <label>
@@ -552,9 +508,7 @@ export default function AdminStats() {
                   className="date-input"
                   value={range.end}
                   min={range.start}
-                  onChange={(event) =>
-                    setRange((prev) => ({ ...prev, end: event.target.value }))
-                  }
+                  onChange={(event) => setRange((prev) => ({ ...prev, end: event.target.value }))}
                 />
               </label>
             </div>
@@ -576,14 +530,7 @@ export default function AdminStats() {
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} dy={6} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => formatCurrency(value)} labelStyle={{ fontWeight: 600 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="#e50914"
-                    strokeWidth={3}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
+                  <Line type="monotone" dataKey="total" stroke="#e50914" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -593,11 +540,7 @@ export default function AdminStats() {
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} dy={6} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => formatNumber(value)} labelStyle={{ fontWeight: 600 }} />
-                  <Bar
-                    dataKey="total"
-                    radius={[6, 6, 0, 0]}
-                    fill={section === 'orders' ? '#16a34a' : '#2563eb'}
-                  />
+                  <Bar dataKey="total" radius={[6, 6, 0, 0]} fill={section === 'orders' ? '#16a34a' : '#2563eb'} />
                 </BarChart>
               </ResponsiveContainer>
             )}
