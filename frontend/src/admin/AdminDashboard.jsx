@@ -83,6 +83,7 @@ export default function AdminDashboard() {
   const [showDelete, setShowDelete] = useState(false);
   const [selected, setSelected] = useState(null);
   const [amount, setAmount] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
   const token = localStorage.getItem('adminToken');
   const navigate = useNavigate();
 
@@ -100,6 +101,7 @@ export default function AdminDashboard() {
       });
       setCustomers(data.data);
       setPages(data.pages);
+      setLastUpdated(new Date());
       // Clear any previous message on successful refresh
       setMsg({ text: '', type: '' });
     } catch (err) {
@@ -189,6 +191,105 @@ export default function AdminDashboard() {
     [dashboardMetrics]
   );
 
+  const formattedLastUpdated = useMemo(() => {
+    if (!lastUpdated) return '';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(lastUpdated);
+    } catch {
+      return '';
+    }
+  }, [lastUpdated]);
+
+  const balanceSegments = useMemo(() => {
+    if (!customers.length) {
+      return [
+        { key: 'high', label: '≥ 300K', count: 0, percent: 0, tone: 'success' },
+        { key: 'medium', label: '100K - 300K', count: 0, percent: 0, tone: 'warning' },
+        { key: 'low', label: '0 - 100K', count: 0, percent: 0, tone: 'neutral' },
+        { key: 'debt', label: 'Âm số dư', count: 0, percent: 0, tone: 'danger' },
+      ];
+    }
+
+    const distribution = {
+      high: 0,
+      medium: 0,
+      low: 0,
+      debt: 0,
+    };
+
+    customers.forEach((customer) => {
+      const amountValue = Number(customer.amount) || 0;
+      if (amountValue >= 300000) distribution.high += 1;
+      else if (amountValue >= 100000) distribution.medium += 1;
+      else if (amountValue > 0) distribution.low += 1;
+      else distribution.debt += 1;
+    });
+
+    const total = customers.length || 1;
+
+    return [
+      {
+        key: 'high',
+        label: '≥ 300K',
+        count: distribution.high,
+        percent: Math.round((distribution.high / total) * 100) || 0,
+        tone: 'success',
+      },
+      {
+        key: 'medium',
+        label: '100K - 300K',
+        count: distribution.medium,
+        percent: Math.round((distribution.medium / total) * 100) || 0,
+        tone: 'warning',
+      },
+      {
+        key: 'low',
+        label: '0 - 100K',
+        count: distribution.low,
+        percent: Math.round((distribution.low / total) * 100) || 0,
+        tone: 'neutral',
+      },
+      {
+        key: 'debt',
+        label: 'Âm số dư',
+        count: distribution.debt,
+        percent: Math.round((distribution.debt / total) * 100) || 0,
+        tone: 'danger',
+      },
+    ];
+  }, [customers]);
+
+  const topBalances = useMemo(() => {
+    if (!customers.length) return [];
+
+    return [...customers]
+      .filter((customer) => Number(customer.amount) > 0)
+      .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+      .slice(0, 3);
+  }, [customers]);
+
+  const recentCustomers = useMemo(() => {
+    if (!customers.length) return [];
+
+    return [...customers]
+      .filter((customer) => customer.createdAt)
+      .sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 5);
+  }, [customers]);
+
+  const averageBalance = useMemo(() => {
+    if (!dashboardMetrics.total) return 0;
+    return dashboardMetrics.balance / dashboardMetrics.total;
+  }, [dashboardMetrics]);
+
   // ========================
   // 3. Handlers
   // ========================
@@ -264,10 +365,10 @@ export default function AdminDashboard() {
     <AdminLayout>
       <section className="dashboard">
         <div className="dashboard-hero">
-          <div className="dashboard-hero-body">
-            <span className="hero-kicker">Tổng quan khách hàng</span>
-            <h1>Quản lý khách hàng</h1>
-            <p>Theo dõi tình trạng tài khoản và số dư khách hàng theo thời gian thực.</p>
+        <div className="dashboard-hero-body">
+          <span className="hero-kicker">Tổng quan khách hàng</span>
+          <h1>Quản lý khách hàng</h1>
+          <p>Theo dõi tình trạng tài khoản và số dư khách hàng theo thời gian thực.</p>
             <div className="hero-meta">
               <span className="hero-pill">
                 <strong>{formatNumber(dashboardMetrics.total)}</strong> khách hàng
@@ -281,12 +382,17 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="dashboard-hero-actions">
-            <button onClick={fetchCustomers} className="btn btn-primary" type="button">
-              Làm mới dữ liệu
-            </button>
-            <Link to="/admin/orders" className="btn btn-outline">
-              Xem đơn hàng
-            </Link>
+            {formattedLastUpdated && (
+              <p className="hero-updated">Cập nhật: {formattedLastUpdated}</p>
+            )}
+            <div className="hero-actions-group">
+              <button onClick={fetchCustomers} className="btn btn-primary" type="button">
+                Làm mới dữ liệu
+              </button>
+              <Link to="/admin/orders" className="btn btn-outline">
+                Xem đơn hàng
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -298,7 +404,7 @@ export default function AdminDashboard() {
 
         <div className="stat-card-grid">
           {statCards.map((card) => (
-            <article key={card.key} className="stat-card">
+            <article key={card.key} className={`stat-card stat-card--${card.key}`}>
               <div className="stat-icon">{statIcon(card.key)}</div>
               <div className="stat-content">
                 <p className="stat-label">{card.label}</p>
@@ -309,7 +415,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <section className="surface-card">
+        <section className="surface-card surface-dashboard">
           <header className="surface-header">
             <div>
               <h2>Danh sách khách hàng</h2>
@@ -318,134 +424,224 @@ export default function AdminDashboard() {
             <div className="surface-meta">
               <span className="meta-item">Tổng số: {formatNumber(dashboardMetrics.total)}</span>
               <span className="meta-item">Đang hoạt động: {formatNumber(dashboardMetrics.active)}</span>
+              {formattedLastUpdated && (
+                <span className="meta-item">Lần cuối: {formattedLastUpdated}</span>
+              )}
             </div>
           </header>
 
-          <form onSubmit={handleSearch} className="form-search">
-            <div className="input-group">
-              <span className="input-icon" aria-hidden="true">🔍</span>
-              <input
-                type="text"
-                placeholder="Tìm kiếm theo số điện thoại"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input"
-              />
-            </div>
-            <button type="submit" className="btn btn-soft">
-              Tìm kiếm
-            </button>
-          </form>
+          <div className="surface-body">
+            <div className="data-region">
+              <form onSubmit={handleSearch} className="form-search">
+                <div className="input-group">
+                  <span className="input-icon" aria-hidden="true">🔍</span>
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo số điện thoại"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <button type="submit" className="btn btn-soft">
+                  Tìm kiếm
+                </button>
+              </form>
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>STT</th>
-                  <th>Khách hàng</th>
-                  <th>Số điện thoại</th>
-                  <th>Ngày tạo</th>
-                  <th>Số dư</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer, idx) => {
-                  const safeId = customer._id || `${customer.phone}-${idx}`;
-                  const shortId = customer._id ? customer._id.slice(-6) : 'N/A';
-                  const avatarText = (customer.name || customer.phone || 'U')[0]?.toUpperCase();
-
-                  return (
-                    <tr key={safeId}>
-                      <td>{(page - 1) * 10 + idx + 1}</td>
-                      <td>
-                        <div className="customer-cell">
-                          <span className="customer-avatar">{avatarText}</span>
-                          <div>
-                            <p className="customer-name">{customer.name || 'Chưa cập nhật'}</p>
-                            <p className="customer-note">ID: {shortId}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <Link
-                          to={`/admin/customers/${customer._id}/orders`}
-                          className="link"
-                        >
-                          {customer.phone}
-                        </Link>
-                      </td>
-                      <td>{formatDate(customer.createdAt)}</td>
-                      <td>
-                        <span
-                          className={`balance-badge ${getBalanceTone(Number(customer.amount) || 0)}`}
-                        >
-                          {formatCurrency(customer.amount)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <a
-                            href={`/admin/customers/${customer._id}/reset-pin`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-ghost"
-                          >
-                            Đặt lại PIN
-                          </a>
-                          <button
-                            onClick={() => openTopup(customer)}
-                            className="btn btn-soft"
-                            type="button"
-                          >
-                            Nạp tiền
-                          </button>
-                          <button
-                            onClick={() => openDelete(customer)}
-                            className="btn btn-danger"
-                            type="button"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </td>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>STT</th>
+                      <th>Khách hàng</th>
+                      <th>Số điện thoại</th>
+                      <th>Ngày tạo</th>
+                      <th>Số dư</th>
+                      <th>Thao tác</th>
                     </tr>
-                  );
-                })}
-                {customers.length === 0 && (
-                  <tr>
-                    <td colSpan="6">
-                      <div className="empty-state">
-                        <h3>Không có dữ liệu</h3>
-                        <p>Hãy thử điều chỉnh bộ lọc hoặc thêm khách hàng mới.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {customers.map((customer, idx) => {
+                      const safeId = customer._id || `${customer.phone}-${idx}`;
+                      const shortId = customer._id ? customer._id.slice(-6) : 'N/A';
+                      const avatarText = (customer.name || customer.phone || 'U')[0]?.toUpperCase();
 
-          <div className="pagination">
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              type="button"
-            >
-              Trang trước
-            </button>
-            <span className="pagination-status">
-              Trang {page} / {pages}
-            </span>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              disabled={page === pages}
-              type="button"
-            >
-              Trang sau
-            </button>
+                      return (
+                        <tr key={safeId}>
+                          <td>{(page - 1) * 10 + idx + 1}</td>
+                          <td>
+                            <div className="customer-cell">
+                              <span className="customer-avatar">{avatarText}</span>
+                              <div>
+                                <p className="customer-name">{customer.name || 'Chưa cập nhật'}</p>
+                                <p className="customer-note">ID: {shortId}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <Link
+                              to={`/admin/customers/${customer._id}/orders`}
+                              className="link"
+                            >
+                              {customer.phone}
+                            </Link>
+                          </td>
+                          <td>{formatDate(customer.createdAt)}</td>
+                          <td>
+                            <span
+                              className={`balance-badge ${getBalanceTone(Number(customer.amount) || 0)}`}
+                            >
+                              {formatCurrency(customer.amount)}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="table-actions">
+                              <a
+                                href={`/admin/customers/${customer._id}/reset-pin`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-ghost"
+                              >
+                                Đặt lại PIN
+                              </a>
+                              <button
+                                onClick={() => openTopup(customer)}
+                                className="btn btn-soft"
+                                type="button"
+                              >
+                                Nạp tiền
+                              </button>
+                              <button
+                                onClick={() => openDelete(customer)}
+                                className="btn btn-danger"
+                                type="button"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {customers.length === 0 && (
+                      <tr>
+                        <td colSpan="6">
+                          <div className="empty-state">
+                            <h3>Không có dữ liệu</h3>
+                            <p>Hãy thử điều chỉnh bộ lọc hoặc thêm khách hàng mới.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="pagination">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  type="button"
+                >
+                  Trang trước
+                </button>
+                <span className="pagination-status">
+                  Trang {page} / {pages}
+                </span>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPage((p) => Math.min(pages, p + 1))}
+                  disabled={page === pages}
+                  type="button"
+                >
+                  Trang sau
+                </button>
+              </div>
+            </div>
+
+            <aside className="insight-sidebar" aria-label="Thông tin bổ sung">
+              <article className="insight-card insight-card-highlight">
+                <h3>Tình trạng số dư</h3>
+                <p className="insight-number">{formatCurrency(dashboardMetrics.balance)}</p>
+                <p className="insight-helper">Tổng số dư đang quản lý</p>
+                <div className="insight-divider" aria-hidden="true" />
+                <p className="insight-secondary">
+                  Trung bình <strong>{formatCurrency(averageBalance)}</strong> / khách
+                </p>
+              </article>
+
+              <article className="insight-card">
+                <h3>Phân bố số dư</h3>
+                <ul className="insight-progress-list">
+                  {balanceSegments.map((segment) => (
+                    <li key={segment.key} className="insight-progress-item">
+                      <div className="insight-progress-header">
+                        <span className={`insight-dot ${segment.tone}`} aria-hidden="true" />
+                        <span className="insight-progress-label">{segment.label}</span>
+                        <span className="insight-progress-value">
+                          {formatNumber(segment.count)} khách
+                        </span>
+                      </div>
+                      <div className="insight-progress-bar" role="presentation">
+                        <span
+                          className={`insight-progress-track ${segment.tone}`}
+                          style={{ width: `${segment.percent}%` }}
+                          aria-hidden="true"
+                        />
+                        <span className="sr-only">{segment.percent}% tổng khách</span>
+                      </div>
+                      <div className="insight-progress-meta">{segment.percent}% tổng khách</div>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="insight-card">
+                <h3>Khách số dư cao</h3>
+                <ul className="insight-list">
+                  {topBalances.length === 0 && <li className="insight-empty">Chưa có dữ liệu</li>}
+                  {topBalances.map((customer, idx) => (
+                    <li
+                      key={customer._id || `${customer.phone}-top-${idx}`}
+                      className="insight-list-item"
+                    >
+                      <div className="insight-avatar" aria-hidden="true">
+                        {(customer.name || customer.phone || 'U')[0]?.toUpperCase()}
+                      </div>
+                      <div className="insight-list-content">
+                        <p className="insight-list-title">{customer.name || 'Chưa cập nhật'}</p>
+                        <p className="insight-list-subtitle">{customer.phone}</p>
+                      </div>
+                      <span className="insight-list-value">{formatCurrency(customer.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="insight-card">
+                <h3>Khách hàng mới</h3>
+                <ul className="insight-list">
+                  {recentCustomers.length === 0 && (
+                    <li className="insight-empty">Chưa có dữ liệu</li>
+                  )}
+                  {recentCustomers.map((customer, idx) => (
+                    <li
+                      key={customer._id || `${customer.phone}-recent-${idx}`}
+                      className="insight-list-item"
+                    >
+                      <div className="insight-bullet" aria-hidden="true" />
+                      <div className="insight-list-content">
+                        <p className="insight-list-title">{customer.name || customer.phone}</p>
+                        <p className="insight-list-subtitle">
+                          Ngày tạo: {formatDate(customer.createdAt)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </aside>
           </div>
         </section>
       </section>
