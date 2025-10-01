@@ -163,9 +163,8 @@ export default function AdminStats() {
     fetchStats();
     fetchOrders();
 
-    const es = new EventSource(
-      `http://localhost:5000/api/admin/orders/stream?token=${encodeURIComponent(token)}`
-    );
+    const streamUrl = `/api/admin/orders/stream?token=${encodeURIComponent(token)}`;
+    const es = new EventSource(streamUrl);
 
     es.onmessage = (event) => {
       if (!isMountedRef.current) return;
