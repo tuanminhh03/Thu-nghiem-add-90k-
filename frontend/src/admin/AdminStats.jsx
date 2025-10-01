@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import {
   ResponsiveContainer,
@@ -109,39 +109,105 @@ export default function AdminStats() {
   const [section, setSection] = useState('revenue');
   const [range, setRange] = useState(createDefaultRange);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const token = localStorage.getItem('adminToken');
-
-  const fetchStats = useCallback(() => {
-    axios
-      .get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        setStats(r.data);
-        setLastUpdated(new Date());
-      })
-      .catch(console.error);
-  }, [token]);
-
-  const fetchOrders = useCallback(() => {
-    axios
-      .get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setOrders(Array.isArray(r.data.data) ? r.data.data : []))
-      .catch(console.error);
-  }, [token]);
+  const [loadError, setLoadError] = useState(null);
+  const tokenRef = useRef(localStorage.getItem('adminToken'));
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!token) return undefined;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setStats(response.data);
+      setLastUpdated(new Date());
+      setLoadError(null);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+        setLoadError('Không tải được dữ liệu thống kê. Vui lòng thử lại.');
+      }
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token || !isMountedRef.current) return;
+    try {
+      const response = await axios.get('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!isMountedRef.current) return;
+      setOrders(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error(error);
+      }
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setLoadError(null);
     fetchStats();
     fetchOrders();
+  }, [fetchOrders, fetchStats]);
+
+  useEffect(() => {
+    const token = tokenRef.current;
+    if (!token) return undefined;
+
+    fetchStats();
+    fetchOrders();
+
     const es = new EventSource(
-      `http://localhost:5000/api/admin/orders/stream?token=${token}`
+      `http://localhost:5000/api/admin/orders/stream?token=${encodeURIComponent(token)}`
     );
-    es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      fetchStats();
-      setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+
+    es.onmessage = (event) => {
+      if (!isMountedRef.current) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (!data || !data._id) return;
+        fetchStats();
+        setOrders((prev) => [data, ...prev.filter((o) => o._id !== data._id)].slice(0, 20));
+      } catch (error) {
+        console.error('orders stream parse error', error);
+      }
     };
-    return () => es.close();
-  }, [token, fetchStats, fetchOrders]);
+
+    es.onerror = (error) => {
+      if (isMountedRef.current) {
+        console.error('orders stream error', error);
+      }
+      es.close();
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [fetchStats, fetchOrders]);
+
+  if (loadError && !stats)
+    return (
+      <AdminLayout>
+        <section className="surface-card empty-state">
+          <h2>Không thể tải thống kê</h2>
+          <p>{loadError}</p>
+          <button type="button" className="btn btn-primary" onClick={handleRetry}>
+            Thử lại
+          </button>
+        </section>
+      </AdminLayout>
+    );
 
   if (!stats)
     return (
