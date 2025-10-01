@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import { getApiUrl } from '../utils/api';
 import {
   ResponsiveContainer,
   LineChart,
@@ -163,7 +164,8 @@ export default function AdminStats() {
     fetchStats();
     fetchOrders();
 
-    const streamUrl = `/api/admin/orders/stream?token=${encodeURIComponent(token)}`;
+    // ✅ Gỡ conflict: dùng getApiUrl(...) cho SSE stream
+    const streamUrl = getApiUrl(`/api/admin/orders/stream?token=${encodeURIComponent(token)}`);
     const es = new EventSource(streamUrl);
 
     es.onmessage = (event) => {
@@ -190,64 +192,33 @@ export default function AdminStats() {
     };
   }, [fetchStats, fetchOrders]);
 
-  let formattedLastUpdated = '';
-  if (lastUpdated) {
-    try {
-      formattedLastUpdated = new Intl.DateTimeFormat('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(lastUpdated);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const revenueChart = Array.isArray(stats?.revenueChart) ? stats.revenueChart : [];
+  const visitChart = Array.isArray(stats?.visitChart) ? stats.visitChart : [];
+  const ordersChart = Array.isArray(stats?.ordersChart) ? stats.ordersChart : [];
 
-  if (loadError && !stats)
-    return (
-      <AdminLayout>
-        <section className="surface-card empty-state">
-          <h2>Không thể tải thống kê</h2>
-          <p>{loadError}</p>
-          <button type="button" className="btn btn-primary" onClick={handleRetry}>
-            Thử lại
-          </button>
-        </section>
-      </AdminLayout>
-    );
-
-  if (!stats)
-    return (
-      <AdminLayout>
-        <p className="loading">Đang tải...</p>
-      </AdminLayout>
-    );
-
-  // ---- Safely derive arrays ----
-  const revenueChart = Array.isArray(stats.revenueChart) ? stats.revenueChart : [];
-  const visitChart = Array.isArray(stats.visitChart) ? stats.visitChart : [];
-  const ordersChart = Array.isArray(stats.ordersChart) ? stats.ordersChart : [];
-
-  // ---- Metrics & deltas ----
-  const revenueToday = Number(revenueChart[revenueChart.length - 1]?.total ?? 0);
-  const revenueYesterday = Number(revenueChart[revenueChart.length - 2]?.total ?? revenueToday);
+  const revenueToday = Number(revenueChart[revenueChart.length - 1]?.total ?? stats?.revenueToday ?? 0);
+  const revenueYesterday = Number(
+    revenueChart[revenueChart.length - 2]?.total ?? revenueChart[revenueChart.length - 1]?.total ?? stats?.revenueYesterday ?? 0
+  );
   const revenueDelta = getDelta(revenueToday, revenueYesterday, { currency: true });
 
   const totalVisits30Days = visitChart.reduce((sum, d) => sum + Number(d?.total ?? 0), 0);
-  const visitsToday = Number(stats.visitsToday ?? 0);
+  const visitsToday = Number(stats?.visitsToday ?? 0);
   const visitsLatest = Number(visitChart[visitChart.length - 1]?.total ?? visitsToday);
-  const visitsYesterday = Number(visitChart[visitChart.length - 2]?.total ?? visitsLatest);
+  const visitsYesterday = Number(
+    visitChart[visitChart.length - 2]?.total ?? visitChart[visitChart.length - 1]?.total ?? visitsLatest
+  );
   const visitDelta = getDelta(visitsLatest, visitsYesterday);
 
-  const revenueAverage = revenueChart.length > 0 ? Number(stats.revenueLast30Days ?? 0) / revenueChart.length : 0;
+  const revenueAverage = revenueChart.length > 0 ? Number(stats?.revenueLast30Days ?? 0) / revenueChart.length : 0;
   const visitsAverage = visitChart.length > 0 ? totalVisits30Days / visitChart.length : 0;
 
-  const ordersLast30Days = Number(stats.ordersLast30Days ?? 0);
-  const ordersToday = Number(stats.ordersToday ?? 0);
+  const ordersLast30Days = Number(stats?.ordersLast30Days ?? 0);
+  const ordersToday = Number(stats?.ordersToday ?? 0);
   const ordersLatest = Number(ordersChart[ordersChart.length - 1]?.total ?? ordersToday);
-  const ordersYesterday = Number(ordersChart[ordersChart.length - 2]?.total ?? ordersLatest);
+  const ordersYesterday = Number(
+    ordersChart[ordersChart.length - 2]?.total ?? ordersChart[ordersChart.length - 1]?.total ?? ordersLatest
+  );
   const orderDelta = getDelta(ordersLatest, ordersYesterday);
   const ordersAverage = ordersChart.length > 0 ? ordersLast30Days / ordersChart.length : 0;
 
@@ -256,13 +227,13 @@ export default function AdminStats() {
       {
         key: 'customers',
         label: 'Tổng khách hàng',
-        value: formatNumber(stats.customerCount),
+        value: formatNumber(stats?.customerCount ?? 0),
         helper: 'Số tài khoản đang quản lý',
       },
       {
         key: 'revenue',
         label: 'Doanh thu 30 ngày',
-        value: formatCurrency(stats.revenueLast30Days),
+        value: formatCurrency(stats?.revenueLast30Days ?? 0),
         helper: `Hôm nay: ${formatCurrency(revenueToday)}`,
         delta: revenueDelta,
         active: section === 'revenue',
@@ -288,8 +259,8 @@ export default function AdminStats() {
       },
     ],
     [
-      stats.customerCount,
-      stats.revenueLast30Days,
+      stats?.customerCount,
+      stats?.revenueLast30Days,
       revenueToday,
       revenueDelta,
       section,
@@ -303,8 +274,7 @@ export default function AdminStats() {
   );
 
   const chartData = useMemo(() => {
-    const dataset =
-      section === 'visits' ? visitChart : section === 'orders' ? ordersChart : revenueChart;
+    const dataset = section === 'visits' ? visitChart : section === 'orders' ? ordersChart : revenueChart;
     if (!Array.isArray(dataset) || dataset.length === 0) return [];
 
     const startDate = parseISODate(range.start);
@@ -313,12 +283,12 @@ export default function AdminStats() {
 
     return dataset
       .map((entry) => {
-        const parsedDate = parseISODate(entry.date);
+        const parsedDate = parseISODate(entry?.date);
         if (!parsedDate) return null;
         return {
           raw: parsedDate,
           label: parsedDate.toLocaleDateString('vi-VN'),
-          total: Number(entry.total ?? 0),
+          total: Number(entry?.total ?? 0),
         };
       })
       .filter((entry) => {
@@ -364,6 +334,48 @@ export default function AdminStats() {
     revenueAverage,
     revenueDelta,
   ]);
+
+  const getOrderRowKey = useCallback((order, index) => {
+    if (order?._id) return order._id;
+    if (order?.id) return order.id;
+    const purchaseTimestamp = order?.purchaseDate ? new Date(order.purchaseDate).getTime() : 'na';
+    return `${order?.plan || 'order'}-${purchaseTimestamp}-${index}`;
+  }, []);
+
+  let formattedLastUpdated = '';
+  if (lastUpdated) {
+    try {
+      formattedLastUpdated = new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(lastUpdated);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (loadError && !stats)
+    return (
+      <AdminLayout>
+        <section className="surface-card empty-state">
+          <h2>Không thể tải thống kê</h2>
+          <p>{loadError}</p>
+          <button type="button" className="btn btn-primary" onClick={handleRetry}>
+            Thử lại
+          </button>
+        </section>
+      </AdminLayout>
+    );
+
+  if (!stats)
+    return (
+      <AdminLayout>
+        <p className="loading">Đang tải...</p>
+      </AdminLayout>
+    );
 
   const resetRange = () => setRange(createDefaultRange());
 
@@ -586,8 +598,8 @@ export default function AdminStats() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
-                    <tr key={order._id}>
+                  {orders.map((order, index) => (
+                    <tr key={getOrderRowKey(order, index)}>
                       <td>
                         <div className="order-customer">
                           <span className="order-phone">{order.user?.phone || '—'}</span>

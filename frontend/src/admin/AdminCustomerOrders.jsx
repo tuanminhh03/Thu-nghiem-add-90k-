@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import './Admin.css';
+import { getApiUrl } from '../utils/api';
 
 export default function AdminCustomerOrders() {
   const { id } = useParams();
@@ -32,9 +33,17 @@ export default function AdminCustomerOrders() {
   }, [id, token]);
 
   // Subscribe to order stream for real-time updates
+  const getOrderRowKey = useCallback((order, index) => {
+    if (order?._id) return order._id;
+    if (order?.id) return order.id;
+    const purchaseTimestamp = order?.purchaseDate ? new Date(order.purchaseDate).getTime() : 'na';
+    return `${order?.plan || 'order'}-${purchaseTimestamp}-${index}`;
+  }, []);
+
   useEffect(() => {
     if (!token) return;
-    const es = new EventSource(`/api/admin/orders/stream?token=${token}`);
+    const streamUrl = getApiUrl(`/api/admin/orders/stream?token=${encodeURIComponent(token)}`);
+    const es = new EventSource(streamUrl);
     es.onmessage = e => {
       try {
         const data = JSON.parse(e.data);
@@ -81,7 +90,7 @@ export default function AdminCustomerOrders() {
             </thead>
             <tbody>
               {orders.map((o, idx) => (
-                <tr key={o._id}>
+                <tr key={getOrderRowKey(o, idx)}>
                   <td>{idx + 1}</td>
                   <td>{o.plan}</td>
                   <td>{new Date(o.purchaseDate).toLocaleDateString('vi-VN')}</td>
