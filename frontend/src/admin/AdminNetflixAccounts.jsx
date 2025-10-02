@@ -171,6 +171,55 @@ export default function AdminNetflixAccounts() {
 
   const now = Date.now();
 
+  const normalize = value =>
+    (value || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+  const loginIssuePhrases = [
+    'khong dang nhap',
+    'khong vao duoc',
+    'khong xac nhan duoc dang nhap',
+    'sai mat khau',
+    'sai password',
+    'sai pass',
+    'dang nhap that bai',
+    'dang nhap khong duoc',
+    'dang nhap ko duoc',
+  ];
+
+  const hasLoginIssue = value => {
+    if (!value) return false;
+    const normalized = normalize(value);
+    return loginIssuePhrases.some(phrase => normalized.includes(phrase));
+  };
+
+  const getIssueNote = acc => {
+    const trimmedHealthNote = acc.healthNote?.trim();
+    const trimmedNote = acc.note?.trim();
+
+    if (acc.healthStatus && acc.healthStatus !== 'healthy') {
+      return (
+        trimmedHealthNote ||
+        (acc.healthStatus === 'login_failed'
+          ? 'Không đăng nhập được'
+          : 'Tài khoản có vấn đề đăng nhập')
+      );
+    }
+
+    if (hasLoginIssue(trimmedHealthNote)) {
+      return trimmedHealthNote;
+    }
+
+    if (hasLoginIssue(trimmedNote)) {
+      return trimmedNote;
+    }
+
+    return null;
+  };
+
   return (
     <AdminLayout>
       <div className="card">
@@ -229,6 +278,8 @@ export default function AdminNetflixAccounts() {
                   return !Number.isNaN(expiry.getTime()) && expiry.getTime() < now;
                 });
 
+                const issueNote = getIssueNote(acc);
+
                 return (
                   <tr
                     key={acc._id}
@@ -237,6 +288,25 @@ export default function AdminNetflixAccounts() {
                   >
                     <td className="account-email-cell">
                       {acc.email}
+                      {issueNote && (
+                        <button
+                          type="button"
+                          className="account-warning-icon"
+                          title={issueNote}
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                              window.alert(issueNote);
+                            } else {
+                              // eslint-disable-next-line no-console
+                              console.info(issueNote);
+                            }
+                          }}
+                          aria-label={issueNote}
+                        >
+                          !
+                        </button>
+                      )}
                       {hasExpiredProfiles && (
                         <span
                           className="expiration-warning-icon"

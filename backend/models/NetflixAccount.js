@@ -46,6 +46,14 @@ const netflixAccountSchema = new mongoose.Schema(
     note: {
       type: String
     },
+    healthStatus: {
+      type: String,
+      enum: ['healthy', 'login_failed', 'unknown'],
+      default: 'healthy'
+    },
+    healthNote: {
+      type: String
+    },
     plan: {
       type: String,
       enum: ['Gói tiết kiệm', 'Gói cao cấp'],

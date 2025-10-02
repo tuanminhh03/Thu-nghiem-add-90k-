@@ -259,8 +259,23 @@ export async function getNetflixAccounts(req, res) {
 
 export async function createNetflixAccount(req, res) {
   try {
-    const { email, password, note, plan } = req.body;
-    const acc = await NetflixAccount.create({ email, password, note, plan });
+    const { email, password, note, plan, healthStatus, healthNote } = req.body;
+    const payload = { email, password, note, plan };
+
+    if (typeof healthStatus === 'string' && healthStatus.trim()) {
+      payload.healthStatus = healthStatus.trim();
+    }
+
+    if (healthNote !== undefined) {
+      if (typeof healthNote === 'string') {
+        const trimmed = healthNote.trim();
+        payload.healthNote = trimmed || undefined;
+      } else {
+        payload.healthNote = healthNote;
+      }
+    }
+
+    const acc = await NetflixAccount.create(payload);
     res.json(acc);
   } catch (err) {
     console.error(err);
@@ -270,7 +285,7 @@ export async function createNetflixAccount(req, res) {
 
 export async function updateNetflixAccount(req, res) {
   try {
-    const { email, password, note, plan } = req.body;
+    const { email, password, note, plan, healthStatus, healthNote } = req.body;
     const acc = await NetflixAccount.findById(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
 
@@ -279,6 +294,21 @@ export async function updateNetflixAccount(req, res) {
     if (password !== undefined) acc.password = password;
     if (note !== undefined)     acc.note = note;
     if (plan !== undefined)     acc.plan = plan;
+    if (healthStatus !== undefined) {
+      if (typeof healthStatus === 'string' && healthStatus.trim()) {
+        acc.healthStatus = healthStatus.trim();
+      } else {
+        acc.healthStatus = 'healthy';
+      }
+    }
+    if (healthNote !== undefined) {
+      if (typeof healthNote === 'string') {
+        const trimmedNote = healthNote.trim();
+        acc.healthNote = trimmedNote || undefined;
+      } else {
+        acc.healthNote = healthNote;
+      }
+    }
     await acc.save();
 
     await Order.updateMany(
@@ -328,7 +358,36 @@ export async function assignProfile(req, res) {
     }
 
     // (3) Tìm hồ sơ trống
-    const profile = acc.profiles.find(p => p.status === 'empty');
+    let profile = acc.profiles.find(p => p.status === 'empty');
+    if (!profile) {
+      const now = Date.now();
+      const expiredProfileIds = [];
+
+      acc.profiles.forEach(p => {
+        if (p.status !== 'used' || !p.expirationDate) return;
+        const expiryTime = new Date(p.expirationDate).getTime();
+        if (Number.isNaN(expiryTime) || expiryTime >= now) return;
+
+        expiredProfileIds.push(p.id);
+        p.status = 'empty';
+        p.name = '';
+        p.pin = '';
+        p.customerPhone = undefined;
+        p.purchaseDate = undefined;
+        p.expirationDate = undefined;
+      });
+
+      if (expiredProfileIds.length) {
+        await acc.save();
+        await Order.updateMany(
+          { accountEmail: acc.email, profileId: { $in: expiredProfileIds } },
+          { $set: { status: 'EXPIRED' } }
+        );
+      }
+
+      profile = acc.profiles.find(p => p.status === 'empty');
+    }
+
     if (!profile) {
       return res.status(400).json({ message: 'Tài khoản không còn hồ sơ trống' });
     }
