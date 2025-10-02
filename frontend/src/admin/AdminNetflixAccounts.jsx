@@ -229,6 +229,18 @@ export default function AdminNetflixAccounts() {
                   return !Number.isNaN(expiry.getTime()) && expiry.getTime() < now;
                 });
 
+                const issueNote = (() => {
+                  if (acc.healthStatus === 'login_failed') {
+                    return acc.healthNote?.trim() || 'Không đăng nhập được';
+                  }
+
+                  if (acc.note && acc.note.toLowerCase().includes('không đăng nhập')) {
+                    return acc.note;
+                  }
+
+                  return null;
+                })();
+
                 return (
                   <tr
                     key={acc._id}
@@ -237,6 +249,25 @@ export default function AdminNetflixAccounts() {
                   >
                     <td className="account-email-cell">
                       {acc.email}
+                      {issueNote && (
+                        <button
+                          type="button"
+                          className="account-warning-icon"
+                          title={issueNote}
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                              window.alert(issueNote);
+                            } else {
+                              // eslint-disable-next-line no-console
+                              console.info(issueNote);
+                            }
+                          }}
+                          aria-label={issueNote}
+                        >
+                          !
+                        </button>
+                      )}
                       {hasExpiredProfiles && (
                         <span
                           className="expiration-warning-icon"
