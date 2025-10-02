@@ -15,21 +15,22 @@ export default function AdminNetflixAccounts() {
   const [selected, setSelected] = useState(null);
   const [profileEdits, setProfileEdits] = useState({});
 
-  const selectedProfileCount = selected ? selected.profiles.length : 0;
-  const selectedUsedCount = selected
-    ? selected.profiles.filter(p => p.status === 'used').length
+  const selectedProfileCount = selected?.profiles?.length || 0;
+  const selectedUsedCount = selected?.profiles
+    ? selected.profiles.filter((p) => p.status === 'used').length
     : 0;
 
   const fetchAccounts = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/netflix-accounts', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const premium = data.filter(acc => acc.plan === 'Gói cao cấp');
+      const premium = (data || []).filter((acc) => acc.plan === 'Gói cao cấp');
       setAccounts(premium);
       return premium;
     } catch (err) {
       console.error(err);
+      return [];
     }
   }, [token]);
 
@@ -37,21 +38,17 @@ export default function AdminNetflixAccounts() {
     if (token) fetchAccounts();
   }, [token, fetchAccounts]);
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(
-          `/api/admin/netflix-accounts/${editingId}`,
-          form,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.put(`/api/admin/netflix-accounts/${editingId}`, form, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
-        await axios.post(
-          '/api/admin/netflix-accounts',
-          form,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.post('/api/admin/netflix-accounts', form, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
       setForm({ email: '', password: '', note: '' });
       setEditingId(null);
@@ -61,7 +58,7 @@ export default function AdminNetflixAccounts() {
     }
   };
 
-  const handleEdit = acc => {
+  const handleEdit = (acc) => {
     setForm({
       email: acc.email,
       password: acc.password,
@@ -70,20 +67,19 @@ export default function AdminNetflixAccounts() {
     setEditingId(acc._id);
   };
 
-  const handleDelete = async id => {
+  const handleDelete = async (id) => {
     if (!window.confirm('Xóa tài khoản này?')) return;
     try {
-      await axios.delete(
-        `/api/admin/netflix-accounts/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.delete(`/api/admin/netflix-accounts/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchAccounts();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleProfileDelete = async id => {
+  const handleProfileDelete = async (id) => {
     if (!window.confirm('Xóa hồ sơ này?')) return;
     try {
       await axios.delete(
@@ -91,16 +87,16 @@ export default function AdminNetflixAccounts() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await fetchAccounts();
-      setSelected(data.find(a => a._id === selected._id) || null);
+      setSelected(data.find((a) => a._id === selected._id) || null);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleProfileTransfer = async id => {
+  const handleProfileTransfer = async (id) => {
     const email = prompt('Email tài khoản nhận hồ sơ');
     if (!email) return;
-    const dest = accounts.find(a => a.email === email);
+    const dest = accounts.find((a) => a.email === email);
     if (!dest) return alert('Không tìm thấy tài khoản đích');
     try {
       await axios.post(
@@ -109,13 +105,13 @@ export default function AdminNetflixAccounts() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await fetchAccounts();
-      setSelected(data.find(a => a._id === selected._id) || null);
+      setSelected(data.find((a) => a._id === selected._id) || null);
     } catch (err) {
       alert(err.response?.data?.message || 'Lỗi chuyển hồ sơ');
     }
   };
 
-  const handleAssign = async id => {
+  const handleAssign = async (id) => {
     const phone = prompt('SDT khách hàng');
     if (!phone) return;
     const expirationDate = prompt('Ngày hết hạn (YYYY-MM-DD)') || '';
@@ -137,13 +133,13 @@ export default function AdminNetflixAccounts() {
   };
 
   const handleProfileChange = (id, field, value) => {
-    setProfileEdits(prev => ({
+    setProfileEdits((prev) => ({
       ...prev,
-      [id]: { ...prev[id], [field]: value }
+      [id]: { ...prev[id], [field]: value },
     }));
   };
 
-  const saveProfile = async id => {
+  const saveProfile = async (id) => {
     if (!profileEdits[id]) return;
     try {
       await axios.put(
@@ -151,19 +147,19 @@ export default function AdminNetflixAccounts() {
         profileEdits[id],
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSelected(prev => ({
+      setSelected((prev) => ({
         ...prev,
-        profiles: prev.profiles.map(p =>
+        profiles: prev.profiles.map((p) =>
           p.id === id ? { ...p, ...profileEdits[id] } : p
-        )
+        ),
       }));
-      setProfileEdits(prev => {
+      setProfileEdits((prev) => {
         const next = { ...prev };
         delete next[id];
         return next;
       });
       const data = await fetchAccounts();
-      setSelected(data.find(a => a._id === selected._id) || null);
+      setSelected(data.find((a) => a._id === selected._id) || null);
     } catch (err) {
       console.error(err);
     }
@@ -171,7 +167,7 @@ export default function AdminNetflixAccounts() {
 
   const now = Date.now();
 
-  const normalize = value =>
+  const normalize = (value) =>
     (value || '')
       .toString()
       .normalize('NFD')
@@ -190,13 +186,13 @@ export default function AdminNetflixAccounts() {
     'dang nhap ko duoc',
   ];
 
-  const hasLoginIssue = value => {
+  const hasLoginIssue = (value) => {
     if (!value) return false;
     const normalized = normalize(value);
-    return loginIssuePhrases.some(phrase => normalized.includes(phrase));
+    return loginIssuePhrases.some((phrase) => normalized.includes(phrase));
   };
 
-  const getIssueNote = acc => {
+  const getIssueNote = (acc) => {
     const trimmedHealthNote = acc.healthNote?.trim();
     const trimmedNote = acc.note?.trim();
 
@@ -208,15 +204,8 @@ export default function AdminNetflixAccounts() {
           : 'Tài khoản có vấn đề đăng nhập')
       );
     }
-
-    if (hasLoginIssue(trimmedHealthNote)) {
-      return trimmedHealthNote;
-    }
-
-    if (hasLoginIssue(trimmedNote)) {
-      return trimmedNote;
-    }
-
+    if (hasLoginIssue(trimmedHealthNote)) return trimmedHealthNote;
+    if (hasLoginIssue(trimmedNote)) return trimmedNote;
     return null;
   };
 
@@ -230,7 +219,7 @@ export default function AdminNetflixAccounts() {
             type="text"
             placeholder="Email"
             value={form.email}
-            onChange={e => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="input"
             required
           />
@@ -238,7 +227,7 @@ export default function AdminNetflixAccounts() {
             type="text"
             placeholder="Mật khẩu"
             value={form.password}
-            onChange={e => setForm({ ...form, password: e.target.value })}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="input"
             required
           />
@@ -246,7 +235,7 @@ export default function AdminNetflixAccounts() {
             type="text"
             placeholder="Ghi chú"
             value={form.note}
-            onChange={e => setForm({ ...form, note: e.target.value })}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
             className="input"
           />
           <button type="submit" className="btn btn-primary">
@@ -271,8 +260,8 @@ export default function AdminNetflixAccounts() {
               </tr>
             </thead>
             <tbody>
-              {accounts.map(acc => {
-                const hasExpiredProfiles = acc.profiles.some(p => {
+              {accounts.map((acc) => {
+                const hasExpiredProfiles = (acc.profiles || []).some((p) => {
                   if (!p.expirationDate) return false;
                   const expiry = new Date(p.expirationDate);
                   return !Number.isNaN(expiry.getTime()) && expiry.getTime() < now;
@@ -293,12 +282,14 @@ export default function AdminNetflixAccounts() {
                           type="button"
                           className="account-warning-icon"
                           title={issueNote}
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
-                            if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                            if (
+                              typeof window !== 'undefined' &&
+                              typeof window.alert === 'function'
+                            ) {
                               window.alert(issueNote);
                             } else {
-                              // eslint-disable-next-line no-console
                               console.info(issueNote);
                             }
                           }}
@@ -318,12 +309,10 @@ export default function AdminNetflixAccounts() {
                     </td>
                     <td>{acc.password}</td>
                     <td>{acc.plan}</td>
-                    <td>
-                      {acc.profiles.filter(p => p.status === 'used').length}/5
-                    </td>
+                    <td>{(acc.profiles || []).filter((p) => p.status === 'used').length}/5</td>
                     <td className="text-center">
                       <button
-                        onClick={e => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           handleAssign(acc._id);
                         }}
@@ -332,7 +321,7 @@ export default function AdminNetflixAccounts() {
                         Cấp hồ sơ
                       </button>
                       <button
-                        onClick={e => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           handleEdit(acc);
                         }}
@@ -341,7 +330,7 @@ export default function AdminNetflixAccounts() {
                         Sửa
                       </button>
                       <button
-                        onClick={e => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(acc._id);
                         }}
@@ -361,14 +350,13 @@ export default function AdminNetflixAccounts() {
           <div className="modal-backdrop" onClick={() => setSelected(null)}>
             <div
               className="modal modal--accounts"
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-header">
                 <div>
                   <h2 className="modal-title">Hồ sơ của {selected.email}</h2>
                   <p className="modal-subtitle">
-                    {selected.plan} · {selectedUsedCount}/{selectedProfileCount} hồ
-                    sơ đã dùng
+                    {selected.plan} · {selectedUsedCount}/{selectedProfileCount} hồ sơ đã dùng
                   </p>
                 </div>
                 <button
@@ -395,7 +383,7 @@ export default function AdminNetflixAccounts() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selected.profiles.map(p => {
+                      {(selected.profiles || []).map((p) => {
                         const expirationDate = p.expirationDate
                           ? new Date(p.expirationDate)
                           : null;
@@ -409,10 +397,8 @@ export default function AdminNetflixAccounts() {
                             <td>
                               <input
                                 type="text"
-                                value={
-                                  profileEdits[p.id]?.name ?? p.name ?? ''
-                                }
-                                onChange={e =>
+                                value={profileEdits[p.id]?.name ?? p.name ?? ''}
+                                onChange={(e) =>
                                   handleProfileChange(p.id, 'name', e.target.value)
                                 }
                                 onBlur={() => saveProfile(p.id)}
@@ -423,7 +409,7 @@ export default function AdminNetflixAccounts() {
                               <input
                                 type="text"
                                 value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
-                                onChange={e =>
+                                onChange={(e) =>
                                   handleProfileChange(p.id, 'pin', e.target.value)
                                 }
                                 onBlur={() => saveProfile(p.id)}
