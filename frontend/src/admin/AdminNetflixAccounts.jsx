@@ -6,11 +6,13 @@ import './Admin.css';
 export default function AdminNetflixAccounts() {
   const token = localStorage.getItem('adminToken');
   const [accounts, setAccounts] = useState([]);
-  const [form, setForm] = useState({
+  const createDefaultForm = () => ({
     email: '',
     password: '',
     note: '',
+    loginIssue: false,
   });
+  const [form, setForm] = useState(createDefaultForm);
   const [editingId, setEditingId] = useState(null);
   const [selected, setSelected] = useState(null);
   const [profileEdits, setProfileEdits] = useState({});
@@ -53,9 +55,12 @@ export default function AdminNetflixAccounts() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
-      setForm({ email: '', password: '', note: '' });
+      setForm(createDefaultForm());
       setEditingId(null);
-      fetchAccounts();
+      const updated = await fetchAccounts();
+      if (selected) {
+        setSelected(updated?.find(a => a._id === selected._id) || null);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -66,6 +71,7 @@ export default function AdminNetflixAccounts() {
       email: acc.email,
       password: acc.password,
       note: acc.note || '',
+      loginIssue: !!acc.loginIssue,
     });
     setEditingId(acc._id);
   };
@@ -125,7 +131,10 @@ export default function AdminNetflixAccounts() {
         { phone, expirationDate },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchAccounts();
+      const updated = await fetchAccounts();
+      if (selected) {
+        setSelected(updated?.find(a => a._id === selected._id) || null);
+      }
     } catch (err) {
       alert(err.response?.data?.message || 'Lỗi cấp hồ sơ');
     }
@@ -133,7 +142,7 @@ export default function AdminNetflixAccounts() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ email: '', password: '', note: '' });
+    setForm(createDefaultForm());
   };
 
   const handleProfileChange = (id, field, value) => {
@@ -169,6 +178,8 @@ export default function AdminNetflixAccounts() {
     }
   };
 
+  const now = Date.now();
+
   return (
     <AdminLayout>
       <div className="card">
@@ -198,6 +209,16 @@ export default function AdminNetflixAccounts() {
             onChange={e => setForm({ ...form, note: e.target.value })}
             className="input"
           />
+          <label className="checkbox-inline">
+            <input
+              type="checkbox"
+              checked={form.loginIssue}
+              onChange={e =>
+                setForm({ ...form, loginIssue: e.target.checked })
+              }
+            />
+            <span>Tài khoản không đăng nhập được</span>
+          </label>
           <button type="submit" className="btn btn-primary">
             {editingId ? 'Cập nhật' : 'Thêm'}
           </button>
@@ -220,49 +241,81 @@ export default function AdminNetflixAccounts() {
               </tr>
             </thead>
             <tbody>
-              {accounts.map(acc => (
-                <tr
-                  key={acc._id}
-                  onClick={() => setSelected(acc)}
-                  className="cursor-pointer"
-                >
-                  <td>{acc.email}</td>
-                  <td>{acc.password}</td>
-                  <td>{acc.plan}</td>
-                  <td>
-                    {acc.profiles.filter(p => p.status === 'used').length}/5
-                  </td>
-                  <td className="text-center">
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleAssign(acc._id);
-                      }}
-                      className="btn btn-primary mr-2"
-                    >
-                      Cấp hồ sơ
-                    </button>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleEdit(acc);
-                      }}
-                      className="btn btn-secondary mr-2"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleDelete(acc._id);
-                      }}
-                      className="btn btn-danger"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {accounts.map(acc => {
+                const hasExpiredProfiles = acc.profiles.some(p => {
+                  if (!p.expirationDate) return false;
+                  const expiry = new Date(p.expirationDate);
+                  return !Number.isNaN(expiry.getTime()) && expiry.getTime() < now;
+                });
+                const hasLoginIssue = !!acc.loginIssue;
+
+                return (
+                  <tr
+                    key={acc._id}
+                    onClick={() => setSelected(acc)}
+                    className="cursor-pointer"
+                  >
+                    <td className="account-email-cell">
+                      {acc.email}
+                      {hasLoginIssue && (
+                        <button
+                          type="button"
+                          className="issue-warning-icon"
+                          title={acc.note || 'Không đăng nhập được'}
+                          onClick={e => {
+                            e.stopPropagation();
+                            alert(acc.note?.trim() || 'Không đăng nhập được');
+                          }}
+                        >
+                          !
+                        </button>
+                      )}
+                      {hasExpiredProfiles && (
+                        <span
+                          className="expiration-warning-icon"
+                          title="Đơn hàng đã hết hạn"
+                          role="img"
+                          aria-label="Đơn hàng đã hết hạn"
+                        />
+                      )}
+                    </td>
+                    <td>{acc.password}</td>
+                    <td>{acc.plan}</td>
+                    <td>
+                      {acc.profiles.filter(p => p.status === 'used').length}/5
+                    </td>
+                    <td className="text-center">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleAssign(acc._id);
+                        }}
+                        className="btn btn-primary mr-2"
+                      >
+                        Cấp hồ sơ
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleEdit(acc);
+                        }}
+                        className="btn btn-secondary mr-2"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDelete(acc._id);
+                        }}
+                        className="btn btn-danger"
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -305,61 +358,79 @@ export default function AdminNetflixAccounts() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selected.profiles.map(p => (
-                        <tr key={p.id}>
-                          <td>
-                            <input
-                              type="text"
-                              value={
-                                profileEdits[p.id]?.name ?? p.name ?? ''
-                              }
-                              onChange={e =>
-                                handleProfileChange(p.id, 'name', e.target.value)
-                              }
-                              onBlur={() => saveProfile(p.id)}
-                              className="input input-inline"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
-                              onChange={e =>
-                                handleProfileChange(p.id, 'pin', e.target.value)
-                              }
-                              onBlur={() => saveProfile(p.id)}
-                              className="input input-inline"
-                            />
-                          </td>
-                          <td>{p.customerPhone || '-'}</td>
-                          <td>
-                            {p.purchaseDate
-                              ? new Date(p.purchaseDate).toLocaleDateString()
-                              : '-'}
-                          </td>
-                          <td>
-                            {p.expirationDate
-                              ? new Date(p.expirationDate).toLocaleDateString()
-                              : '-'}
-                          </td>
-                          <td className="modal-profile-actions">
-                            <button
-                              type="button"
-                              onClick={() => handleProfileDelete(p.id)}
-                              className="btn btn-danger btn-sm"
-                            >
-                              Xóa
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleProfileTransfer(p.id)}
-                              className="btn btn-secondary btn-sm"
-                            >
-                              Chuyển
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {selected.profiles.map(p => {
+                        const expirationDate = p.expirationDate
+                          ? new Date(p.expirationDate)
+                          : null;
+                        const isExpired =
+                          !!expirationDate && !Number.isNaN(expirationDate.getTime())
+                            ? expirationDate.getTime() < now
+                            : false;
+
+                        return (
+                          <tr key={p.id}>
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  profileEdits[p.id]?.name ?? p.name ?? ''
+                                }
+                                onChange={e =>
+                                  handleProfileChange(p.id, 'name', e.target.value)
+                                }
+                                onBlur={() => saveProfile(p.id)}
+                                className="input input-inline"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={profileEdits[p.id]?.pin ?? p.pin ?? ''}
+                                onChange={e =>
+                                  handleProfileChange(p.id, 'pin', e.target.value)
+                                }
+                                onBlur={() => saveProfile(p.id)}
+                                className="input input-inline"
+                              />
+                            </td>
+                            <td>{p.customerPhone || '-'}</td>
+                            <td>
+                              {p.purchaseDate
+                                ? new Date(p.purchaseDate).toLocaleDateString()
+                                : '-'}
+                            </td>
+                            <td className="expiration-cell">
+                              {p.expirationDate
+                                ? new Date(p.expirationDate).toLocaleDateString()
+                                : '-'}
+                              {isExpired && (
+                                <span
+                                  className="expiration-warning-icon"
+                                  title="Đơn hàng đã hết hạn"
+                                  role="img"
+                                  aria-label="Đơn hàng đã hết hạn"
+                                />
+                              )}
+                            </td>
+                            <td className="modal-profile-actions">
+                              <button
+                                type="button"
+                                onClick={() => handleProfileDelete(p.id)}
+                                className="btn btn-danger btn-sm"
+                              >
+                                Xóa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleProfileTransfer(p.id)}
+                                className="btn btn-secondary btn-sm"
+                              >
+                                Chuyển
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

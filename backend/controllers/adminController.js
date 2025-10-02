@@ -259,8 +259,14 @@ export async function getNetflixAccounts(req, res) {
 
 export async function createNetflixAccount(req, res) {
   try {
-    const { email, password, note, plan } = req.body;
-    const acc = await NetflixAccount.create({ email, password, note, plan });
+    const { email, password, note, plan, loginIssue } = req.body;
+    const acc = await NetflixAccount.create({
+      email,
+      password,
+      note,
+      plan,
+      loginIssue
+    });
     res.json(acc);
   } catch (err) {
     console.error(err);
@@ -270,7 +276,7 @@ export async function createNetflixAccount(req, res) {
 
 export async function updateNetflixAccount(req, res) {
   try {
-    const { email, password, note, plan } = req.body;
+    const { email, password, note, plan, loginIssue } = req.body;
     const acc = await NetflixAccount.findById(req.params.id);
     if (!acc) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
 
@@ -278,6 +284,7 @@ export async function updateNetflixAccount(req, res) {
     if (email !== undefined)    acc.email = email;
     if (password !== undefined) acc.password = password;
     if (note !== undefined)     acc.note = note;
+    if (loginIssue !== undefined) acc.loginIssue = loginIssue;
     if (plan !== undefined)     acc.plan = plan;
     await acc.save();
 
@@ -328,8 +335,38 @@ export async function assignProfile(req, res) {
     }
 
     // (3) Tìm hồ sơ trống
-    const profile = acc.profiles.find(p => p.status === 'empty');
+    let profile = acc.profiles.find(p => p.status === 'empty');
+
     if (!profile) {
+      const now = new Date();
+      const expiredProfiles = acc.profiles
+        .filter(p => p.status === 'used' && p.expirationDate && p.expirationDate < now)
+        .sort((a, b) => a.expirationDate - b.expirationDate);
+
+      if (expiredProfiles.length > 0) {
+        profile = expiredProfiles[0];
+        const reclaimedProfileId = profile.id;
+
+        await Order.updateMany(
+          { accountEmail: acc.email, profileId: reclaimedProfileId },
+          {
+            $set: { status: 'EXPIRED' },
+            $push: {
+              history: { message: 'Tự động thu hồi hồ sơ hết hạn', date: new Date() }
+            }
+          }
+        );
+
+        profile.status = 'empty';
+        profile.name = '';
+        profile.pin = '';
+        profile.customerPhone = undefined;
+        profile.purchaseDate = undefined;
+        profile.expirationDate = undefined;
+      }
+    }
+
+    if (!profile || profile.status !== 'empty') {
       return res.status(400).json({ message: 'Tài khoản không còn hồ sơ trống' });
     }
 

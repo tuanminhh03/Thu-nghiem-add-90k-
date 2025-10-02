@@ -971,6 +971,19 @@
   display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem;
 }
 
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.checkbox-inline input {
+  width: 16px;
+  height: 16px;
+}
+
 .input-group {
   display: flex; align-items: center; border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 0.9rem; background: rgba(248, 250, 252, 0.9);
@@ -1014,6 +1027,71 @@
 
 .data-table tbody tr:hover td,
 .table tbody tr:hover td { background: rgba(229, 9, 20, 0.08); }
+
+.account-email-cell,
+.expiration-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.expiration-cell {
+  justify-content: flex-start;
+}
+
+.expiration-warning-icon {
+  position: relative;
+  width: 18px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.issue-warning-icon {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--warning);
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 700;
+  line-height: 1;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.issue-warning-icon:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.45);
+}
+
+.expiration-warning-icon::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 16px solid var(--danger);
+  filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.35));
+}
+
+.expiration-warning-icon::after {
+  content: '!';
+  position: absolute;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  top: 4px;
+}
 
 .plan-badge {
   display: inline-flex; align-items: center; gap: 0.5rem;
