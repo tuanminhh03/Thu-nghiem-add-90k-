@@ -237,10 +237,44 @@ export async function deleteOrder(req, res) {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
 
-    order.status = 'EXPIRED';
+    const now = new Date();
+    const isExpired =
+      order.status === 'EXPIRED' || (order.expiresAt && new Date(order.expiresAt) <= now);
+    const newStatus = isExpired ? 'EXPIRED' : 'DELETED';
+
+    if (order.profileId) {
+      await NetflixAccount.updateOne(
+        { 'profiles.id': order.profileId },
+        {
+          $set: { 'profiles.$.status': 'empty' },
+          $unset: {
+            'profiles.$.customerPhone': '',
+            'profiles.$.purchaseDate': '',
+            'profiles.$.expirationDate': '',
+          },
+        }
+      );
+    }
+
+    order.status = newStatus;
+    if (newStatus === 'DELETED') {
+      order.accountEmail = undefined;
+      order.accountPassword = undefined;
+      order.profileName = undefined;
+      order.pin = undefined;
+    }
+    order.profileId = undefined;
+    order.history = order.history || [];
+    order.history.push({
+      message: isExpired ? 'Đơn hàng hết hạn (đánh dấu bởi admin)' : 'Đơn hàng bị xóa bởi admin',
+      date: now,
+    });
     await order.save();
 
-    res.json({ message: 'Đã chuyển sang hết hạn' });
+    res.json({
+      message: isExpired ? 'Đã đánh dấu đơn hàng là hết hạn' : 'Đã đánh dấu đơn hàng là bị xóa',
+      status: newStatus,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server' });

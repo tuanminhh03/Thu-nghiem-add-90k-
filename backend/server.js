@@ -72,5 +72,43 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
+// Cron: dọn dẹp đơn đã hết hạn sau 3 ngày nếu khách không gia hạn
+cron.schedule('30 0 * * *', async () => {
+  const now = new Date();
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+  try {
+    const staleOrders = await Order.find({
+      status: 'EXPIRED',
+      expiresAt: { $lt: threeDaysAgo },
+    });
+
+    if (!staleOrders.length) {
+      return;
+    }
+
+    for (const order of staleOrders) {
+      if (order.profileId) {
+        await NetflixAccount.updateOne(
+          { 'profiles.id': order.profileId },
+          {
+            $set: { 'profiles.$.status': 'empty' },
+            $unset: {
+              'profiles.$.customerPhone': '',
+              'profiles.$.purchaseDate': '',
+              'profiles.$.expirationDate': '',
+            },
+          }
+        );
+      }
+    }
+
+    const staleOrderIds = staleOrders.map((order) => order._id);
+    await Order.deleteMany({ _id: { $in: staleOrderIds } });
+  } catch (err) {
+    console.error('Stale order cleanup error:', err);
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

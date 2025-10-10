@@ -40,7 +40,7 @@ const orderSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['PENDING', 'PAID', 'FAILED', 'EXPIRED'],
+    enum: ['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'DELETED'],
     default: 'PAID',
   },
   purchaseDate: {
