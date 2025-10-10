@@ -91,6 +91,11 @@
   background-color: #059669;
   transform: translateY(-1px);
 }
+.extend-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
 
 /* Chi tiết đơn hàng */
 .order-details-row {

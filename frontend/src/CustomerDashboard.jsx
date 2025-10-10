@@ -356,7 +356,14 @@ export default function CustomerDashboard() {
 
                   const now = new Date();
                   const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-                  const isExpired = o.status === "EXPIRED" || daysLeft <= 0;
+                  const isDeleted = o.status === "DELETED";
+                  const isExpired = o.status === "EXPIRED" || (!isDeleted && daysLeft <= 0);
+                  const isInactive = isExpired || isDeleted;
+                  const remainingText = isDeleted
+                    ? "Bị xóa"
+                    : isExpired
+                    ? "Đã hết hạn"
+                    : `${daysLeft} ngày`;
                   const rowId = o._id || o.orderCode;
                   const latestHistory =
                     Array.isArray(o.history) && o.history.length > 0
@@ -381,7 +388,7 @@ export default function CustomerDashboard() {
                         <td>{o.plan}</td>
                         <td>{formatDateTime(purchase)}</td>
                         <td>{expiry.toLocaleDateString("vi-VN")}</td>
-                        <td>{isExpired ? "Đã hết hạn" : `${daysLeft} ngày`}</td>
+                        <td>{remainingText}</td>
                         <td>
                           <button
                             type="button"
@@ -395,7 +402,12 @@ export default function CustomerDashboard() {
                           </button>
                         </td>
                         <td>
-                          <button type="button" className="extend-button" onClick={() => handleExtendClick(o)}>
+                          <button
+                            type="button"
+                            className="extend-button"
+                            onClick={() => handleExtendClick(o)}
+                            disabled={isInactive}
+                          >
                             Gia hạn
                           </button>
                         </td>
@@ -406,8 +418,8 @@ export default function CustomerDashboard() {
                           <td colSpan={8}>
                             <div className="order-details">
                               <p>
-                                <strong>Email:</strong> {isExpired ? "-" : o.accountEmail || "-"}
-                                {!isExpired && o.accountEmail && (
+                                <strong>Email:</strong> {isInactive ? "-" : o.accountEmail || "-"}
+                                {!isInactive && o.accountEmail && (
                                   <button
                                     className="copy-button"
                                     onClick={() => navigator.clipboard.writeText(o.accountEmail)}
@@ -417,8 +429,8 @@ export default function CustomerDashboard() {
                                 )}
                               </p>
                               <p>
-                                <strong>Password:</strong> {isExpired ? "-" : o.accountPassword || "-"}
-                                {!isExpired && o.accountPassword && (
+                                <strong>Password:</strong> {isInactive ? "-" : o.accountPassword || "-"}
+                                {!isInactive && o.accountPassword && (
                                   <button
                                     className="copy-button"
                                     onClick={() => navigator.clipboard.writeText(o.accountPassword)}
